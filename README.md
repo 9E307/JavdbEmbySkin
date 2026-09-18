@@ -56,14 +56,14 @@
 #### 三种风格对比
 
 <div align="center">
-  <video src="screenshots/1.mp4"
+  <a href="screenshots/1.mp4">
+    <img src="screenshots/1.webp"
          width="1000"
-         controls
-         loop
-         muted>
-    您的浏览器不支持视频播放
-  </video>
-  <p><em>视频内有暴露画面，请确认观看环境</em></p>
+         alt="三种风格对比演示 (点击播放完整视频)"
+         style="max-width:100%; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+  </a>
+  <p>▶️ <b><a href="screenshots/1.mp4">点击此处查看完整对比演示视频 (1分13秒)</a></b></p>
+  <p><em>⚠️ 视频内有暴露画面，请确认观看环境</em></p>
 </div>
 
 ---
@@ -313,16 +313,7 @@
 <tr>
 <td width="33%" align="center"><img src="screenshots/9.webp" width="280" alt="经典网格"><br><sub><b>经典网格</b></sub></td>
 <td width="33%" align="center"><img src="screenshots/10.webp" width="280" alt="错落瀑布流"><br><sub><b>错落瀑布流</b></sub></td>
-<td width="34%" align="center"><div align="center">
-  <video src="screenshots/11.webm"
-         width="800"
-         controls
-         loop
-         muted>
-    您的浏览器不支持视频播放
-  </video>
-  <p><em>动态聚焦</em></p>
-</div><br><sub><b>动态聚焦</b></sub></td>
+<td width="34%" align="center"><img src="screenshots/11.webp" width="280" alt="动态聚焦"><br><sub><b>动态聚焦</b></sub></td>
 </tr>
 </table>
 
@@ -365,48 +356,12 @@
 
 <table>
 <tr>
-<td width="50%" align="center"><div align="center">
-  <video src="screenshots/12.webm"
-         width="800"
-         controls
-         loop
-         muted>
-    您的浏览器不支持视频播放
-  </video>
-  <p><em>右侧裁切</em></p>
-</div><sub><b>右侧裁切</b></sub></td>
-<td width="50%" align="center"><div align="center">
-  <video src="screenshots/13.webm"
-         width="800"
-         controls
-         loop
-         muted>
-    您的浏览器不支持视频播放
-  </video>
-  <p><em>完整全封面</em></p>
-</div><sub><b>完整全封面</b></sub></td>
+<td width="50%" align="center"><img src="screenshots/12.webp" width="400" alt="右侧裁切"><br><sub><b>右侧裁切</b></sub></td>
+<td width="50%" align="center"><img src="screenshots/13.webp" width="400" alt="完整全封面"><br><sub><b>完整全封面</b></sub></td>
 </tr>
 <tr>
-<td width="50%" align="center"><div align="center">
-  <video src="screenshots/14.webm"
-         width="800"
-         controls
-         loop
-         muted>
-    您的浏览器不支持视频播放
-  </video>
-  <p><em>融合模式</em></p>
-</div><sub><b>融合模式（默认）</b></sub></td>
-<td width="50%" align="center"><i<div align="center">
-  <video src="screenshots/15.webm"
-         width="800"
-         controls
-         loop
-         muted>
-    您的浏览器不支持视频播放
-  </video>
-  <p><em>混合模式</em></p>
-</div><sub><b>混合模式（Letterboxd 三栏）</b></sub></td>
+<td width="50%" align="center"><img src="screenshots/14.webp" width="400" alt="融合模式（默认）"><br><sub><b>融合模式（默认）</b></sub></td>
+<td width="50%" align="center"><img src="screenshots/15.webp" width="400" alt="混合模式（Letterboxd 三栏）"><br><sub><b>混合模式（Letterboxd 三栏）</b></sub></td>
 </tr>
 </table>
 
