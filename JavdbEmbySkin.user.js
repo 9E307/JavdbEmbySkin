@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin
 // @namespace    com.local.javdbemby
-// @version      7.330
+// @version      7.331
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -36,30 +36,34 @@
     return;
   }
 
-  /* =======================================================================
-   * 全局 Referrer 免疫守卫：根治 c0.jdbstatic.com 等图床 403 Forbidden 防盗链阻断
-   * 确保原生 JAVDB 封面、缩略图、头像及脚本生成的所有图片请求均不携带 Referer，
-   * 并对页面初始加载时已破图的 <img> 节点就地执行自愈重载。
-   * ===================================================================== */
-  function ensureGlobalNoReferrer() {
+  // 鉴权路由严格避让守卫：在登录、注册、找回密码等关键认证页面上，坚决不进行任何 DOM 重构或头信息篡改，
+  // 100% 保持原生 Rails Form POST 导航、CSRF Token 与同源 Referer 标头完整，杜绝登录重定向死循环。
+  if (/^\/(login|user_sessions|users\/(?:sign_in|sign_up|new|password))/i.test(location.pathname)) {
     try {
-      let meta = document.querySelector('meta[name="referrer"]');
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = 'referrer';
-        meta.content = 'no-referrer';
-        const target = document.head || document.documentElement;
-        if (target) {
-          if (target.firstChild) target.insertBefore(meta, target.firstChild);
-          else target.appendChild(meta);
-        }
-      } else if (meta.content !== 'no-referrer') {
-        meta.content = 'no-referrer';
-      }
-      // 确保页面所有图片 referrerpolicy 均为 no-referrer，杜绝防盗链 403 阻断
+      const m = document.querySelector('meta[name="referrer"][content="no-referrer"]');
+      if (m && m.parentNode) m.parentNode.removeChild(m);
+    } catch (e) {}
+    return;
+  }
+
+  /* =======================================================================
+   * 元素级 Referrer 免疫守卫：根治 c0.jdbstatic.com 等图床 403 Forbidden 防盗链阻断
+   * 严禁篡改 document-level <meta name="referrer">，杜绝破坏 Rails 表单 POST、CSRF 与会话校验；
+   * 仅针对常规图片元素 (img) 施加 element-level referrerpolicy="no-referrer"，并显式排除验证码图片。
+   * ===================================================================== */
+  function ensureImageNoReferrer() {
+    try {
+      // 自愈清理：若页面存在之前注入或残留的 no-referrer meta 标签，就地拔除以恢复同源 Referer
+      const meta = document.querySelector('meta[name="referrer"][content="no-referrer"]');
+      if (meta && meta.parentNode) meta.parentNode.removeChild(meta);
+
+      // 确保页面所有图片 referrerpolicy 均为 no-referrer，杜绝防盗链 403 阻断（排除图形验证码）
       const imgs = document.images || document.querySelectorAll('img');
       for (let i = 0; i < imgs.length; i++) {
         const img = imgs[i];
+        if (img.classList && (img.classList.contains('rucaptcha-image') || img.closest('.rucaptcha-image, #rucaptcha'))) {
+          continue;
+        }
         if (img.getAttribute('referrerpolicy') !== 'no-referrer') {
           img.setAttribute('referrerpolicy', 'no-referrer');
           img.referrerPolicy = 'no-referrer';
@@ -67,8 +71,8 @@
       }
     } catch (e) {}
   }
-  ensureGlobalNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.330';
+  ensureImageNoReferrer();
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.331';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -118,7 +122,7 @@
         const hasLoginLink = !!nav.querySelector('a[href*="/login"], a[href*="/sign_in"], a[href*="/users/sign_in"]');
         if (hasLoginLink) return false;
       }
-      if (document.cookie && /(?:^|;\s*)(?:remember_user_token|_javdb_session)\s*=/i.test(document.cookie)) return true;
+      if (document.cookie && /(?:^|;\s*)(?:remember_user_token|_javdb_session|_jdb_session)\s*=/i.test(document.cookie)) return true;
       if (document.getElementById('save-list-button')) return true;
     } catch (e) {}
     return false;
@@ -11080,7 +11084,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '</div>' +
           '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;">' +
             '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:4px;">' +
-              '<span class="material-symbols-outlined" style="font-size:13px;color:#10b981;">flattr</span> 观影标记' +
+              '<span class="material-symbols-outlined" style="font-size:13px;color:#10b981;">观影标记</span>' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 8px;background:rgba(16,185,129,.08);border-radius:6px;border:1px solid rgba(16,185,129,.18);">' +
@@ -25164,7 +25168,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 增量过滤：皮肤自身注入/面板渲染引起的突变直接跳过调度；
       // 只在 javdb 原生区域发生结构变化时才进入 500ms 防抖重构。
       if (!enabled) return;
-      ensureGlobalNoReferrer();
+      ensureImageNoReferrer();
       if (allInsideSkinChrome(muts)) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(function () {
