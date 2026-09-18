@@ -520,7 +520,7 @@ TOP250 面板里的 **"筛选"** 按钮，用的就是收藏夹那套高级筛�
 <table>
 <tr>
 <td width="50%" align="center"><img src="screenshots/4.webp" width="400" alt="片源选择菜单"><br><sub><b>片源选择菜单</b><br>按分组排列 · 每个片源带在线状态 ✓ / ✕</sub></td>
-<td width="50%" align="center"><img src="screenshots/61-site-config.webp" width="400" alt="外部网站设置"><br><sub><b>外部网站设置</b><br>拖拽排序 · 自定义站点 · 单独开关</sub></td>
+<td width="50%" align="center"><img src="screenshots/21.webp" width="400" alt="外部网站设置"><br><sub><b>外部网站设置</b><br>拖拽排序 · 自定义站点 · 单独开关</sub></td>
 </tr>
 </table>
 
