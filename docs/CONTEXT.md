@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,343 行，v7.330）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,367 行，v7.331）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -80,9 +80,9 @@ _Avoid_: MasonryGrid, ColumnLayout, FlexGrid
 当用户关闭 Emby 皮肤时，通过同步拔除容器 `.emby-masonry` 类名并切断所有后台布局引擎异步调度的防御机制，确保 JAVDB 原生基于 CSS Grid 的 4/5 列排版 100% 无缝复原。
 _Avoid_: ClearLayout, SkinDisabler, ResetGrid
 
-**Global No-Referrer Policy (全局防盗链免溯源策略)**:
-通过在 `<head>` 最前端注入 `<meta name="referrer" content="no-referrer">` 与图片属性级 `referrerPolicy = 'no-referrer'` 实施的双层静态防盗链穿透方案，从根本上免疫官方图床 403 Forbidden 拦截，坚决摒弃通过重置 `img.src` 造成重排抖动的有副作用黑魔法。
-_Avoid_: Anti403, ImageFix, RefererHack
+**Element-level Image Referrer Policy (元素级防盗链免溯源策略)**:
+严禁在 `<head>` 注入全局 `<meta name="referrer" content="no-referrer">`（避免破坏 Rails CSRF 同源校验与表单登录 POST 标头），仅在常规图片属性级施加 `referrerPolicy = 'no-referrer'` 并主动排除图形验证码（`rucaptcha-image`）。配合鉴权路由严格避让守卫，从根本上免疫官方图床 403 Forbidden 拦截同时确保整站会话与登录完整。
+_Avoid_: GlobalNoReferrer, Anti403, ImageFix, RefererHack
 
 **Steam 3D Tilt (卡牌高光倾角)**:
 鼠标在卡片悬停移动时，实时计算光标偏移比例，赋予卡牌透视 3D 倾斜（`transform: perspective(1000px) rotateX(...) rotateY(...)`）并渲染跟随高光。
@@ -283,6 +283,11 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 * **铁律**：数据统计中心（StatisticsCenter）核心 KPI 矩阵中展示的观影标记（已看 / 想看作品数）必须严格呈上下列垂直排列（上列宝石绿已看、下列琥珀金想看）；必须保持为纯粹稳健的统计卡片，不绑定多余的跨模块跳转交互；其上游统计数据源以本地 IndexedDB 全量电影表（`allDbMovies` 优先）的 `reviewStatus` 为真相源，在备份导出时随 `movies` 完整导出，备份导入还原时自动由 `collectStats()` 重新汇算，确保全生命周期数据绝对闭环。
 * **陷阱**：在纯统计 KPI 指标卡片中随意绑定未经充分设计的路由筛选跳转不仅违反极简与单一职责原则，还可能因收藏夹当前分页或筛选状态冲突引发意外行为；若在上游数据采集时漏算未加入自定义清单但已被标记的作品，会导致统计数量与用户实际标记严重不符。
 
+### 19. 鉴权路由避让与元素级 Referrer 隔离机制
+* **铁律**：在 `/login`、`/user_sessions`、`/users/sign_in`、`/users/new`、`/users/password` 等关键鉴权路由上，脚本必须在入口处立即 return 避让，坚决不注入任何皮肤 DOM、样式或 MutationObserver，100% 保全原生 Rails Form POST 导航生命周期；严禁向 `<head>` 注入全局 `<meta name="referrer" content="no-referrer">`，避免破坏 Rails 同源 CSRF 校验（`verify_same_origin_request`）导致服务端 Session 重置与登录重定向死循环；防盗链需求一律由元素级 `referrerPolicy = 'no-referrer'` 承载，且显式豁免图形验证码（`.rucaptcha-image`）。
+* **陷阱**：忽视 Rails 体系对同源 `Referer` / `Origin` 标头的严格校验，采用全局 Meta 粗暴阻断 Referer，导致合法的整页表单 POST 请求被服务端判定为 CSRF 攻击并被动清空 Session 验证码；无差别重写页面全部 `<img>` 标签导致图形验证码丢失与 Cookie 解绑。
+* **参见决策**：[ADR-0015: Rails CSRF 同源 Referer 完整性保障与元素级防盗链穿透架构](./adr/0015-rails-csrf-referer-integrity-and-image-level-anti-hotlink.md)
+
 ---
 
 ## 架构决策档案索引 (Architectural Decision Records)
@@ -303,4 +308,5 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 12. [ADR-0012: JAVDB 服务端 VIP 302 拦截墙规避与多源在线播放矩阵](./adr/0012-vip-wall-bypass-and-multi-source-playback.md)
 13. [ADR-0013: 皮肤关闭态原生网格（CSS Grid）恢复与布局引擎启闭熔断架构](./adr/0013-native-grid-restoration-and-layout-engine-circuit-breaker.md)
 14. [ADR-0014: Rails UJS DELETE 会话生命周期与 Emby 抽屉安全登出管道架构](./adr/0014-rails-ujs-delete-session-lifecycle-and-safe-logout.md)
+15. [ADR-0015: Rails CSRF 同源 Referer 完整性保障与元素级防盗链穿透架构](./adr/0015-rails-csrf-referer-integrity-and-image-level-anti-hotlink.md)
 
