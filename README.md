@@ -6,6 +6,8 @@
 
 <p align="center">
   <img src="logo.png" alt="JavdbEmbySkin Logo by Gemini" width="120" />
+  <br />
+  <sub>JavdbEmbySkin Logo by Gemini</sub>
 </p>
 
 [![Version](https://img.shields.io/badge/version-7.327-blue.svg?style=flat-square)](https://github.com/)
@@ -772,6 +774,14 @@ TOP250 面板里的 **"筛选"** 按钮，用的就是收藏夹那套高级筛�
 | **[gfriends媒体服务器演员头像仓库](https://github.com/gfriends/gfriends)** | 用以替换JAVDB官方头像 |
 | **[液态玻璃](https://github.com/childrentime/liquid-glass)** | 核心实现 |
 | **[液态玻璃](https://kube.io/blog/liquid-glass-css-svg/)** | 原理参考 |
+
+没有以下AI的帮助这个脚本永远不会出现，感谢技术平权：
+
+| AI | 运作范围 |
+| :--- | :--- |
+| **Tencent HY3** | 基础架构搭建初版完善 |
+| **Google Gemini3.8Flash** | 前端优化、核心开发 |
+| **DeepSeek v4.1Flash** | 客观审计 |
 
 ---
 
