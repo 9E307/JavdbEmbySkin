@@ -15,9 +15,9 @@
 [![Style](https://img.shields.io/badge/theme-Emby%20%7C%20Glass%20%7C%20Liquid-purple.svg?style=flat-square)](https://github.com/)
 [![License](https://img.shields.io/badge/license-BSD-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-3-Clause)
 
-**`JavdbEmbySkin` 是一个运行在浏览器里的Javdb前端重构脚本。将 JAVDB 原来的老式网页界面替换成一套美观优雅的界面现代化样式结构与高级数据收藏管理脚本——风格参考了大家熟悉的影音服务器 Emby。👉 [点此安装油猴脚本 (GreasyFork)](https://greasyfork.org/zh-CN/scripts/596423)**
+**`JavdbEmbySkin` 是一个运行在浏览器里的Javdb前端重构脚本。将 JAVDB 原来的老式网页界面替换成一套美观优雅的界面现代化样式结构与高级数据收藏管理脚本——风格参考了大家熟悉的影音服务器 Emby。**
 
-完全依靠JAVDB账号数据形成本地影视数据库、精细的本地数据筛选管理、精致的仿EMBY架构界面、风格多样动效精致的海报墙、多源播放跳转、剧照画廊收藏、演员档案与作品备注等
+完全依靠JAVDB账号数据形成本地影视数据库、精细的本地数据筛选管理、精致的仿EMBY架构界面、风格多样动效精致的海报墙、多源播放跳转、剧照画廊收藏、演员档案与作品备注等。👉 **[点此安装油猴脚本 (GreasyFork)](https://greasyfork.org/zh-CN/scripts/596423)**
 
 
 
