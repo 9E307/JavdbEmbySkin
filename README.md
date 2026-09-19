@@ -780,8 +780,12 @@ TOP250 面板里的 **"筛选"** 按钮，用的就是收藏夹那套高级筛�
 | AI | 运作范围 |
 | :--- | :--- |
 | **Tencent HY3** | 基础架构搭建初版完善 |
-| **Google Gemini3.8Flash** | 前端优化、核心开发 |
+| **Google Gemini 3.8Flash** | 前端优化、核心开发 |
 | **DeepSeek v4.1Flash** | 客观审计 |
+
+本项目积极参与并认可 [linux.do社区](linux.do)
+
+![认可linux.do](https://ld.xh.do/ld-badge.svg)
 
 ---
 
