@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin
 // @namespace    com.local.javdbemby
-// @version      7.331
+// @version      7.332
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -72,7 +72,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.331';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.332';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -196,7 +196,8 @@
   }
 
   const STORAGE_KEY = 'javdbEmbyEnabled';
-  let enabled = (localStorage.getItem(STORAGE_KEY) !== '0');
+  // 首次运行启动默认不注入皮肤（关闭状态），由用户手动点击切换按钮开启
+  let enabled = (localStorage.getItem(STORAGE_KEY) === '1');
   let skinEl = null;
   let detailBuilt = false;
   const buildSettingsPanel = function () {
@@ -6867,6 +6868,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         a.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
         a.addEventListener('click', function (e) {
           e.preventDefault();
+          e.stopPropagation();
           // 点击切换后立即收回（不留 3 秒延迟）
           clearTimeout(navHideTimer);
           logoWrap.classList.remove('show');
@@ -15049,7 +15051,60 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       mask.style.display = 'none';
     }
   }
-/* =======================================================================
+  /* =======================================================================
+   * 搜索输入框自动填充防御
+   * 彻底根治 Chrome/Chromium 密码管理器误将保存的 JAVDB 账号/邮箱自动填入搜索框的问题。
+   * ===================================================================== */
+  function sanitizeSearchInputs(root) {
+    const scope = root || document;
+    const isSearchPage = location.pathname.startsWith('/search');
+    let urlQ = '';
+    try {
+      if (isSearchPage) urlQ = (new URLSearchParams(location.search).get('q') || '').trim();
+    } catch (e) {}
+
+    const inputs = scope.querySelectorAll(
+      '#search-bar-container input, #emby-search-modal input, .search-bar-wrap input, ' +
+      '#actor-search-inp, #meta-correct-search, .dim-box input[type="text"], .search-input input'
+    );
+
+    inputs.forEach(function (inp) {
+      if (!inp) return;
+      // 1. 设置标准搜索类型，Chrome 密码管理器将忽略 type="search" 的凭据探测
+      if (inp.type !== 'search') {
+        try { inp.type = 'search'; } catch (e) { inp.setAttribute('type', 'search'); }
+      }
+      // 2. 设置多重关闭自动填充属性，兼容主流密码管理器 (LastPass/1Password/Bitwarden)
+      inp.setAttribute('autocomplete', 'off');
+      inp.setAttribute('autocorrect', 'off');
+      inp.setAttribute('autocapitalize', 'none');
+      inp.setAttribute('spellcheck', 'false');
+      inp.setAttribute('data-lpignore', 'true');
+      inp.setAttribute('data-form-type', 'other');
+
+      // 3. 非搜索结果页且用户未主动编辑时，主动清空被浏览器嗅探误填入的账号信息
+      if (!isSearchPage || !urlQ) {
+        if (inp.value && !inp.dataset.userEdited) {
+          inp.value = '';
+        }
+      }
+
+      // 4. 监听用户真实输入，记录交互态；获得焦点时再次检查并清理误填
+      if (!inp.dataset.autofillGuarded) {
+        inp.dataset.autofillGuarded = '1';
+        inp.addEventListener('input', function () {
+          inp.dataset.userEdited = '1';
+        });
+        inp.addEventListener('focus', function () {
+          if ((!isSearchPage || !urlQ) && !inp.dataset.userEdited && inp.value) {
+            inp.value = '';
+          }
+        });
+      }
+    });
+  }
+
+  /* =======================================================================
    * 搜索弹窗：点击搜索框 → 屏幕正中，内容模糊为背景，仅突出搜索框
    * 搜索框直接克隆原版（verbatim），不改动结构
    * ===================================================================== */
@@ -15067,6 +15122,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const src = document.querySelector('#search-bar-container .search-bar-wrap');
     if (src) inner.appendChild(src.cloneNode(true));
     wireSearchClone(inner);
+    sanitizeSearchInputs(m);
 
     const closeBtn = m.querySelector('.emby-search-close');
     if (closeBtn) closeBtn.addEventListener('click', closeSearchModal);
@@ -15084,6 +15140,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   // 给克隆的原版搜索框接线（用 class 选择器，避免与原版重复 id 冲突导致监听器挂错元素）
   function wireSearchClone(inner) {
     if (!inner) return;
+    sanitizeSearchInputs(inner);
     const inp = inner.querySelector('.search-input input');
     const sub = inner.querySelector('.search-submit button');
     const typ = inner.querySelector('.search-type select');
@@ -15111,8 +15168,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (src) { inner.appendChild(src.cloneNode(true)); wireSearchClone(inner); }
     }
     m.classList.add('open');
+    sanitizeSearchInputs(m);
     const inp = inner.querySelector('.search-input input');
-    if (inp) setTimeout(function () { inp.focus(); }, 300);
+    if (inp) setTimeout(function () { sanitizeSearchInputs(m); inp.focus(); }, 300);
   }
   function closeSearchModal() {
     const m = document.getElementById('emby-search-modal');
@@ -22327,7 +22385,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       t.href = '#' + def.key;
       t.dataset.tab = def.key;
       t.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
-      t.addEventListener('click', function (e) { e.preventDefault(); switchTab(def.key); });
+      t.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchTab(def.key);
+      });
       tabsBar.appendChild(t);
       if (def.key === 'home') tabHome = t;
       else if (def.key === 'favorites') tabFav = t;
@@ -24902,7 +24964,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         t.href = '#' + def.key;
         t.dataset.tab = def.key;
         t.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
-        t.addEventListener('click', function (e) { e.preventDefault(); switchTab(def.key); });
+        t.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          switchTab(def.key);
+        });
         tabsBar.appendChild(t);
         if (def.key === 'home') tabHome = t;
         else if (def.key === 'favorites') tabFav = t;
@@ -25116,19 +25182,44 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   }
 
   /* =======================================================================
-   * 年龄弹窗自动点击
+   * 年龄弹窗自动点击与免拦截通行
+   * 修复说明：
+   * 1. 绝不跨全 DOM 扫描 a/button，彻底根除将影片卡片（如 MIAB-418 等番号/标题/标签含 18 的作品）
+   *    或推广外链误判为年龄弹窗并触发 .click() 导致新标签弹窗/重定向至 /v/nKg2am 的致命缺陷。
+   * 2. 提前主动写入 over18=1 官方 Cookie，服务端将直接豁免年龄验证页面的渲染。
+   * 3. 仅精准定位 JAVDB 官方年龄确认弹窗容器（.over18-modal）及明确带有 /over18 路径的按钮，
+   *    直接平滑移除弹窗并解除页面锁屏，0 页面刷新、0 弹窗、0 误触！
    * ===================================================================== */
   function tryAgeGate() {
-    const els = document.querySelectorAll('a, button');
-    for (let i = 0; i < els.length; i++) {
-      const t = els[i].textContent || '';
-      if (/滿18|over\s*18|18歲|18岁|18\+/i.test(t)) { els[i].click(); return true; }
+    // 1. 确保写入 JAVDB 官方 over18 Cookie（10年有效，SameSite=Lax）
+    if (!/(?:^|;\s*)over18=1/.test(document.cookie)) {
+      try { document.cookie = 'over18=1; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
+    }
+    // 2. 仅精确定位 JAVDB 官方年龄弹窗容器 (.over18-modal 或内部含 a[href*="/over18"] 的 Bulma 模态层)
+    const modal = document.querySelector('.over18-modal, .modal:has(a[href*="/over18"])');
+    if (modal) {
+      modal.remove();
+      document.documentElement.classList.remove('is-clipped');
+      return true;
+    }
+    // 3. 兜底精确定位指向 /over18 的官方确认链接/按钮，严禁匹配任何影片卡片、标签或普通链接
+    const btn = document.querySelector('a.button[href*="/over18"], .modal a[href*="/over18"]');
+    if (btn) {
+      const parentModal = btn.closest('.modal');
+      if (parentModal) parentModal.remove();
+      else btn.remove();
+      document.documentElement.classList.remove('is-clipped');
+      return true;
     }
     return false;
   }
   function startAgeGate() {
+    // 立即写入 Cookie，随后温和轮询确保首屏弹窗安全清除
+    if (!/(?:^|;\s*)over18=1/.test(document.cookie)) {
+      try { document.cookie = 'over18=1; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
+    }
     let tries = 0;
-    (function tick() { if (tryAgeGate()) return; if (++tries < 24) setTimeout(tick, 400); })();
+    (function tick() { if (tryAgeGate()) return; if (++tries < 15) setTimeout(tick, 300); })();
   }
 
   /* =======================================================================
@@ -25169,6 +25260,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 只在 javdb 原生区域发生结构变化时才进入 500ms 防抖重构。
       if (!enabled) return;
       ensureImageNoReferrer();
+      try { tryAgeGate(); } catch (e) {}
+      try { sanitizeSearchInputs(); } catch (e) {}
       if (allInsideSkinChrome(muts)) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(function () {
@@ -25327,6 +25420,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     } catch (e) {}
     injectToggle();
     startAgeGate();
+    try { sanitizeSearchInputs(); } catch (e) {}
+    setTimeout(function () { try { sanitizeSearchInputs(); } catch (e) {} }, 150);
+    setTimeout(function () { try { sanitizeSearchInputs(); } catch (e) {} }, 600);
+    setTimeout(function () { try { sanitizeSearchInputs(); } catch (e) {} }, 1500);
     FAV.installListIntercept();   // 安装「存入清单」网络请求拦截 → 即时入库，免同步
     if (enabled) {
       setEnabled(true, true);
@@ -25352,11 +25449,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (enabled) startDetailFilterBtnWatcher();
   }
 
-  // 立即尝试执行一次，避免首屏翻译闪烁
+  // 立即尝试执行一次，避免首屏翻译闪烁与年龄弹窗拦截
   try { if (isDetailPage()) autoBlockJavdbTranslate(); } catch (e) {}
   try { if (isDetailPage()) ReviewListInfiniteManager.init(); } catch (e) {}
   try { if (isDetailPage()) FAV.passiveCollect(); } catch (e) {}
   try { Top250ViewManager.hookNativePage(); } catch (e) {}
+  try { tryAgeGate(); } catch (e) {}
+  try { sanitizeSearchInputs(); } catch (e) {}
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
