@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin
 // @namespace    com.local.javdbemby
-// @version      7.332
+// @version      7.333
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -72,7 +72,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.332';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.333';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -22656,14 +22656,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function extractDetailData(root) {
     const fb = root.querySelector('.panel-block.first-block');
     const code = fb ? ((fb.querySelector('.value') || {}).textContent || '').trim().replace(/\s+/g, '') : '';
-    const dateB = detailBlockVal(root, /^日期$/);
+    const dateB = detailBlockVal(root, /^日期|date|発売日$/i);
     const date = dateB ? ((dateB.querySelector('.value') || {}).textContent || '').trim() : '';
-    const durB = detailBlockVal(root, /^時長$/);
+    const durB = detailBlockVal(root, /^時長|时长|duration|時間$/i);
     const duration = durB ? ((durB.querySelector('.value') || {}).textContent || '').trim() : '';
-    const director = linkOf(detailBlockVal(root, /^導演$/));
-    const maker = linkOf(detailBlockVal(root, /^片商$/));
-    const series = linkOf(detailBlockVal(root, /^系列$/));
-    const ratingB = detailBlockVal(root, /^評分$/);
+    const director = linkOf(detailBlockVal(root, /^導演|导演|director|監督$/i));
+    const maker = linkOf(detailBlockVal(root, /^片商|賣家|卖家|maker|studio|メーカー$/i));
+    const series = linkOf(detailBlockVal(root, /^系列|series|シリーズ$/i));
+    const ratingB = detailBlockVal(root, /^評分|评分|rating|評価$/i);
     let rating = null;
     if (ratingB) {
       const v = ((ratingB.querySelector('.value') || {}).textContent || '').trim();
@@ -22671,12 +22671,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const cm = v.match(/由(\d+)人/);
       rating = { score: sm ? parseFloat(sm[1]) : 0, count: cm ? parseInt(cm[1], 10) : 0, text: v };
     }
-    const catB = detailBlockVal(root, /類別|標籤/);
+    const catB = detailBlockVal(root, /類別|类别|標籤|标签|tags?|genres?|ジャンル/i);
     const categories = catB ? Array.from((catB.querySelector('.value') || catB).querySelectorAll('a[href]'))
       .map(function (a) { return { text: a.textContent.trim(), href: a.getAttribute('href') || '#' }; }) : [];
     const reviewBtns = extractReviewButtons(root);
     const actorEls = Array.from(root.querySelectorAll('.panel-block'))
-      .filter(function (b) { const s = (b.querySelector('strong') || {}).textContent || ''; return s.indexOf('演員') !== -1; })
+      .filter(function (b) {
+        const s = (b.querySelector('strong') || {}).textContent || '';
+        return /演員|演员|actor|女優|出演/i.test(s) || !!b.querySelector('a[href^="/actors/"]');
+      })
       .reduce(function (acc, b) { return acc.concat(Array.from(b.querySelectorAll('a[href^="/actors/"]'))); }, []);
     const actors = actorEls.map(function (a) {
       return { name: a.textContent.trim(), href: a.getAttribute('href') || '#', avatar: actorAvatarUrl(a.getAttribute('href') || '') };
@@ -24010,8 +24013,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function updateRelatedSections(root) {
     const dr = document.getElementById('emby-detail-root');
     if (!dr) return;
-    const alsoStarred = extractSection('還出演過');
-    const youMightLike = extractSection('你可能也喜歡');
+    const alsoStarred = extractSection(/還出演過|还出演过/);
+    const youMightLike = extractSection(/你可能也喜歡|你可能也喜欢/);
     if (alsoStarred.length && !dr.querySelector('[data-related="還出演過"]')) {
       dr.appendChild(buildRow('TA(們)還出演過', alsoStarred, '還出演過'));
     }
@@ -24026,7 +24029,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   //   類別 → /tags?...（真实站点用「類別」，旧版用「標籤」，两者都兼容）
   //   番號 → 在 .panel-block.first-block 内，可能含 /video_codes/{prefix} 链接
   function extractMetaLinks(root) {
-    const CLICK = { '番號': 1, '導演': 1, '片商': 1, '系列': 1, '類別': 1, '標籤': 1 };
+    const CLICK = {
+      '番號': 1, '番号': 1,
+      '導演': 1, '导演': 1,
+      '片商': 1, '賣家': 1, '卖家': 1,
+      '系列': 1,
+      '類別': 1, '类别': 1, '標籤': 1, '标签': 1
+    };
     const out = [];
     // 番號（first-block，优先取其内部链接，否则回退到番號搜索）
     const fb = root.querySelector('.panel-block.first-block');
@@ -24044,10 +24053,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const strong = b.querySelector('strong');
       if (!strong) return;
       const label = strong.textContent.trim().replace(/[:：]/g, '');
-      if (!CLICK[label] || label === '番號') return;
+      if (!CLICK[label] || label === '番號' || label === '番号') return;
       const valEl = b.querySelector('.value');
       if (!valEl) return;
-      if (label === '類別' || label === '標籤') {
+      if (/類別|类别|標籤|标签/.test(label)) {
         // 類別含多个 <a> 标签 → 逐个生成 chip
         Array.from(valEl.querySelectorAll('a[href]')).forEach(function (a) {
           out.push({ label: label, text: a.textContent.trim(), href: a.getAttribute('href') || '#' });
@@ -24673,8 +24682,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
   // 提取区块（还出演过 / 你可能喜欢）：message-header 含关键词的 .tile-images.tile-small
   function extractSection(keyword) {
+    const isRe = keyword instanceof RegExp;
     const headers = Array.from(document.querySelectorAll('.message-header p'));
-    const h = headers.find(function (p) { return (p.textContent || '').indexOf(keyword) !== -1; });
+    const h = headers.find(function (p) {
+      const txt = p.textContent || '';
+      return isRe ? keyword.test(txt) : txt.indexOf(keyword) !== -1;
+    });
     if (!h) return [];
     const msg = h.closest('.message') || h.closest('.columns');
     if (!msg) return [];
@@ -24692,8 +24705,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   }
 
   function hideSection(keyword) {
+    const isRe = keyword instanceof RegExp;
     const headers = Array.from(document.querySelectorAll('.message-header p'));
-    const h = headers.find(function (p) { return (p.textContent || '').indexOf(keyword) !== -1; });
+    const h = headers.find(function (p) {
+      const txt = p.textContent || '';
+      return isRe ? keyword.test(txt) : txt.indexOf(keyword) !== -1;
+    });
     if (!h) return;
     const col = h.closest('.columns');
     if (col) col.classList.add('emby-hide-original');
