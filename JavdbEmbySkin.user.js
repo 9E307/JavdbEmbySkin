@@ -15075,12 +15075,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         try { inp.type = 'search'; } catch (e) { inp.setAttribute('type', 'search'); }
       }
       // 2. 设置多重关闭自动填充属性，兼容主流密码管理器 (LastPass/1Password/Bitwarden)
-      inp.setAttribute('autocomplete', 'off');
-      inp.setAttribute('autocorrect', 'off');
-      inp.setAttribute('autocapitalize', 'none');
-      inp.setAttribute('spellcheck', 'false');
-      inp.setAttribute('data-lpignore', 'true');
-      inp.setAttribute('data-form-type', 'other');
+      if (inp.getAttribute('autocomplete') !== 'off') inp.setAttribute('autocomplete', 'off');
+      if (inp.getAttribute('autocorrect') !== 'off') inp.setAttribute('autocorrect', 'off');
+      if (inp.getAttribute('autocapitalize') !== 'none') inp.setAttribute('autocapitalize', 'none');
+      if (inp.getAttribute('spellcheck') !== 'false') inp.setAttribute('spellcheck', 'false');
+      if (inp.getAttribute('data-lpignore') !== 'true') inp.setAttribute('data-lpignore', 'true');
+      if (inp.getAttribute('data-form-type') !== 'other') inp.setAttribute('data-form-type', 'other');
 
       // 3. 非搜索结果页且用户未主动编辑时，主动清空被浏览器嗅探误填入的账号信息
       if (!isSearchPage || !urlQ) {
@@ -25195,22 +25195,19 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (!/(?:^|;\s*)over18=1/.test(document.cookie)) {
       try { document.cookie = 'over18=1; path=/; max-age=315360000; SameSite=Lax'; } catch (e) {}
     }
-    // 2. 仅精确定位 JAVDB 官方年龄弹窗容器 (.over18-modal 或内部含 a[href*="/over18"] 的 Bulma 模态层)
-    const modal = document.querySelector('.over18-modal, .modal:has(a[href*="/over18"])');
-    if (modal) {
-      modal.remove();
-      document.documentElement.classList.remove('is-clipped');
-      return true;
-    }
-    // 3. 兜底精确定位指向 /over18 的官方确认链接/按钮，严禁匹配任何影片卡片、标签或普通链接
-    const btn = document.querySelector('a.button[href*="/over18"], .modal a[href*="/over18"]');
-    if (btn) {
-      const parentModal = btn.closest('.modal');
-      if (parentModal) parentModal.remove();
-      else btn.remove();
-      document.documentElement.classList.remove('is-clipped');
-      return true;
-    }
+    try {
+      // 2. 精准定位 JAVDB 官方年龄弹窗容器或其内部的确认按钮（不依赖 :has()，全浏览器引擎兼容）
+      let modal = document.querySelector('.over18-modal');
+      if (!modal) {
+        const btn = document.querySelector('a.button[href*="/over18"], .modal a[href*="/over18"], a[href*="/over18"]');
+        if (btn) modal = btn.closest('.modal') || btn;
+      }
+      if (modal) {
+        modal.remove();
+        document.documentElement.classList.remove('is-clipped');
+        return true;
+      }
+    } catch (e) {}
     return false;
   }
   function startAgeGate() {
@@ -25256,12 +25253,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function observeMutations() {
     let timer = null;
     const mo = new MutationObserver(function (muts) {
+      try { ensureImageNoReferrer(); } catch (e) {}
+      try { tryAgeGate(); } catch (e) {}
+      try { sanitizeSearchInputs(); } catch (e) {}
       // 增量过滤：皮肤自身注入/面板渲染引起的突变直接跳过调度；
       // 只在 javdb 原生区域发生结构变化时才进入 500ms 防抖重构。
       if (!enabled) return;
-      ensureImageNoReferrer();
-      try { tryAgeGate(); } catch (e) {}
-      try { sanitizeSearchInputs(); } catch (e) {}
       if (allInsideSkinChrome(muts)) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(function () {
