@@ -10,7 +10,6 @@
   <sub>JavdbEmbySkin Logo by Gemini</sub>
 </p>
 
-[![Version](https://img.shields.io/badge/version-7.327-blue.svg?style=flat-square)](https://github.com/)
 [![Platform](https://img.shields.io/badge/platform-Tampermonkey%20%7C%20ScriptCat%20%7C%20Violentmonkey-orange.svg?style=flat-square)](https://www.tampermonkey.net/)
 [![Style](https://img.shields.io/badge/theme-Emby%20%7C%20Glass%20%7C%20Liquid-purple.svg?style=flat-square)](https://github.com/)
 [![License](https://img.shields.io/badge/license-BSD-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-3-Clause)
@@ -29,8 +28,8 @@
 ## 开发这个脚本解决JAVDB官方的什么功能？
 
 - **原本的页面陈旧** JAVDB官网简洁但多年不变样，信息量虽然足但是美观不足毫无沉浸感。
-- **官方收藏夹功能太简陋** 只能单纯加入清单或者看过想看标记，不能针对性搜索、筛选、排序、做备注，列入JAVDB不能针对某女优统计搜索自己收藏她的哪些作品，无法标记收藏某些剧照截图，无法通过更精细更个性化的搜索条件寻找自己收藏的影片
-- **官方数据错误或缺少** 用JAVDB最大的缺点就是官方虽然有订正功能，但是不经过官方审核的话是不会显示自己的订正数据的，并且官方很少处理数据订正。对于经常漏写女优、标签分类不准，强迫症可以借由这个功能避开官方的限制形成自己的本地数据管理且可以随时于上游核对订正
+- **官方收藏夹功能太简陋** 只能单纯加入清单或者看过想看标记，不能针对性搜索、筛选、排序、做备注，列入JAVDB不能针对某女优统计搜索自己收藏她的哪些作品，无法标记收藏某些剧照截图，无法通过更精细更个性化的搜索条件寻找自己收藏的影片。
+- **官方数据错误或缺少** 用JAVDB最大的缺点就是官方虽然有订正功能，但是不经过官方审核的话是不会显示自己的订正数据的，并且官方很少处理数据订正。对于经常漏写女优、标签分类不准，强迫症可以借由这个功能避开官方的限制形成自己的本地数据管理且可以随时于上游核对订正。
 - **看片要到处记网址或搜索** 直接内置外部站点管理，一键检测和跳转优秀的外部网站，不必输入番号搜索。
 - **自给自足，整治仓鼠症** 通过界面精细化重构+数据本地多元化修正与管理筛选+云端播放跳转三种最核心的功能设计思路让这个脚本形成依托JAVDB打造自己专属的流媒体影库，且不用像仓鼠症人士一样辛苦下片就只是为了看收藏到的海报墙的满足感，以及一些外挂小功能插件，可以随时解决很多个性化问题。
   
@@ -73,7 +72,7 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <img src="screenshots/1.webp" alt="Emby 沉浸式海报墙主页" style="max-width:100%; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
+      <img src="screenshots/1.1.webp" alt="Emby 沉浸式海报墙主页" style="max-width:100%; border-radius:8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);" />
       <br/>
       <b>全局导航</b>
       <p><i>重构顶部导航与功能药丸标签，</i></p>
@@ -784,8 +783,6 @@ TOP250 面板里的 **"筛选"** 按钮，用的就是收藏夹那套高级筛�
 | **DeepSeek v4.1Flash** | 客观审计 |
 
 本项目积极参与并认可 [linux.do社区](linux.do)
-
-![认可linux.do](https://ld.xh.do/ld-badge.svg)
 
 ---
 
