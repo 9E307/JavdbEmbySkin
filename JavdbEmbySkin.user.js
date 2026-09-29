@@ -26,7 +26,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_setClipboard
 // @run-at       document-idle
-// @license      MIT
+// @license      BSD-3-Clause
 // ==/UserScript==
 
 (function () {
