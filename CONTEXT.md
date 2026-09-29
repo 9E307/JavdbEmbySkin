@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,462 行，v7.332）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,699 行，v7.334）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -142,7 +142,27 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 25,179 Lines)
+### 7. 路由、安全与稳定性守卫 (Routing, Security & Resiliency Guards)
+
+**Searchbox Autofill Immunity Guard (搜索框凭据嗅探深度免疫守卫)**:
+由 `type="search"`、`role="searchbox"`、11 项反嗅探忽略属性、`sanitizeSearchInputs()` 全局生命周期动态清洗与聚焦主动冲刷（Focus Flush）构筑的四层立体纵深防御体系。彻底根治 Chromium `PasswordAutofillAgent` 误填已保存账号密码以及用户点击时弹出“一键填写账号密码/管理密码”系统悬浮下拉框的问题，同时在 CSS 层消除 WebKit 默认清除小图标。
+_Avoid_: DisableAutofill, ClearInput, ResetSearch
+
+**Direct Child Anchor & Safe Insertion (直接子节点锚点与安全挂载契约)**:
+在向原生父容器调用 `parent.insertBefore(newChild, refChild)` 插入导航条与面板时，必须经由 `resolveDirectChildAnchor` 递归向上回溯至父容器的直接子节点，杜绝因 JAVDB 结构深层嵌套（如 `.main-tabs-wrap` 包裹 `.tabs`）触发 W3C 标准的致命异常 `DOMException: The child can not be found in the parent`。配合 `safeInsertBefore` 多级回退机制保证页面永不白屏崩溃。
+_Avoid_: DirectInsert, QuerySelectorInsert, ForceAppend
+
+**Multilingual Metadata Resilient Parser (多语言元数据健壮性解析器)**:
+在番号详情页，`detailBlockVal` 与 `extractMetaLinks` 采用大小写无关的全语言正则（覆盖简中、繁中、英文、日文变体），演员列表区域配合 `/actors/` 路由特征选择器进行双重探测提取，彻底杜绝非繁体中文环境下关键元数据（演员、导演、片商、评分、时长、系列、标签）呈现空白或未知的问题。
+_Avoid_: TraditionalChineseOnly, HardcodedLabel, StaticSelector
+
+**Age Gate Cookie Pre-Exemption (年龄弹窗 Cookie 预置豁免)**:
+在脚本启动入口提前写入官方 `over18=1` Cookie 实现服务端免检，并仅针对 `.over18-modal` 或显式带有 `a[href*="/over18"]` 的模态层直接从 DOM 树移除解绑；绝对禁止跨全 DOM 扫描 `a, button` 模拟盲点击，杜绝误点普通影片卡片（如番号含 18 的热播作品）引发恶性弹窗死循环。
+_Avoid_: AutoClick18, ModalClicker, RegexClick
+
+---
+
+## 架构子系统全景地图 (Architecture Map Across 25,539 Lines)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -153,46 +173,52 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ JavdbEmbySkin 核心运行时 (Monolithic Sandbox, Host Guard: javdb*.com / jdforrepam.com)       │
 │                                                                                             │
-│ 1. 路由拦截与限制突破层 (Lines 167 - 340 & Lines 8278 - 9006)                               │
+│ 1. 路由拦截、安全守卫与限制突破层 (Lines 32 - 198 & Lines 8600 - 9196)                      │
+│    • 严格域名守卫与鉴权路由避让 (/login, /user_sessions 等 100% 保持原生 Rails POST)        │
+│    • 元素级 Referrer 免溯源策略 (针对普通图片 no-referrer，排除验证码防 403 阻断)           │
+│    • 官方 age-gate 年龄确认预写 over18=1 Cookie 免检，严格禁止全 DOM 盲点击                 │
 │    • 规避 JAVDB 服务端 302 拦截 (/plans/ypay 强转高级搜索，免登录穿透)                     │
 │    • ReviewListInfiniteManager: 突破限制，无刷新异步抓取并拼接长短评与相关清单              │
 │    • InfiniteScrollManager: 瀑布流滚动探底无缝加载下一页                                    │
 │                                                                                             │
-│ 2. 详情页重构与多模式排版引擎 (Lines 2010 - 2362 & Lines 22282 - 22400)                     │
+│ 2. 详情页重构与多模式排版引擎 (Lines 7322 - 7410, Lines 7821 - 8050 & Lines 22800 - 24750)  │
 │    • 四大封面形态引擎：Crop(裁切) | Full(全宽) | Fusion(触顶收缩融合) | Hybrid(Letterboxd) │
+│    • 详情页 Hero 区多语言健壮性解析 (简/繁/英/日正则自适应提取 + /actors/ 路由特征探测)     │
 │    • 实体备注小气泡 (.emby-note-tip): 女优/片商/系列悬浮卡片 (生平+现役退役+穿透筛选)       │
-│    • 详情页操作行 (.emby-action-row) 与 播放按钮联动                                        │
+│    • 详情页操作行 (.emby-action-row) 与 10+ 多源在线播放按钮矩阵联动                        │
 │                                                                                             │
-│ 3. 视觉风格渲染栈与特效 (Lines 679 - 1637 & Lines 7310 - 8196)                               │
+│ 3. 视觉风格渲染栈与特效 (Lines 738 - 6421, Lines 7140 - 7790 & Lines 15613 - 15663)        │
 │    • 风格切换：Emby Native / Glass 毛玻璃 / LiquidGlass 液态玻璃真折射层 (SVG Filter)        │
-│    • Steam 3D Tilt: 卡牌跟随光标 3D 倾斜与反光层                                            │
+│    • Steam 3D Tilt: 卡牌跟随光标 3D 倾斜与反光层 (attachCard3D)                             │
 │    • WaterfallEngine: 绝对定位横向流，布局抖动节流与共演折叠展开重排                        │
 │                                                                                             │
-│ 4. FAV 核心存储系统 (Lines 15412 - 18429)                                                   │
+│ 4. FAV 核心存储系统 (Lines 15664 - 18676)                                                   │
 │    • Tier 1: 同步内存镜像 (favMoviesCache, scoreMemCache, noteMap, actorGenderMap)          │
 │    • Tier 2: IndexedDB (javdb-emby-fav-db, v5) 实体表: movies, lists, gallery, meta, notes │
 │    • 事务控制: dbPutMovies 严格按 50 条分批切片事务，兼顾吞吐与防卡死                      │
 │    • 原型链防护: 导入反序列化全量采用 Object.create(null) 字典                             │
 │                                                                                             │
-│ 5. 交互界面与业务中心 (Lines 9052 - 15411 & Lines 18430 - 22107)                           │
-│    • FAVUI: 收藏夹复合面板 (清单管理、演员/片商/标签/年份/评分多维筛选、批量打标)           │
-│    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、评分阶梯占比、女优/片商Top榜)       │
-│    • Top250ViewManager: 日榜/周榜/月榜/总榜 (基于 Sequence Token 请求代数令牌防串流)        │
-│    • Quick Status & Preview Modal: 封面快捷四态评分标记与多源剧照预览                       │
+│ 5. 交互界面与业务中心 (Lines 9197 - 11349, Lines 13420 - 15200 & Lines 18677 - 22800)      │
+│    • FAVUI: 收藏夹/画廊复合面板 (清单管理、多维筛选器 openFilterModal、批量打标)            │
+│    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、评分阶梯占比、排行榜)               │
+│    • Top250ViewManager: 日榜/周榜/月榜/总榜 (基于 Sequence Token 请求代数令牌防乱序覆盖)    │
+│    • sanitizeSearchInputs: 搜索框全域防嗅探与四层纵深防御 (type=search, 11项属性, focus冲刷)│
+│    • buildHomeTabs & restructureGrid: 主页常驻4导航 Tab 与跨层级直接子节点安全挂载沙盒      │
 │                                                                                             │
-│ 6. 外部服务与云端网关 (Lines 11120 - 12800)                                                 │
-│    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 原生 onerror 降级   │
+│ 6. 外部服务与云端网关 (Lines 11350 - 13419 & Lines 14640 - 15060 & Lines 21390 - 21630)    │
+│    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 官方头像降级        │
 │    • ActressService: JAV_info 现役/退役检测与维基百科异步回退                               │
 │    • PlaySitesService: 123AV / njav / MissAV 等 10+ 在线播放源与模板替换                    │
+│    • PreviewSys: JavFree / JavStore / BlogJav / ProjectJav / 官方剧照 多源预览图嗅探矩阵    │
 │    • CloudSync: WebDAV / GitHub / Gitee 双向同步，强制凭据脱敏白名单过滤                    │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 核心“弯弯绕绕”与历史避坑铁律 (15 Critical Invariants & Gotchas)
+## 核心“弯弯绕绕”与历史避坑铁律 (30 Critical Invariants & Gotchas)
 
-这 15 条铁律是整个项目 25,179 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 30 条铁律是整个项目 25,699 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -224,10 +250,13 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 * **陷阱**：油猴脚本运行在特定上下文中，如果异步任务抛出异常导致 `window.confirm` 未能还原，整个 JAVDB 页面的所有原生交互弹窗将永久失效。
 * **参见决策**：[ADR-0006: 递归守卫与可重入锁](./docs/adr/0006-reentrant-dialog-and-mutationobserver-recursion-guards.md)
 
-### 7. LiquidGlass 绝不可使用 HTML5 Canvas 做动态色彩提取
-* **铁律**：液态玻璃的核心流体效果必须使用 SVG 矢量位移（`<feDisplacementMap>` + `feImage`）；代表色提取若遇跨域图片，必须有防御性 try-catch 并回退 CSS 默认主题色变量。
-* **陷阱**：第三方图片在未经 CORS 授权的情况下绘制到 Canvas 会立即“污染（Taint）”画布。一旦调用 `getImageData` 会直接抛出致命的 `SecurityError` 导致详情页崩溃白屏。
-* **参见决策**：[ADR-0003: LiquidGlass 滤镜流水线](./docs/adr/0003-liquidglass-svg-displacement-pipeline.md)
+### 7. LiquidGlass 2.0 物理透镜折射流水线与 Chromium 合成层四大禁忌
+* **铁律**：
+  1. **绝不可在 JS 主线程用 Canvas 逐像素运算渲染动态背景**：核心折射流体必须走纯离线烘焙位移图（Data URI）+ SVG `<feDisplacementMap>` 由 GPU 片元着色器硬件级执行。严禁对跨域海报调用 `ctx.getImageData()`（避免 CORS Tainted Canvas 崩溃抛错致死）；
+  2. **绝不可给液态玻璃容器添加 `contain: strict` 或 `contain: paint`**：Containment 会截断宿主对外部视口内容的采样通道，使 `backdrop-filter` 无法读取下层 DOM，透镜直接退化为黑底或纯灰死色。顶栏等必须严格保持 `contain: none !important; will-change: backdrop-filter; transform: translateZ(0);`；
+  3. **必须以 Micro-Saturate Jitter 机制破除 Chromium GPU 缓存冻结**：Chromium 对 `backdrop-filter: url(#id)` 存在激进的位图缓存机制，滚动时不触发重绘导致透镜画面冻结。必须在 `window.onScrollInvalidate` 流水线中以 50ms 节流频率向 `saturate()` 注入万分之五的微小浮点抖动，迫使合成器实时刷新采样，并在滚动停止 120ms 后优雅复位；
+  4. **必须遵循透镜分层模糊阶梯与 visionOS 双层防眩文字阴影**：顶栏/药丸按钮采用 `blur(0.25px)` 亚像素微平滑抗锯齿 + `brightness(1.04)` + `saturate(1.08)`（绝不可加重模糊，中心内容必须 100% 锐利保真）；抽屉/快捷弹窗采用 `blur(1.6px)`；透镜文字必须配备 `text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.7);` 保证强光背景下的无障碍可读性。
+* **参见决策**：[ADR-0003: LiquidGlass 液态玻璃 2.0 物理透镜折射流水线与 Chromium 合成层防御架构](./docs/adr/0003-liquidglass-svg-displacement-pipeline.md)
 
 ### 8. 演员共演堆叠徽章展开/收起后必须主动通知 WaterfallEngine
 * **铁律**：卡片上的多女优折叠徽标在被点击展开（显示剩余女优头像）或点击收起时，必须调用 `WaterfallEngine.refresh()`。
@@ -294,14 +323,54 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 * **参见决策**：[ADR-0016: JAVDB 官方年龄弹窗无感通行与全 DOM 盲点击拦截架构](./docs/adr/0016-age-gate-pre-cookie-injection-and-safe-modal-removal.md)
 
 ### 21. 搜索输入框必须强制 `type="search"` 与多重安全属性防 Chrome 账号嗅探
-* **铁律**：所有搜索输入框（原版搜索框、Emby 顶栏克隆框、搜索弹窗 `#emby-search-modal`、女优搜索框 `#actor-search-inp` 等）必须由 `sanitizeSearchInputs()` 统一强制设定为 `type="search"`，并附带 `autocomplete="off"`、`autocorrect="off"`、`data-lpignore="true"` 和 `data-form-type="other"`；在非 `/search` 结果页或查询参数为空时，若检测到被浏览器自动回填且用户尚未编辑，必须主动清空重置。
-* **陷阱**：Chromium 密码管理器启发式引擎会将普通的 `<input type="text">` 误判为登录表单并强行将保存的 JAVDB 账号/邮箱自动回填，且常会忽略单纯的 `autocomplete="off"`；只有结合语义类型升级、插件属性阻断与生命周期主动冲刷，才能根除账号误填问题。
+* **铁律**：所有搜索输入框（原版搜索框、Emby 顶栏克隆框、搜索弹窗 `#emby-search-modal`、收藏夹/画廊工具栏 `.efav-toolbar input`、多维筛选浮层 `.efav-dim input`、女优搜索框 `#actor-search-inp`、元数据修正搜索框 `#meta-correct-search` 以及通用 `input[placeholder*="搜索"]` 等）必须在源头创建时与 `sanitizeSearchInputs()` 清洗中统一强制设定为 `type="search"`、`role="searchbox"`，并附带 `autocomplete="off"`、`autocorrect="off"`、`autocapitalize="none"`、`spellcheck="false"`、`data-lpignore="true"`、`data-1p-ignore="true"`、`data-bwignore="true"` 和 `data-form-type="other"`；在非 `/search` 结果页或查询参数为空时，若检测到被浏览器自动回填且用户尚未编辑，必须主动清空重置；并在 CSS 层对 `input[type=search]` 的原生清除按钮（`-webkit-search-cancel-button`）进行 appearance 重置以保持界面精致。
+* **陷阱**：Chromium 密码管理器与主流密码管理扩展（1Password、LastPass、Bitwarden 等）的启发式引擎，只要在已保存凭据的域名（如 JAVDB）下检测到普通的 `<input type="text">`（甚至是缺少 name 的匿名文本框），即使声明了 `autocomplete="off"`，仍会强行判定为用户名候选字段，在用户点击或聚焦输入框时弹出“一键填写账号密码/管理密码”提示。若遗漏了收藏夹工具栏或动态筛选器弹窗中的搜索框，会导致点击时再次唤醒凭据管理器。只有从“HTML 属性全屏蔽 + 无障碍角色升级为 searchbox + 全局周期性/挂载清洗 + CSS 兼容重置”四层纵深防御，才能彻底根除任何密码管理器下拉弹窗。
 * **参见决策**：[ADR-0017: 首次运行零侵入开关与 Chrome 搜索框账号防误填架构](./docs/adr/0017-first-run-zero-intrusion-and-search-autofill-defense.md)
 
 ### 22. 首次安装脚本必须默认保持原生关闭状态（零侵入）
 * **铁律**：脚本激活状态判定必须严格匹配 `localStorage.getItem(STORAGE_KEY) === '1'`；在初次安装（值为 `null`）或关闭态（值为 `'0'`）时，严禁注入全屏皮肤、修改原生 DOM 结构或覆盖原生 Navbar，仅挂载右下角切换微标并提示引导气泡，将界面的控制权 100% 交还用户。
 * **陷阱**：使用 `!== '0'` 会导致首次安装的新用户在不知情的状态下瞬间被强行接管界面，不仅剥夺了用户的知情权与选择权，还容易在首次网络握手尚未就绪时引发渲染冲突。
 * **参见决策**：[ADR-0017: 首次运行零侵入开关与 Chrome 搜索框账号防误填架构](./docs/adr/0017-first-run-zero-intrusion-and-search-autofill-defense.md)
+
+### 23. 详情页元数据多语言与多格式健壮性提取
+* **铁律**：`detailBlockVal` 与 `extractMetaLinks` 必须使用不区分大小写的全语言兼容正则（`i` 标志），完整覆盖简体中文、繁体中文、英文与日文标签变体（如“番號/番号”、“導演/导演/director/監督”、“片商/賣家/卖家/maker/studio/メーカー”、“系列/series/シリーズ”、“評分/评分/rating/評価”、“時長/时长/duration/時間”、“類別/类别/標籤/标签/tags/genres/ジャンル”）；演员列表区域必须采用“多语言文本包含 + `/actors/` 路由特征选择器”双重探测，严禁仅依靠单一繁体字面量全等判定。
+* **陷阱**：在用户使用简体中文、日文镜像或第三方代理时，硬编码繁体字匹配会导致详情页海报 Hero 区关键元数据（演员、评分、导演、时长等）大面积出现空白或“未知”，甚至导致详情重构流程中断。
+* **参见决策**：[ADR-0018: 详情页多语言环境元数据健壮性解析与容错架构](./docs/adr/0018-multilingual-detail-metadata-resilient-parsing.md)
+
+### 24. DOM 跨层级插入直接子节点契约与核心网格沙盒隔离
+* **铁律**：所有向原生父容器执行 `parent.insertBefore(newChild, refChild)` 的操作（如 `buildHomeTabs` 与 `ensureFavSurface`），必须通过 `resolveDirectChildAnchor(parent, target)` 递归向上追溯，严格确保传递给 `insertBefore` 的参考节点必然是 `parent` 的**直接子节点**（Direct Child）；必须采用多级回退的 `safeInsertBefore` 处理 DOM 挂载；`restructureGrid` 内部对外部组件（`buildHomeTabs`）的调用必须施加独立的 `try ... catch` 沙盒保护，严禁顶部导航栏的任何异常中断后续卡片的 `attachCard3D` 互动层初始化与 `dfPreview` 封面大图绑定。
+* **陷阱**：JAVDB 官方前端不定期重构（如近期将 `.tabs.main-tabs` 嵌套进 `<div class="main-tabs-wrap">` 容器），若使用深度查找的 `querySelector` 获取深层子节点作为 `parent.insertBefore` 的参照物，会直接触发 W3C 标准的致命异常 `DOMException: The child can not be found in the parent`。由于缺乏沙盒隔离，该异常会使整个主页网格重构彻底腰斩，导致全站卡片悬停封面大图完全瘫痪、常驻导航条消失、左上角导航切换崩溃。
+* **参见决策**：[ADR-0019: 嵌套 DOM 跨层级安全插入与网格重构沙盒保护架构](./docs/adr/0019-nested-dom-safe-insertion-and-grid-restructure-sandbox.md)
+
+### 25. 未登录状态全链路行为拦截与数据库孤儿清洗对称性准则
+* **铁律**：想看（wishlist）、看過（watched/评分）、清单（list）、关注女优等状态写操作与全量同步严格依赖 JAVDB 官方会话。未登录游客态下，卡片快捷标记（想看/看过/删除）、评分模态窗（`showCoverRatingModal`）、底层提交（`updateCoverReviewStatus`）、女优悬浮卡片收藏（`favBtn`/`remoteToggleFavorite`）以及所有云端同步任务，必须在交互层和网络层前置校验 `isJavdbUserLoggedIn()` 并在接收响应时检测 `res.redirected`，严防 302 伪成功向 IndexedDB 写入无云端归属的幽灵记录；后台静默孤儿清洗函数 `dbPurgeOrphanMovies` 必须保持绝对对称性：除真正用户本地资产（自定义纠错 `customMeta`、本地备注 `notes`）享有免死金牌外，无论想看还是看过（哪怕带 `userScore`），在未登录状态下或用户深度清洗时，均作为无清单归属孤儿统一清洗，严禁 `userScore` 成为单向阻断孤儿清洗的例外漏洞。
+* **陷阱**：JAVDB 会为游客在 `<head>` 输出 `csrf-token`，且服务端对未登录 POST 请求返回 302 跳转至 `/login`。现代 `fetch` 默认跟随跳转并返回 HTTP 200，若无登录守卫与重定向探测，未登录操作会被误判为成功并写入数据库；而在孤儿清洗算法中，若为“已看”附带的 `userScore` 赋予本地资产豁免权，会导致未登录态下标记的“想看”被正确识别清洗，而“看過”却永久滞留本地数据库，产生严重的非对称残留 Bug。
+* **参见决策**：[ADR-0020: 未登录状态全链路行为拦截与数据库孤儿清洗对称性架构](./docs/adr/0020-unauthenticated-session-interception-and-symmetrical-orphan-purging.md)
+
+### 26. STEAM 风格卡牌 3D 物理倾斜锚点与 RAF 帧率锁机制
+* **铁律**：所有电影卡片、紧凑条小封面与荣誉卡的 3D 物理倾斜（`attachCard3D`）必须将 `transform-origin` 严格锁定为左上角 `top left`，严禁使用浏览器默认的中心原点 `center center`；高频鼠标移动监听（`mousemove`）必须配备 `requestAnimationFrame` 单帧锁与 `cancelAnimationFrame` 即时取消，严禁在事件回调中同步触碰 layout/reflow；DOM 挂载前必须校验 `box.dataset.tilt` 幂等守卫，严禁重复绑定监听器；非详情卡片（如金标荣誉卡、详情页相关推荐行）必须显式传入 `{ noPreview: true }` 解耦封面预览气泡。
+* **陷阱**：若采用默认中心原点 `center center`，卡片悬停放大 1.05 倍并倾斜时，第一列卡片左边缘会直接超出屏幕视口边界被截断，第一行卡片会直接撞入顶部导航栏造成穿模；高刷电竞鼠标（500~1000Hz）若无 RAF 锁，会在每秒内触发数百次 DOM 内联样式修改，引发严重的布局抖动（Layout Thrashing）与滚屏掉帧；若无 `dataset.tilt` 守卫，瀑布流或网格重排时会累加多重监听器导致动画撕裂。
+* **参见决策**：[ADR-0021: STEAM 风格卡牌 3D 物理倾斜与全息流光渲染流水线](./docs/adr/0021-steam-3d-card-hover-tilt-and-specular-pipeline.md)
+
+### 27. 动态聚焦布局、大图防碰撞避让与 DOM 节点脱水期惰性挂载契约
+* **铁律**：动态聚焦网格（`.movie-list.emby-dynamic-focus`）采用无间距竖版流体宫格，卡片容器强制 $2:3$ 比例，海报图片采用 $200\%$ 宽右对齐黄金人脸裁切（`object-position: right center`），并彻底剥离标题/标签等非封面文本；悬停大图浮层（`dfPopup`）必须解耦运行，通过复用内存已有解码图片纹理实现 0 字节网络请求，并通过光标上下剩余空间动态决策弹出方向（`top = below ? y + 18 : y - 18 - h`），结合 64px 顶栏安全红线与 18px 物理空隙彻底杜绝光标遮挡与高频闪烁；全屏暗色环境遮罩（`#emby-df-scrim`）与气泡必须附带 `pointer-events: none` 确保原生点击穿透；在生成卡片（`buildCard`）等 DOM 脱水期，严禁静态捕获未连接父网格，必须推迟至 `mouseenter` 时惰性嗅探 `box.closest(...)` 并挂载网格级委托 `ensureDynamicFocusGrid`；`mouseenter` 回调必须显式接收 `(ev)` 事件对象并对各步操作加设 `try/catch` 隔离保护；全局常驻 `mousemove` 监听器，一旦光标物理坐标脱离卡片包围盒（`getBoundingClientRect`）或页面发生滚动，立即强制撤回放大缩放与浮层。
+* **陷阱**：v7.107 历史重大 Bug 复盘——旧代码在 `attachDynamicFocus` 中未声明形参直接访问 `e.clientX`，抛出未捕获的 `ReferenceError` 导致后续网格委托未能挂载，卡片在触发 `scale(1.28)` 后永久冻结放大无法复原，且浮层永久消失；在收藏夹筛选/排序重绘时，若在卡片挂树前静态获取父网格，会因为 `isConnected === false` 得到 `null`，导致动态聚焦完全失效；若缺少 `mousemove` 包围盒全局巡检，在复杂动画或 DOM 突变时丢失 `mouseleave`，会导致卡片放大状态卡死在页面中。
+* **参见决策**：[ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
+
+### 28. 预览图嗅探多源清洗与图片 Host 零迁移相对路径存储准则
+* **铁律**：多站点预览图嗅探（`PreviewSys`）跨域抓取时，必须强制对输入番号执行去空格、去斜杠规范化；严格防御目标站点（如 ProjectJav）在返回 HTML 时出现的双域名拼接 Bug（`https://domain.comhttps://img...`），必须经由通用域名剥离流水线净化；Pixhost 图床抓取时，必须自动将缩略图 `//tXXX.pixhost.to/thumbs/` 向上提升为高清大图 `//imgXXX.pixhost.to/images/`；持久化至 IndexedDB 的影片封面与图床图片路径必须经由 `stripHost` 剔除 CDN 主机名前缀仅保留相对路径（如 `/covers/xx.jpg`），读取渲染时经由 `detectImgHost()` 动态拼接当前可用镜像域名；自愈正则必须支持历史废弃域名的平滑清洗。
+* **陷阱**：若将包含具体 CDN 域名（如 `c0.jdbstatic.com`）的完整 URL 固化写入本地数据库，当 JAVDB 因防封或 CDN 供应商迁移更改图片域名时，用户本地收藏夹中的海量封面将瞬间全部 404 挂掉，造成无法挽回的灾难；若未清洗目标站点返回的双域名字符串，会产生畸形 URL 并触发 CORS/DNS 失败；若未提取 Pixhost 大图，抓取到的预览剧照分辨率仅为 150px 邮票大小。
+* **参见决策**：[ADR-0022: PREVIEWSYS 多站点预览图嗅探、高清图床推导与双域名清洗流水线](./docs/adr/0022-preview-sys-multi-site-sniffing-and-sanitization-pipeline.md)、[ADR-0023: 动态图片 HOST 嗅探与零迁移相对路径持久化架构](./docs/adr/0023-dynamic-image-host-detection-and-relative-path-storage.md)
+
+### 29. 媒体库筛选器即时草稿状态隔离与共演算子实时交集收敛
+* **铁律**：筛选模态窗（`openFilterModal`）在打开时必须基于当前配置深拷贝生成独立草稿对象 `tmp`，用户在弹窗内的任何勾选、取选、滑动均严格限制在 `tmp` 沙箱内运行，点击遮罩或取消时直接丢弃 `tmp`，绝对禁止在点击「确定」之前触碰或污染主列表全局过滤状态；切换状态类开关（如「只看有备注」、「看過」）时，必须通过 `modalVids()` 毫秒级重构当前候选子宇宙，并触发 `refreshModalDims()` 动态重新计算全维度标签的出现频次与累积浏览量，自动剔除计数为 0 的虚假候选项；开启「共演筛选（交集）」后，演员多选逻辑必须从并集（OR）无缝切换为严格子集交集（AND），选定演员后其它维度候选必须实时收敛至共同出演过的作品范围内；演员头像渲染源必须严格在 `modalVids` 就绪后执行；维度搜索框必须配置全套防密码管理器误填属性并经由 `sanitizeSearchInputs` 清洗。
+* **陷阱**：若采用即时响应全局模式，用户在多达数十个维度的弹窗中随意尝试组合后若想放弃，页面已千疮百孔无法复原；若在筛选弹窗中仍展示全量静态列表，用户点击某位演员后经常出现 0 部匹配结果的挫败死胡同；若 `vids` 初始化顺序颠倒，会导致勾选演员头像时抛出异常导致整个演员候选列表被完全清空；未防御的搜索框会引来 1Password/Bitwarden 强制弹出账号填充下拉框，阻挡用户点击选项。
+* **参见决策**：[ADR-0026: 媒体库多维流式筛选器即时草稿状态机与共演交集算子](./docs/adr/0026-multi-dimensional-filter-draft-snapshot-and-coact-intersection-engine.md)
+
+### 30. 云端多端同步增量字段胜者合并与用户主观资产不可侵犯法则
+* **铁律**：多端数据同步与备份导入（`FAV.importJSON`）必须严格遵循「字段丰富度评分胜者算法（`fieldRichness`）」进行属性级智能裁决，严禁采用粗暴的全量记录覆盖或盲目的时间戳（LWW）整行替换；无论远端元数据得分多高，用户本地的主观纠错（`customMeta`，按修改时间戳比对）、用户主观打星评分（`userScore`，既有评分绝对优先保全）、个人文字批注（`notes`，非空保全）、所属清单归属（`listIds`，严格执行数学并集 $A \cup B$）、总浏览量（`views`，单调递增取 $\max$）享有最高法律效力，绝对不可被远端空值或客观官方数据篡改抹除；导入过程必须采用「单次读全集建立内存哈希索引 + 纯内存冲突合并去重 + 50条分块批量写回」流水线，万条数据事务总数严控在 200 次以内；备份导出时默认剔除所有敏感访问令牌与凭据，仅在用户显式勾选授权时方可打包导出。
+* **陷阱**：在早期的逐条事务实现中，导入万条记录需触发数万次 IndexedDB 事务往返，导致浏览器完全失去响应长达数分钟；若采用整行覆盖，在一台设备上记录的观影笔记与打星会被另一台设备的同步操作彻底摧毁；若导出时未剥离凭据，分享备份文件会导致用户的 JAVDB 登录令牌与 WebDAV 密码泄露。
+* **参见决策**：[ADR-0025: 云端多端同步增量字段胜者合并算法与冲突裁决矩阵](./docs/adr/0025-cloud-sync-field-level-completeness-merge-and-conflict-resolution.md)
 
 ---
 
@@ -311,7 +380,7 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 
 1. [ADR-0001: 单文件 Monolithic UserScript 架构](./docs/adr/0001-monolithic-userscript-architecture.md)
 2. [ADR-0002: IndexedDB + 内存镜像双层存储架构](./docs/adr/0002-multi-tier-storage-indexeddb-memory-mirror.md)
-3. [ADR-0003: LiquidGlass 液态玻璃 SVG Displacement 滤镜流水线](./docs/adr/0003-liquidglass-svg-displacement-pipeline.md)
+3. [ADR-0003: LiquidGlass 液态玻璃 2.0 物理透镜折射流水线与 Chromium 合成层防御架构](./docs/adr/0003-liquidglass-svg-displacement-pipeline.md)
 4. [ADR-0004: 无性别偏见的演员高清头像解析与平滑降级](./docs/adr/0004-gender-agnostic-avatar-matching-and-fallback.md)
 5. [ADR-0005: 用户主观评分 (`userScore`) 与官方评分 (`rating.score`) 的物理隔离体系](./docs/adr/0005-strict-separation-of-userscore-and-official-rating.md)
 6. [ADR-0006: DOM MutationObserver 递归守卫与 window.confirm 猴子补丁可重入锁](./docs/adr/0006-reentrant-dialog-and-mutationobserver-recursion-guards.md)
@@ -326,4 +395,15 @@ _Avoid_: VideoLinks, PlayerHub, OnlineSource
 15. [ADR-0015: Rails CSRF 同源 Referer 完整性保障与元素级防盗链穿透架构](./docs/adr/0015-rails-csrf-referer-integrity-and-image-level-anti-hotlink.md)
 16. [ADR-0016: JAVDB 官方年龄弹窗无感通行与全 DOM 盲点击拦截架构](./docs/adr/0016-age-gate-pre-cookie-injection-and-safe-modal-removal.md)
 17. [ADR-0017: 首次运行零侵入开关与 Chrome 搜索框账号防误填架构](./docs/adr/0017-first-run-zero-intrusion-and-search-autofill-defense.md)
+18. [ADR-0018: 详情页多语言环境元数据健壮性解析与容错架构](./docs/adr/0018-multilingual-detail-metadata-resilient-parsing.md)
+19. [ADR-0019: 嵌套 DOM 跨层级安全插入与网格重构沙盒保护架构](./docs/adr/0019-nested-dom-safe-insertion-and-grid-restructure-sandbox.md)
+20. [ADR-0020: 未登录状态全链路行为拦截与数据库孤儿清洗对称性架构](./docs/adr/0020-unauthenticated-session-interception-and-symmetrical-orphan-purging.md)
+21. [ADR-0021: STEAM 风格卡牌 3D 物理倾斜与全息流光渲染流水线](./docs/adr/0021-steam-3d-card-hover-tilt-and-specular-pipeline.md)
+22. [ADR-0022: PREVIEWSYS 多站点预览图嗅探、高清图床推导与双域名清洗流水线](./docs/adr/0022-preview-sys-multi-site-sniffing-and-sanitization-pipeline.md)
+23. [ADR-0023: 动态图片 HOST 嗅探与零迁移相对路径持久化架构](./docs/adr/0023-dynamic-image-host-detection-and-relative-path-storage.md)
+24. [ADR-0024: GFRIENDS 高清头像映射、别名桥接与四级 CDN 容灾架构](./docs/adr/0024-gfriends-avatar-mapping-alias-bridge-and-cdn-disaster-recovery.md)
+25. [ADR-0025: 云端多端同步增量字段胜者合并算法与冲突裁决矩阵](./docs/adr/0025-cloud-sync-field-level-completeness-merge-and-conflict-resolution.md)
+26. [ADR-0026: 媒体库多维流式筛选器即时草稿状态机与共演交集算子](./docs/adr/0026-multi-dimensional-filter-draft-snapshot-and-coact-intersection-engine.md)
+27. [ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
+
 

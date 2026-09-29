@@ -1,0 +1,26 @@
+# Temporary & Backup files
+*.bak
+*.bak.js
+*.diff
+*.txt
+diff_*
+temp/
+tmp/
+.agents/
+node_modules/
+package-lock.json
+
+# Local reports & scratch
+给对方的讨论报告.md
+Daily/
+reports/
+test_*.js
+
+# Operating System & IDE artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+original.js
