@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,699 行，v7.334）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,755 行，v7.335）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -209,16 +209,43 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 │    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 官方头像降级        │
 │    • ActressService: JAV_info 现役/退役检测与维基百科异步回退                               │
 │    • PlaySitesService: 123AV / njav / MissAV 等 10+ 在线播放源与模板替换                    │
-│    • PreviewSys: JavFree / JavStore / BlogJav / ProjectJav / 官方剧照 多源预览图嗅探矩阵    │
+│    • PreviewSys: JavFree / JavStore / BlogJav / ProjectJav 嗅探 + L1/L2 7天本地持久化缓存   │
 │    • CloudSync: WebDAV / GitHub / Gitee 双向同步，强制凭据脱敏白名单过滤                    │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 核心“弯弯绕绕”与历史避坑铁律 (30 Critical Invariants & Gotchas)
+## 🛑 项目最高工程哲学与排查零号准则 (Axiom 0: First Principles & Surgical Fix)
 
-这 30 条铁律是整个项目 25,699 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+任何后续接手本项目的 AI 智能体或开发者，在开始阅读具体业务代码与排查任何 Bug 前，**必须将以下三大第一性原理作为最高行为公理（Axiom 0）深植于推理上下文**：
+
+1. **坚决抵御“用大重构掩盖排查不足”的浮躁冲动**：
+   * 严禁在未定位到真实物理根因前，轻易向用户提议“推翻重写已有成熟模块”（如重写 `removeEmbyDOM`、重写网格重构或重写事件委托）；
+   * 本项目是一个拥有 25,000+ 行紧密耦合单文件、历经数十轮实战对抗审计的生产级应用，盲目推翻成熟函数往往会在修好 1 个表象问题的同时，瞬间踩中此前填平的 5 个深层隐性地雷。
+2. **第一性原理深度穿透本质（First Principles Root-Cause Analysis）**：
+   * 排查任何异常必须追本溯源到最底层的物理本质：到底是不是 Chromium 合成层（Compositing Layer）GPU 缓存未刷？是不是 DOM 脱水期未连接 DOM 树时的 `isConnected === false` 时序竞争？是不是 CSS Specificity 权重被原生类名覆盖？是不是 W3C 标准下的直接子节点（Direct Child）断言失败？是不是 IndexedDB 异步事务未就绪？
+   * 必须拿出具有底层依据的确凿结论，严禁靠“我猜可能在这里”、“试着包裹一个 setTimeout”来盲目试错。
+3. **极简手术级微调原则（Surgical Precision）**：
+   * **能用 3~6 行最小侵入代码在源头精准修复的，绝对不允许擅自动动 50 行以上的周边逻辑**；
+   * 修复方案必须像显微外科手术一样，以最小的扰动解决根本问题，对既有庞大生态保持最大的敬畏与零侵入性。
+
+---
+
+## 📋 AI 维护者交付前自检清单 (AI Pre-flight Checklist)
+
+后续任何 AI 智能体在向用户汇报或提交代码前，必须在内部反思链（Chain of Thought）中逐项核对并确保符合以下四步交付准则：
+
+1. **[语法与静态安全]**：是否已执行 `node -c .\JavdbEmbySkin.user.js` 并确保 100% 零语法错误与未闭合语法结构？
+2. **[31条铁律红线核查]**：本次改动是否侵犯了后文 31 条业务铁律中的任何一条？（尤其关注：`userScore` 是否被客观评分污染？密码管理器是否误触下拉框？DOM 挂载是否保持直接子节点？图片路径是否仍为无域名相对路径？）。
+3. **[侵入度与重构判定]**：本次修改是否严格做到了“最小必要侵入”？是否存在用推翻重构掩盖排查不足的嫌疑？
+4. **[文档与版本原子化同步]**：若涉及版本递增，是否已将脚本头部 `@version`、脚本内部 `VERSION` 常量、`CONTEXT.md` 顶栏行数与版本号、以及 [`CHANGELOG.md`](./CHANGELOG.md) 严格按 Keep a Changelog 格式同步更新？
+
+---
+
+## 核心“弯弯绕绕”与历史避坑铁律 (31 Critical Invariants & Gotchas)
+
+这 31 条铁律是整个项目 25,699 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -357,9 +384,9 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 * **陷阱**：v7.107 历史重大 Bug 复盘——旧代码在 `attachDynamicFocus` 中未声明形参直接访问 `e.clientX`，抛出未捕获的 `ReferenceError` 导致后续网格委托未能挂载，卡片在触发 `scale(1.28)` 后永久冻结放大无法复原，且浮层永久消失；在收藏夹筛选/排序重绘时，若在卡片挂树前静态获取父网格，会因为 `isConnected === false` 得到 `null`，导致动态聚焦完全失效；若缺少 `mousemove` 包围盒全局巡检，在复杂动画或 DOM 突变时丢失 `mouseleave`，会导致卡片放大状态卡死在页面中。
 * **参见决策**：[ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
 
-### 28. 预览图嗅探多源清洗与图片 Host 零迁移相对路径存储准则
-* **铁律**：多站点预览图嗅探（`PreviewSys`）跨域抓取时，必须强制对输入番号执行去空格、去斜杠规范化；严格防御目标站点（如 ProjectJav）在返回 HTML 时出现的双域名拼接 Bug（`https://domain.comhttps://img...`），必须经由通用域名剥离流水线净化；Pixhost 图床抓取时，必须自动将缩略图 `//tXXX.pixhost.to/thumbs/` 向上提升为高清大图 `//imgXXX.pixhost.to/images/`；持久化至 IndexedDB 的影片封面与图床图片路径必须经由 `stripHost` 剔除 CDN 主机名前缀仅保留相对路径（如 `/covers/xx.jpg`），读取渲染时经由 `detectImgHost()` 动态拼接当前可用镜像域名；自愈正则必须支持历史废弃域名的平滑清洗。
-* **陷阱**：若将包含具体 CDN 域名（如 `c0.jdbstatic.com`）的完整 URL 固化写入本地数据库，当 JAVDB 因防封或 CDN 供应商迁移更改图片域名时，用户本地收藏夹中的海量封面将瞬间全部 404 挂掉，造成无法挽回的灾难；若未清洗目标站点返回的双域名字符串，会产生畸形 URL 并触发 CORS/DNS 失败；若未提取 Pixhost 大图，抓取到的预览剧照分辨率仅为 150px 邮票大小。
+### 28. 预览图嗅探多源清洗、L1/L2 两级持久化缓存与图片 Host 零迁移相对路径存储准则
+* **铁律**：多站点预览图嗅探（`PreviewSys`）跨域抓取时，必须强制对输入番号执行去空格、去斜杠规范化；严格防御目标站点（如 ProjectJav）在返回 HTML 时出现的双域名拼接 Bug（`https://domain.comhttps://img...`），必须经由通用域名剥离流水线净化；Pixhost 图床抓取时，必须自动将缩略图 `//tXXX.pixhost.to/thumbs/` 向上提升为高清大图 `//imgXXX.pixhost.to/images/`；**嗅探结果必须采用「L1 同步内存 Map + L2 IndexedDB (`meta` 表, `jhs_prev_` 前缀) 7 天 TTL（`7*24*60*60*1000`）两级缓存体系」，成功态双写缓存以实现二次展现 0 毫秒秒开与 0 网络请求，大幅降低第三方 CDN 触发 429 风控概率；严禁将偶发网络失败或 `no-data` 写入持久化数据库，负向状态仅限单次会话内存缓存**；持久化至 IndexedDB 的影片封面与图床图片路径必须经由 `stripHost` 剔除 CDN 主机名前缀仅保留相对路径（如 `/covers/xx.jpg`），读取渲染时经由 `detectImgHost()` 动态拼接当前可用镜像域名；自愈正则必须支持历史废弃域名的平滑清洗。
+* **陷阱**：若将包含具体 CDN 域名（如 `c0.jdbstatic.com`）的完整 URL 固化写入本地数据库，当 JAVDB 因防封或 CDN 供应商迁移更改图片域名时，用户本地收藏夹中的海量封面将瞬间全部 404 挂掉，造成无法挽回的灾难；若未清洗目标站点返回的双域名字符串，会产生畸形 URL 并触发 CORS/DNS 失败；若未提取 Pixhost 大图，抓取到的预览剧照分辨率仅为 150px 邮票大小；**若缺少 L2 7 天持久化缓存，每次刷新或切换列表都会疯狂重复抓取第三方图床，极易被第三方防爬机制拉黑（HTTP 429）；若把网络异常或 `no-data` 负向结果固化持久化至数据库，用户将遭遇长达 7 天的剧照假死盲区**。
 * **参见决策**：[ADR-0022: PREVIEWSYS 多站点预览图嗅探、高清图床推导与双域名清洗流水线](./docs/adr/0022-preview-sys-multi-site-sniffing-and-sanitization-pipeline.md)、[ADR-0023: 动态图片 HOST 嗅探与零迁移相对路径持久化架构](./docs/adr/0023-dynamic-image-host-detection-and-relative-path-storage.md)
 
 ### 29. 媒体库筛选器即时草稿状态隔离与共演算子实时交集收敛
@@ -371,6 +398,11 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 * **铁律**：多端数据同步与备份导入（`FAV.importJSON`）必须严格遵循「字段丰富度评分胜者算法（`fieldRichness`）」进行属性级智能裁决，严禁采用粗暴的全量记录覆盖或盲目的时间戳（LWW）整行替换；无论远端元数据得分多高，用户本地的主观纠错（`customMeta`，按修改时间戳比对）、用户主观打星评分（`userScore`，既有评分绝对优先保全）、个人文字批注（`notes`，非空保全）、所属清单归属（`listIds`，严格执行数学并集 $A \cup B$）、总浏览量（`views`，单调递增取 $\max$）享有最高法律效力，绝对不可被远端空值或客观官方数据篡改抹除；导入过程必须采用「单次读全集建立内存哈希索引 + 纯内存冲突合并去重 + 50条分块批量写回」流水线，万条数据事务总数严控在 200 次以内；备份导出时默认剔除所有敏感访问令牌与凭据，仅在用户显式勾选授权时方可打包导出。
 * **陷阱**：在早期的逐条事务实现中，导入万条记录需触发数万次 IndexedDB 事务往返，导致浏览器完全失去响应长达数分钟；若采用整行覆盖，在一台设备上记录的观影笔记与打星会被另一台设备的同步操作彻底摧毁；若导出时未剥离凭据，分享备份文件会导致用户的 JAVDB 登录令牌与 WebDAV 密码泄露。
 * **参见决策**：[ADR-0025: 云端多端同步增量字段胜者合并算法与冲突裁决矩阵](./docs/adr/0025-cloud-sync-field-level-completeness-merge-and-conflict-resolution.md)
+
+### 31. 严格遵循 SemVer 2.0 与 Keep a Changelog 版本演进协议
+* **铁律**：后续任何 AI 智能体或开发者在提交功能新增、缺陷修复或架构优化时，必须严格遵守 [Semantic Versioning (语义化版本 2.0.0)](https://semver.org/lang/zh-CN/) 升级规范；`CHANGELOG.md` 必须严格在对应版本标题 `## [vX.Y.Z] - YYYY-MM-DD` 下按标准五大维度分类记录（`### 新增 (Added)`、`### 修复 (Fixed)`、`### 优化 (Optimized)`、`### 安全与防御 (Security)`、`### 核心架构 (Core)`），严禁生成无分类流水账，严禁省略版本号或发布日期；代码头部 `@version`、脚本内部 `VERSION` 常量、`CONTEXT.md` 全局版本与 `CHANGELOG.md` 必须保持强一致原子化同步；涉及重要底层架构决策时必须同步更新或新增对应 ADR 文档。
+* **陷阱**：若无版本演进与日志分类约束，后续接手的 AI 极易生成格式混乱的碎片化日志、漏更脚本元数据版本号、甚至粗暴覆写或抹除历史版本记录，导致用户在油猴管理器中无法检测到版本更新或无法溯源破坏性变更。
+* **参见决策**：[CHANGELOG.md](./CHANGELOG.md)
 
 ---
 

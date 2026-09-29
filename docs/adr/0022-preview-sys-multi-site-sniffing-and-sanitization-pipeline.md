@@ -57,10 +57,14 @@ const normInput = code.replace(/[\s\-_]/g, '').toUpperCase();
 ### 4. 降级保底机制（Graceful Cover Fallback）
 若某部稀有影片在第三方站点存在条目但尚未切出分段剧照，解析器会自动捕获其原画级别电影大封面（如 `/data/covers/...`），保证嗅探成功率最大化，杜绝空白卡死。
 
-### 5. 双层 LRU 缓存与状态隔离
-* 针对抓取结果建立内存级 `this.cache = new Map()`，以 `normCode` 为主键；
-* 成功结果缓存 `{ status: 'success', img, gallery, source }`；
-* 失败或无数据结果写入 `{ status: 'no-data' }`，有效拦截同一会话期内对无剧照影片的重复网络重试。
+### 5. L1 内存 + L2 IndexedDB 两级持久化缓存架构（Two-tier Persistent Cache）
+为彻底解决列表滚动与重复翻阅时频繁发起跨域网络请求、触发第三方图床高频风控（HTTP 429/403）的隐患，并实现二次访问 0 毫秒即时展现，`PreviewSys` 设计了两级缓存体系：
+* **Tier 1 (L1 内存热缓存)**：`this.cache = new Map()`，以 `normCode` 和 `normCode + ':' + siteId` 为键。在单次会话内提供同步、零异步开销的极速命中；
+* **Tier 2 (L2 IndexedDB 本地持久化缓存)**：接入 `FAV.dbGetMeta('jhs_prev_' + key)` 与 `FAV.dbSetMeta('jhs_prev_' + key, { time: Date.now(), data })`，生命周期设为 7 天（`TTL_MS = 7 * 24 * 60 * 60 * 1000`）；
+* **成功态与失败态隔离存储法则（防负向缓存污染）**：
+  * **仅成功态持久化**：`_saveDbCache` 严格仅对 `status === 'success'` 的真实剧照执行写入；
+  * **失败态/无数据仅驻留内存**：对未找到剧照（`status: 'no-data'`）或网络超时等异常，仅在 L1 内存中暂存以拦截当前页面的重复风暴，**绝对不写入 IndexedDB**，防止偶发断网或临时风控时产生“永久毒丸缓存”，确保用户后续网络恢复或切换源后能够再次重试；
+* **双主键复合索引**：成功嗅探后，同时为默认聚合键（`normCode`）与指定源键（`normCode + ':' + siteId`）写入缓存，用户在多站点间切换透镜查看时均可享受毫秒级缓存直出。
 
 ---
 
@@ -71,7 +75,9 @@ const normInput = code.replace(/[\s\-_]/g, '').toUpperCase();
 2. **铁律 2：清理 URL 时严禁破坏合法查询参数**：
    部分 CDN（如 `cdn.hpify.com`）依赖版本签名参数（如 `?v=1790328549`）放行访问。剥离 `width`/`height` 缩略图参数时，必须使用标准的 `URL.searchParams.delete()`，绝不可用粗暴的正规表达式将整个 Query String 抹掉，否则会导致 CDN 鉴权失败返回 403 Forbidden；
 3. **铁律 3：`localStorage` 站点配置无缝升级守卫**：
-   老用户的浏览器 `localStorage` 中保存了自定义站点顺序。新增内置站点时（如 `projectjav`），必须在 `getPreviewSiteConfigs()` 中采用“差集检测 + 锚点插入（插在 `local` 官方剧照之前）”，严禁直接清空用户配置或覆盖重置。
+   老用户的浏览器 `localStorage` 中保存了自定义站点顺序。新增内置站点时（如 `projectjav`），必须在 `getPreviewSiteConfigs()` 中采用“差集检测 + 锚点插入（插在 `local` 官方剧照之前）”，严禁直接清空用户配置或覆盖重置；
+4. **铁律 4：持久化缓存绝不可收录瞬态网络故障或负向无数据态**：
+   第三方嗅探极易受网络波动、科学上网节点断流影响。若将临时请求失败或 `no-data` 写入 7 天持久化 IndexedDB，会导致用户在长达一周内再也无法获取该影片剧照。因此持久化存储只认 `status === 'success'`。
 
 ---
 

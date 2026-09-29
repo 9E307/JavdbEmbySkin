@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.334
+// @version      7.335
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -72,7 +72,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.334';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.335';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -21375,12 +21375,45 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
   const PreviewSys = {
     cache: new Map(),
+    TTL_MS: 7 * 24 * 60 * 60 * 1000, // 7 天本地持久化缓存，秒开
+
+    async _getDbCache(key) {
+      if (typeof FAV !== 'undefined' && typeof FAV.dbGetMeta === 'function') {
+        try {
+          const row = await FAV.dbGetMeta('jhs_prev_' + key);
+          if (row && row.time && (Date.now() - row.time < this.TTL_MS) && row.data && row.data.status === 'success') {
+            return row.data;
+          }
+        } catch (e) {}
+      }
+      return null;
+    },
+
+    _saveDbCache(key, data) {
+      if (!data || data.status !== 'success') return;
+      if (typeof FAV !== 'undefined' && typeof FAV.dbSetMeta === 'function') {
+        try {
+          FAV.dbSetMeta('jhs_prev_' + key, { time: Date.now(), data: data }).catch(function () {});
+        } catch (e) {}
+      }
+    },
+
     async fetch(code, force) {
       if (!code) return { status: 'no-data' };
       const normCode = String(code).trim().toUpperCase();
+      // 1. L1 内存镜像缓存
       if (!force && this.cache.has(normCode)) {
         const c = this.cache.get(normCode);
         if (c && c.status === 'success') return c;
+      }
+      // 2. L2 IndexedDB 本地持久化缓存 (7天 TTL 毫秒级秒开，零网络)
+      if (!force) {
+        const dbCached = await this._getDbCache(normCode);
+        if (dbCached) {
+          this.cache.set(normCode, dbCached);
+          if (dbCached.siteId) this.cache.set(normCode + ':' + dbCached.siteId, dbCached);
+          return dbCached;
+        }
       }
 
       const sites = getPreviewSiteConfigs().filter(function (s) { return s.enabled !== false; });
@@ -21392,6 +21425,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             const out = { status: 'success', img: res.img, gallery: res.gallery || [res.img], source: s.name, siteId: s.id };
             this.cache.set(normCode, out);
             this.cache.set(normCode + ':' + s.id, out);
+            this._saveDbCache(normCode, out);
+            this._saveDbCache(normCode + ':' + s.id, out);
             return out;
           }
         } catch (e) {
@@ -21407,9 +21442,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (!code || !siteId) return { status: 'no-data' };
       const normCode = String(code).trim().toUpperCase();
       const cacheKey = normCode + ':' + siteId;
+      // 1. L1 内存镜像缓存
       if (!force && this.cache.has(cacheKey)) {
         const c = this.cache.get(cacheKey);
         if (c && c.status === 'success') return c;
+      }
+      // 2. L2 IndexedDB 本地持久化缓存
+      if (!force) {
+        const dbCached = await this._getDbCache(cacheKey);
+        if (dbCached) {
+          this.cache.set(cacheKey, dbCached);
+          return dbCached;
+        }
       }
       const sites = getPreviewSiteConfigs();
       const s = sites.find(function (item) { return item.id === siteId; });
@@ -21420,6 +21464,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (res && res.img) {
           const out = { status: 'success', img: res.img, gallery: res.gallery || [res.img], source: s.name, siteId: s.id };
           this.cache.set(cacheKey, out);
+          this._saveDbCache(cacheKey, out);
           return out;
         }
       } catch (e) {
@@ -22585,6 +22630,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     // 找到容器最顶部锚点（原生分类栏/工具栏或容器首个元素），导航按钮必须置于其上方
     const topAnchor = findTopAnchor(parent, movieListEl);
 
+    // DOM 级幂等与多重去重巡检（防御 Turbolinks 页面快照恢复、双实例并发注入或游离节点残留）
+    const existingTabs = document.querySelectorAll('.emby-home-tabs');
+    if (existingTabs.length > 0) {
+      for (let i = 1; i < existingTabs.length; i++) existingTabs[i].remove();
+      homeTabsBar = existingTabs[0];
+      homeTabsBuilt = true;
+      if (parent && homeTabsBar !== topAnchor && homeTabsBar.nextElementSibling !== topAnchor) {
+        safeInsertBefore(parent, homeTabsBar, topAnchor, movieListEl);
+      }
+      return;
+    }
+
     if (homeTabsBuilt && homeTabsBar && homeTabsBar.isConnected) {
       // 已建过且在文档中：确保标签栏移到当前主页最顶部（置于原生分类条之上）
       if (parent && homeTabsBar !== topAnchor && homeTabsBar.nextElementSibling !== topAnchor) {
@@ -22596,6 +22653,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
     // 标签栏容器
     const tabsBar = document.createElement('div');
+    tabsBar.id = 'emby-home-tabs';
     tabsBar.className = 'emby-home-tabs';
 
     // 视图 Tab 动态生成（与 LOGO 悬停导航共用 HOME_TAB_DEFS，新增 tab 两处自动同步）
@@ -25150,8 +25208,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const overlay = document.querySelector('.emby-morph-overlay');
     if (overlay) overlay.remove();
     // 清理首页标签栏
-    const tabsBar = document.querySelector('.emby-home-tabs');
-    if (tabsBar) tabsBar.remove();
+    document.querySelectorAll('.emby-home-tabs').forEach(function (el) { el.remove(); });
     homeTabsBuilt = false;
     homeTabsBar = null;
     try { FAVUI.unmount(); } catch (e) {}
