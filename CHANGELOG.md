@@ -19,6 +19,31 @@
 
 \---
 
+## [v7.336] - 2026-09-30
+
+### 新增 (Added)
+
+* **封面浮层悬停预览视频与双源容灾引擎**：将视频预览功能与未裁切大图弹窗（`#emby-df-preview`）深度融合；构建 MissAV/NjavTV 主源（`https://fourhoi.com/{code}/preview.mp4`，自动剥离 Referer 穿透防盗链阻断）与 123AV 备用源（`https://icdn.123av.me/preview/{hash}/{code}/preview.png`，伪装 PNG 动态转译为 MP4 Blob 二进制流）的多源容灾回退流水线；双源均无视频或网络异常时优雅平滑保持静态原图，零报错、零布局撕裂；详见 [ADR-0028](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)。
+* **详情页预览栏视频自适应播放按钮**：在详情页「預覽圖 / 預覽影片」标题行右侧新增 `video_template` 视频预览按钮（`.emby-preview-video-btn`）；鼠标悬停即刻启动预览视频播放，提供 120ms 防误触与 250ms 移出缓冲；播放弹窗界面根据视频自身原生分辨率（`loadedmetadata` 读取 `videoWidth` × `videoHeight`，如 `854×480`、`320×180` 等）严格自适应缩放呈现，避免画面模糊与黑边拉伸，并在弹窗顶部直观展示当前番号与原生分辨率角标。
+* **两阶段悬停防抖与自定义延迟流控**：设计两阶段渐进时序，鼠标悬停卡片先触发展示静态高清大封面及番号元数据，持续悬停超过用户设定的时间阈值（默认 0.6s，外观面板支持 0.1s~3.0s 精细调节）才静音启动预览视频加载与淡入播放；光标快速扫视掠过时 0 视频网络请求，彻底杜绝 CDN 频控风控与无谓带宽消耗。
+* **快捷设置与设置中心外观配置开关**：在快捷设置面板（`#emby-quick-settings-popover`）与设置中心“外观与显示”选项卡中同步新增「悬停预览视频」开关及「预览视频延迟」滑动条，支持改动即时生效与双向联动同步。
+
+### 优化 (Optimized)
+
+* **统一视频拉取引擎与全局多源缓存共享**：重构并提取全局统一的 `getPreviewVideoBlobUrl(rawCode)` 单例拉取器，卡片悬停预览与详情页预览按钮 100% 代码复用；强制将传入番号进行小写归一化清洗（防止大写番号导致 123AV MD5 分片与 MissAV 路径失效 404）；内存会话缓存（`dfVideoCache`）全域双向打通，卡片与详情页互相秒播。
+* **绝对定位叠放与零布局抖动（Zero Layout Shift）**：在 `#emby-df-preview` 内建立 `.dfp-media-wrap` 复合媒体包裹容器，`<img>` 作为流体尺寸基准层支撑原始长宽比，`<video>` 绝对定位层叠于封面之上，加载完成后通过 CSS 渐变过渡（`transition: opacity .35s ease`）柔和淡入，完全消除传统播放器加载过程中的尺寸突变与布局跳动。
+* **纯 JS MD5 算法提升为全局共享工具**：将内嵌的零外部依赖纯 JS MD5 算法（`coreMd5`）由 `ReviewListInfiniteManager` 模块内部提升至脚本全局工具作用域，供 123AV 路径哈希推导及相关模块零依赖无缝复用，消除重复代码。
+* **竞态代数令牌与生命周期彻底清理**：引入递增代数令牌（`dfVideoToken`），杜绝光标在海量卡片间快速穿梭时迟到异步回包造成的错位播放；在弹窗收起（`dfPopupHide`）、换页还原（`restorePreviewNode`）及皮肤卸载（`removeEmbyDOM`）时无条件重置清理视频与弹窗状态（包括 `#emby-detail-video-pop`），杜绝幽灵后台音频或播放残留；并在 `SKIN_CHROME_SEL` 中补全过滤标记，防止弹窗内部 DOM 变动干扰全局 MutationObserver。
+
+### 修复 (Fixed)
+
+* **悬停预览视频默认开关状态保持关闭**：未显式配置时默认保持关闭状态（默认 `'0'`），避免未预期的流量消耗；用户可按需在快捷设置或设置中心“外观与显示”中手动开启。
+* **行内样式导致视频完全隐形问题修复**：消除 `stopDfVideoPreview` 中行内样式覆盖 CSS 类 `.dfp-video.playing { opacity: 1 }` 的特异性冲突问题，改由纯 CSS 类管理透明度过渡，确保视频加载后正常显现。
+* **MissAV/fourhoi 防盗链 403 阻断穿透**：针对 Chromium 原生 `<video src="https://fourhoi.com/...">` 强制附加 `Referer` 导致 403 Forbidden 的问题，将主源接入 `fetchVideoBlob`，利用 `GM_xmlhttpRequest` 伪装安全 Referer 转换为本地 `Blob URL` 播放，彻底根治防盗链失效。
+* **DOM 容器升级与番号提取兼容性增强**：在 `ensureDfPreview()` 中增加旧版本 DOM 自动检测与包裹层补全机制；在 `extractCodeFromItem()` 中增加健壮的正则表达式识别，兼容带中文标签前缀的卡片番号。
+
+---
+
 ## [v7.335] - 2026-09-30
 
 ### 新增 (Added)

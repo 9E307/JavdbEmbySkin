@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（25,755 行，v7.335）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（26,046 行，v7.336）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -404,6 +404,11 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 * **陷阱**：若无版本演进与日志分类约束，后续接手的 AI 极易生成格式混乱的碎片化日志、漏更脚本元数据版本号、甚至粗暴覆写或抹除历史版本记录，导致用户在油猴管理器中无法检测到版本更新或无法溯源破坏性变更。
 * **参见决策**：[CHANGELOG.md](./CHANGELOG.md)
 
+### 32. 视频预览统一拉取引擎、双源容灾与详情页分辨率自适应播放架构
+* **铁律**：封面悬停小视频预览必须与未裁切大图浮层（`#emby-df-preview`）融合为一体；为防止未预期的流量消耗，卡片悬停视频预览功能默认保持关闭（`'0'`），用户可在设置中主动开启；详情页预览栏新增 `video_template` 视频播放按钮（`DetailVideoPreview`），为显式主动交互按需响应；所有调用方必须统一调用全局唯一的单例拉取器 `getPreviewVideoBlobUrl(rawCode)`，严禁分散自行 fetch；入口必须对番号强制进行 `.trim().toLowerCase()` 归一化清洗，保障 123AV MD5 计算与 MissAV CDN 路径严格匹配，并实现卡片与详情页双向内存会话缓存（`dfVideoCache`）秒开共享；详情页播放弹窗尺寸必须依据 `loadedmetadata` 事件中的 `videoWidth` 与 `videoHeight` 严格自适应计算，等比例约束在视口安全范围内，严禁画面拉伸与黑边变形；弹窗元素 `#emby-detail-video-pop` 必须纳入 `removeEmbyDOM` 卸载清理集与 `SKIN_CHROME_SEL` 过滤集，确保皮肤关闭无残留且弹窗状态变动不触发全局 MutationObserver 递归。
+* **陷阱**：若无两阶段延迟防抖，光标快速扫视卡片时会瞬间并发几十个视频网络请求，导致浏览器网络栈堵塞并触发第三方 CDN 429 频控；若未对番号强制转换为小写，大写番号会导致 MD5 哈希错误（如 `IPZZ-934` 计算为 `b9` 而非正确的 `94`）进而触发双源同时 404；若未将弹窗纳入 `SKIN_CHROME_SEL`，弹窗载入动画会造成全局路由监听频繁抖动。
+* **参见决策**：[ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
+
 ---
 
 ## 架构决策档案索引 (Architectural Decision Records)
@@ -437,5 +442,6 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 25. [ADR-0025: 云端多端同步增量字段胜者合并算法与冲突裁决矩阵](./docs/adr/0025-cloud-sync-field-level-completeness-merge-and-conflict-resolution.md)
 26. [ADR-0026: 媒体库多维流式筛选器即时草稿状态机与共演交集算子](./docs/adr/0026-multi-dimensional-filter-draft-snapshot-and-coact-intersection-engine.md)
 27. [ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
+28. [ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
 
 

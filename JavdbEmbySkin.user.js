@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.335
+// @version      7.336
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
+// @connect      fourhoi.com
+// @connect      icdn.123av.me
 // @connect      api.github.com
 // @connect      gitee.com
 // @connect      *
@@ -72,7 +74,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.335';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.336';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -102,6 +104,176 @@
     const clean = u.trim();
     try { return new URL(clean, base || location.href).href; }
     catch (e) { return clean.startsWith('http') ? clean : (location.origin + (clean.startsWith('/') ? '' : '/') + clean); }
+  }
+
+  // 内嵌纯 JS MD5 算法（零外部 CDN 依赖，全局共享）
+  function coreMd5(string) {
+    function rotateLeft(lValue, iShiftBits) {
+      return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
+    }
+    function addUnsigned(lX, lY) {
+      var lX4, lY4, lX8, lY8, lResult;
+      lX8 = lX & 0x80000000; lY8 = lY & 0x80000000;
+      lX4 = lX & 0x40000000; lY4 = lY & 0x40000000;
+      lResult = (lX & 0x3fffffff) + (lY & 0x3fffffff);
+      if (lX4 & lY4) return lResult ^ 0x80000000 ^ lX8 ^ lY8;
+      if (lX4 | lY4) {
+        if (lResult & 0x40000000) return lResult ^ 0xc0000000 ^ lX8 ^ lY8;
+        return lResult ^ 0x40000000 ^ lX8 ^ lY8;
+      }
+      return lResult ^ lX8 ^ lY8;
+    }
+    function F(x, y, z) { return (x & y) | (~x & z); }
+    function G(x, y, z) { return (x & z) | (y & ~z); }
+    function H(x, y, z) { return x ^ y ^ z; }
+    function I(x, y, z) { return y ^ (x | ~z); }
+    function FF(a, b, c, d, x, s, ac) {
+      a = addUnsigned(a, addUnsigned(addUnsigned(F(b, c, d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    }
+    function GG(a, b, c, d, x, s, ac) {
+      a = addUnsigned(a, addUnsigned(addUnsigned(G(b, c, d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    }
+    function HH(a, b, c, d, x, s, ac) {
+      a = addUnsigned(a, addUnsigned(addUnsigned(H(b, c, d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    }
+    function II(a, b, c, d, x, s, ac) {
+      a = addUnsigned(a, addUnsigned(addUnsigned(I(b, c, d), x), ac));
+      return addUnsigned(rotateLeft(a, s), b);
+    }
+    function convertToWordArray(str) {
+      var lWordCount;
+      var lMessageLength = str.length;
+      var lNumberOfWordsTempOne = lMessageLength + 8;
+      var lNumberOfWordsTempTwo = (lNumberOfWordsTempOne - (lNumberOfWordsTempOne % 64)) / 64;
+      var lNumberOfWords = (lNumberOfWordsTempTwo + 1) * 16;
+      var lWordArray = Array(lNumberOfWords - 1);
+      var lBytePosition = 0;
+      var lByteCount = 0;
+      while (lByteCount < lMessageLength) {
+        lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+        lBytePosition = (lByteCount % 4) * 8;
+        lWordArray[lWordCount] = (lWordArray[lWordCount] | (str.charCodeAt(lByteCount) << lBytePosition));
+        lByteCount++;
+      }
+      lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+      lBytePosition = (lByteCount % 4) * 8;
+      lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition);
+      lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
+      lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
+      return lWordArray;
+    }
+    function wordToHex(lValue) {
+      var WordToHexValue = '', WordToHexValueTemp = '', lByte, lCount;
+      for (lCount = 0; lCount <= 3; lCount++) {
+        lByte = (lValue >>> (lCount * 8)) & 255;
+        WordToHexValueTemp = '0' + lByte.toString(16);
+        WordToHexValue = WordToHexValue + WordToHexValueTemp.substr(WordToHexValueTemp.length - 2, 2);
+      }
+      return WordToHexValue;
+    }
+    function utf8Encode(str) {
+      str = str.replace(/\r\n/g, '\n');
+      var utftext = '';
+      for (var n = 0; n < str.length; n++) {
+        var c = str.charCodeAt(n);
+        if (c < 128) {
+          utftext += String.fromCharCode(c);
+        } else if (c > 127 && c < 2048) {
+          utftext += String.fromCharCode((c >> 6) | 192);
+          utftext += String.fromCharCode((c & 63) | 128);
+        } else {
+          utftext += String.fromCharCode((c >> 12) | 224);
+          utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+          utftext += String.fromCharCode((c & 63) | 128);
+        }
+      }
+      return utftext;
+    }
+    var x = Array();
+    var k, AA, BB, CC, DD, a, b, c, d;
+    var S11 = 7, S12 = 12, S13 = 17, S14 = 22;
+    var S21 = 5, S22 = 9, S23 = 14, S24 = 20;
+    var S31 = 4, S32 = 11, S33 = 16, S34 = 23;
+    var S41 = 6, S42 = 10, S43 = 15, S44 = 21;
+    string = utf8Encode(string);
+    x = convertToWordArray(string);
+    a = 0x67452301; b = 0xefcdab89; c = 0x98badcfe; d = 0x10325476;
+    for (k = 0; k < x.length; k += 16) {
+      AA = a; BB = b; CC = c; DD = d;
+      a = FF(a, b, c, d, x[k + 0], S11, 0xd76aa478);
+      d = FF(d, a, b, c, x[k + 1], S12, 0xe8c7b756);
+      c = FF(c, d, a, b, x[k + 2], S13, 0x242070db);
+      b = FF(b, c, d, a, x[k + 3], S14, 0xc1bdceee);
+      a = FF(a, b, c, d, x[k + 4], S11, 0xf57c0faf);
+      d = FF(d, a, b, c, x[k + 5], S12, 0x4787c62a);
+      c = FF(c, d, a, b, x[k + 6], S13, 0xa8304613);
+      b = FF(b, c, d, a, x[k + 7], S14, 0xfd469501);
+      a = FF(a, b, c, d, x[k + 8], S11, 0x698098d8);
+      d = FF(d, a, b, c, x[k + 9], S12, 0x8b44f7af);
+      c = FF(c, d, a, b, x[k + 10], S13, 0xffff5bb1);
+      b = FF(b, c, d, a, x[k + 11], S14, 0x895cd7be);
+      a = FF(a, b, c, d, x[k + 12], S11, 0x6b901122);
+      d = FF(d, a, b, c, x[k + 13], S12, 0xfd987193);
+      c = FF(c, d, a, b, x[k + 14], S13, 0xa679438e);
+      b = FF(b, c, d, a, x[k + 15], S14, 0x49b40821);
+      a = GG(a, b, c, d, x[k + 1], S21, 0xf61e2562);
+      d = GG(d, a, b, c, x[k + 6], S22, 0xc040b340);
+      c = GG(c, d, a, b, x[k + 11], S23, 0x265e5a51);
+      b = GG(b, c, d, a, x[k + 0], S24, 0xe9b6c7aa);
+      a = GG(a, b, c, d, x[k + 5], S21, 0xd62f105d);
+      d = GG(d, a, b, c, x[k + 10], S22, 0x2441453);
+      c = GG(c, d, a, b, x[k + 15], S23, 0xd8a1e681);
+      b = GG(b, c, d, a, x[k + 4], S24, 0xe7d3fbc8);
+      a = GG(a, b, c, d, x[k + 9], S21, 0x21e1cde6);
+      d = GG(d, a, b, c, x[k + 14], S22, 0xc33707d6);
+      c = GG(c, d, a, b, x[k + 3], S23, 0xf4d50d87);
+      b = GG(b, c, d, a, x[k + 8], S24, 0x455a14ed);
+      a = GG(a, b, c, d, x[k + 13], S21, 0xa9e3e905);
+      d = GG(d, a, b, c, x[k + 2], S22, 0xfcefa3f8);
+      c = GG(c, d, a, b, x[k + 7], S23, 0x676f02d9);
+      b = GG(b, c, d, a, x[k + 12], S24, 0x8d2a4c8a);
+      a = HH(a, b, c, d, x[k + 5], S31, 0xfffa3942);
+      d = HH(d, a, b, c, x[k + 8], S32, 0x8771f681);
+      c = HH(c, d, a, b, x[k + 11], S33, 0x6d9d6122);
+      b = HH(b, c, d, a, x[k + 14], S34, 0xfde5380c);
+      a = HH(a, b, c, d, x[k + 1], S31, 0xa4beea44);
+      d = HH(d, a, b, c, x[k + 4], S32, 0x4bdecfa9);
+      c = HH(c, d, a, b, x[k + 7], S33, 0xf6bb4b60);
+      b = HH(b, c, d, a, x[k + 10], S34, 0xbebfbc70);
+      a = HH(a, b, c, d, x[k + 13], S31, 0x289b7ec6);
+      d = HH(d, a, b, c, x[k + 0], S32, 0xeaa127fa);
+      c = HH(c, d, a, b, x[k + 3], S33, 0xd4ef3085);
+      b = HH(b, c, d, a, x[k + 6], S34, 0x4881d05);
+      a = HH(a, b, c, d, x[k + 9], S31, 0xd9d4d039);
+      d = HH(d, a, b, c, x[k + 12], S32, 0xe6db99e5);
+      c = HH(c, d, a, b, x[k + 15], S33, 0x1fa27cf8);
+      b = HH(b, c, d, a, x[k + 2], S34, 0xc4ac5665);
+      a = II(a, b, c, d, x[k + 0], S41, 0xf4292244);
+      d = II(d, a, b, c, x[k + 7], S42, 0x432aff97);
+      c = II(c, d, a, b, x[k + 14], S43, 0xab9423a7);
+      b = II(b, c, d, a, x[k + 5], S44, 0xfc93a039);
+      a = II(a, b, c, d, x[k + 12], S41, 0x655b59c3);
+      d = II(d, a, b, c, x[k + 3], S42, 0x8f0ccc92);
+      c = II(c, d, a, b, x[k + 10], S43, 0xffeff47d);
+      b = II(b, c, d, a, x[k + 1], S44, 0x85845dd1);
+      a = II(a, b, c, d, x[k + 8], S41, 0x6fa87e4f);
+      d = II(d, a, b, c, x[k + 15], S42, 0xfe2ce6e0);
+      c = II(c, d, a, b, x[k + 6], S43, 0xa3014314);
+      b = II(b, c, d, a, x[k + 13], S44, 0x4e0811a1);
+      a = II(a, b, c, d, x[k + 4], S41, 0xf7537e82);
+      d = II(d, a, b, c, x[k + 11], S42, 0xbd3af235);
+      c = II(c, d, a, b, x[k + 2], S43, 0x2ad7d2bb);
+      b = II(b, c, d, a, x[k + 9], S44, 0xeb86d391);
+      a = addUnsigned(a, AA);
+      b = addUnsigned(b, BB);
+      c = addUnsigned(c, CC);
+      d = addUnsigned(d, DD);
+    }
+    var temp = wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d);
+    return temp.toLowerCase();
   }
 
   function getBackupFileName() {
@@ -1897,7 +2069,8 @@ html.emby-native-overlay-open .dropdown-menu { z-index:2147483600 !important; }
   margin: 0; padding-left: .55em; border-left: .22em solid var(--e-accent);
   line-height: 1.2;
 }
-.emby-preview-sniff-btn {
+.emby-preview-sniff-btn,
+.emby-preview-video-btn {
   position: static !important;
   opacity: 0.85 !important;
   visibility: visible !important;
@@ -1915,12 +2088,134 @@ html.emby-native-overlay-open .dropdown-menu { z-index:2147483600 !important; }
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
 }
-.emby-preview-sniff-btn:hover {
+.emby-preview-sniff-btn:hover,
+.emby-preview-video-btn:hover,
+.emby-preview-video-btn.is-active {
   opacity: 1 !important;
   transform: scale(1.08);
   color: #38bdf8 !important;
   border-color: rgba(56, 189, 248, 0.6) !important;
   box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35);
+}
+/* 详情页预览视频弹窗（悬停 video_template 按钮触发，尺寸根据视频原生分辨率自适应） */
+.emby-detail-video-pop {
+  position: fixed;
+  z-index: 99999;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(18, 22, 34, 0.94);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 0.22s cubic-bezier(0.2, 0, 0.2, 1), transform 0.22s cubic-bezier(0.2, 0, 0.2, 1);
+  pointer-events: none;
+}
+.emby-detail-video-pop.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.emby-detail-video-pop .edv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+}
+.emby-detail-video-pop .edv-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+.emby-detail-video-pop .edv-icon {
+  font-size: 17px;
+  color: #38bdf8;
+  vertical-align: middle;
+}
+.emby-detail-video-pop .edv-code {
+  color: #f1f5f9;
+}
+.emby-detail-video-pop .edv-res-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.emby-detail-video-pop .edv-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+.emby-detail-video-pop .edv-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+.emby-detail-video-pop .edv-body {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+.emby-detail-video-pop .edv-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  background: #000;
+  object-fit: contain;
+}
+.emby-detail-video-pop .edv-loading,
+.emby-detail-video-pop .edv-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(10, 14, 22, 0.88);
+  color: #94a3b8;
+  font-size: 13px;
+  z-index: 5;
+}
+.emby-detail-video-pop .edv-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(56, 189, 248, 0.2);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: edv-spin 0.8s linear infinite;
+}
+@keyframes edv-spin {
+  to { transform: rotate(360deg); }
+}
+.emby-detail-video-pop .edv-err-icon {
+  font-size: 26px;
+  color: #f87171;
 }
 .emby-native-preview .preview-images {
   display:flex !important; gap:.7em; overflow-x:auto; padding-bottom:.6em; scrollbar-width:thin;
@@ -2610,10 +2905,20 @@ html.emby-skin.emby-dynamic-focus #emby-top250-panel .movie-list.emby-dynamic-fo
   box-shadow:0 18px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12);
 }
 #emby-df-preview .emby-df-preview-inner::after {
-  content:''; position:absolute; inset:0; pointer-events:none;
+  content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
   background:linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,0) 42%);
 }
+#emby-df-preview .dfp-media-wrap {
+  position:relative; width:100%; overflow:hidden; background:#000;
+}
 #emby-df-preview img { display:block; width:100%; height:auto; }
+#emby-df-preview .dfp-video {
+  position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;
+  opacity:0; transition:opacity .35s ease; z-index:1; pointer-events:none;
+}
+#emby-df-preview .dfp-video.playing {
+  opacity:1;
+}
 /* ====== 首页视图切换标签栏（首页 / 收藏夹） ======
  * pill 样式切换按钮，置于内容区最顶部，仅 EMBY 皮肤主页显示 */
 .emby-home-tabs {
@@ -7320,6 +7625,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     dfPreview: 'javdbEmbyDfPreview',
     dfPreviewDelay: 'javdbEmbyDfDelay',
     dfPreviewSize: 'javdbEmbyDfSize',
+    dfVideoPreview: 'javdbEmbyDfVideoPreview',
+    dfVideoDelay: 'javdbEmbyDfVideoDelay',
     showNotes: 'javdbEmbyShowNotes',
     expandCoact: 'javdbEmbyExpandCoact',
     style: 'javdbEmbyStyle',
@@ -8612,175 +8919,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const SALT = '71cf27bb3c0bcdf207b64abecddc970098c7421ee7203b9cdae54478478a199e7d5a6e1a57691123c1a931c057842fb73ba3b3c83bcd69c17ccf174081e3d8aa';
     const PAGE_SIZE = 20;
 
-    // 内嵌纯 JS MD5 算法（零外部 CDN 依赖）
-    function coreMd5(string) {
-      function rotateLeft(lValue, iShiftBits) {
-        return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
-      }
-      function addUnsigned(lX, lY) {
-        var lX4, lY4, lX8, lY8, lResult;
-        lX8 = lX & 0x80000000; lY8 = lY & 0x80000000;
-        lX4 = lX & 0x40000000; lY4 = lY & 0x40000000;
-        lResult = (lX & 0x3fffffff) + (lY & 0x3fffffff);
-        if (lX4 & lY4) return lResult ^ 0x80000000 ^ lX8 ^ lY8;
-        if (lX4 | lY4) {
-          if (lResult & 0x40000000) return lResult ^ 0xc0000000 ^ lX8 ^ lY8;
-          return lResult ^ 0x40000000 ^ lX8 ^ lY8;
-        }
-        return lResult ^ lX8 ^ lY8;
-      }
-      function F(x, y, z) { return (x & y) | (~x & z); }
-      function G(x, y, z) { return (x & z) | (y & ~z); }
-      function H(x, y, z) { return x ^ y ^ z; }
-      function I(x, y, z) { return y ^ (x | ~z); }
-      function FF(a, b, c, d, x, s, ac) {
-        a = addUnsigned(a, addUnsigned(addUnsigned(F(b, c, d), x), ac));
-        return addUnsigned(rotateLeft(a, s), b);
-      }
-      function GG(a, b, c, d, x, s, ac) {
-        a = addUnsigned(a, addUnsigned(addUnsigned(G(b, c, d), x), ac));
-        return addUnsigned(rotateLeft(a, s), b);
-      }
-      function HH(a, b, c, d, x, s, ac) {
-        a = addUnsigned(a, addUnsigned(addUnsigned(H(b, c, d), x), ac));
-        return addUnsigned(rotateLeft(a, s), b);
-      }
-      function II(a, b, c, d, x, s, ac) {
-        a = addUnsigned(a, addUnsigned(addUnsigned(I(b, c, d), x), ac));
-        return addUnsigned(rotateLeft(a, s), b);
-      }
-      function convertToWordArray(str) {
-        var lWordCount;
-        var lMessageLength = str.length;
-        var lNumberOfWordsTempOne = lMessageLength + 8;
-        var lNumberOfWordsTempTwo = (lNumberOfWordsTempOne - (lNumberOfWordsTempOne % 64)) / 64;
-        var lNumberOfWords = (lNumberOfWordsTempTwo + 1) * 16;
-        var lWordArray = Array(lNumberOfWords - 1);
-        var lBytePosition = 0;
-        var lByteCount = 0;
-        while (lByteCount < lMessageLength) {
-          lWordCount = (lByteCount - (lByteCount % 4)) / 4;
-          lBytePosition = (lByteCount % 4) * 8;
-          lWordArray[lWordCount] = (lWordArray[lWordCount] | (str.charCodeAt(lByteCount) << lBytePosition));
-          lByteCount++;
-        }
-        lWordCount = (lByteCount - (lByteCount % 4)) / 4;
-        lBytePosition = (lByteCount % 4) * 8;
-        lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition);
-        lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
-        lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
-        return lWordArray;
-      }
-      function wordToHex(lValue) {
-        var WordToHexValue = '', WordToHexValueTemp = '', lByte, lCount;
-        for (lCount = 0; lCount <= 3; lCount++) {
-          lByte = (lValue >>> (lCount * 8)) & 255;
-          WordToHexValueTemp = '0' + lByte.toString(16);
-          WordToHexValue = WordToHexValue + WordToHexValueTemp.substr(WordToHexValueTemp.length - 2, 2);
-        }
-        return WordToHexValue;
-      }
-      function utf8Encode(str) {
-        str = str.replace(/\r\n/g, '\n');
-        var utftext = '';
-        for (var n = 0; n < str.length; n++) {
-          var c = str.charCodeAt(n);
-          if (c < 128) {
-            utftext += String.fromCharCode(c);
-          } else if (c > 127 && c < 2048) {
-            utftext += String.fromCharCode((c >> 6) | 192);
-            utftext += String.fromCharCode((c & 63) | 128);
-          } else {
-            utftext += String.fromCharCode((c >> 12) | 224);
-            utftext += String.fromCharCode(((c >> 6) & 63) | 128);
-            utftext += String.fromCharCode((c & 63) | 128);
-          }
-        }
-        return utftext;
-      }
-      var x = Array();
-      var k, AA, BB, CC, DD, a, b, c, d;
-      var S11 = 7, S12 = 12, S13 = 17, S14 = 22;
-      var S21 = 5, S22 = 9, S23 = 14, S24 = 20;
-      var S31 = 4, S32 = 11, S33 = 16, S34 = 23;
-      var S41 = 6, S42 = 10, S43 = 15, S44 = 21;
-      string = utf8Encode(string);
-      x = convertToWordArray(string);
-      a = 0x67452301; b = 0xefcdab89; c = 0x98badcfe; d = 0x10325476;
-      for (k = 0; k < x.length; k += 16) {
-        AA = a; BB = b; CC = c; DD = d;
-        a = FF(a, b, c, d, x[k + 0], S11, 0xd76aa478);
-        d = FF(d, a, b, c, x[k + 1], S12, 0xe8c7b756);
-        c = FF(c, d, a, b, x[k + 2], S13, 0x242070db);
-        b = FF(b, c, d, a, x[k + 3], S14, 0xc1bdceee);
-        a = FF(a, b, c, d, x[k + 4], S11, 0xf57c0faf);
-        d = FF(d, a, b, c, x[k + 5], S12, 0x4787c62a);
-        c = FF(c, d, a, b, x[k + 6], S13, 0xa8304613);
-        b = FF(b, c, d, a, x[k + 7], S14, 0xfd469501);
-        a = FF(a, b, c, d, x[k + 8], S11, 0x698098d8);
-        d = FF(d, a, b, c, x[k + 9], S12, 0x8b44f7af);
-        c = FF(c, d, a, b, x[k + 10], S13, 0xffff5bb1);
-        b = FF(b, c, d, a, x[k + 11], S14, 0x895cd7be);
-        a = FF(a, b, c, d, x[k + 12], S11, 0x6b901122);
-        d = FF(d, a, b, c, x[k + 13], S12, 0xfd987193);
-        c = FF(c, d, a, b, x[k + 14], S13, 0xa679438e);
-        b = FF(b, c, d, a, x[k + 15], S14, 0x49b40821);
-        a = GG(a, b, c, d, x[k + 1], S21, 0xf61e2562);
-        d = GG(d, a, b, c, x[k + 6], S22, 0xc040b340);
-        c = GG(c, d, a, b, x[k + 11], S23, 0x265e5a51);
-        b = GG(b, c, d, a, x[k + 0], S24, 0xe9b6c7aa);
-        a = GG(a, b, c, d, x[k + 5], S21, 0xd62f105d);
-        d = GG(d, a, b, c, x[k + 10], S22, 0x2441453);
-        c = GG(c, d, a, b, x[k + 15], S23, 0xd8a1e681);
-        b = GG(b, c, d, a, x[k + 4], S24, 0xe7d3fbc8);
-        a = GG(a, b, c, d, x[k + 9], S21, 0x21e1cde6);
-        d = GG(d, a, b, c, x[k + 14], S22, 0xc33707d6);
-        c = GG(c, d, a, b, x[k + 3], S23, 0xf4d50d87);
-        b = GG(b, c, d, a, x[k + 8], S24, 0x455a14ed);
-        a = GG(a, b, c, d, x[k + 13], S21, 0xa9e3e905);
-        d = GG(d, a, b, c, x[k + 2], S22, 0xfcefa3f8);
-        c = GG(c, d, a, b, x[k + 7], S23, 0x676f02d9);
-        b = GG(b, c, d, a, x[k + 12], S24, 0x8d2a4c8a);
-        a = HH(a, b, c, d, x[k + 5], S31, 0xfffa3942);
-        d = HH(d, a, b, c, x[k + 8], S32, 0x8771f681);
-        c = HH(c, d, a, b, x[k + 11], S33, 0x6d9d6122);
-        b = HH(b, c, d, a, x[k + 14], S34, 0xfde5380c);
-        a = HH(a, b, c, d, x[k + 1], S31, 0xa4beea44);
-        d = HH(d, a, b, c, x[k + 4], S32, 0x4bdecfa9);
-        c = HH(c, d, a, b, x[k + 7], S33, 0xf6bb4b60);
-        b = HH(b, c, d, a, x[k + 10], S34, 0xbebfbc70);
-        a = HH(a, b, c, d, x[k + 13], S31, 0x289b7ec6);
-        d = HH(d, a, b, c, x[k + 0], S32, 0xeaa127fa);
-        c = HH(c, d, a, b, x[k + 3], S33, 0xd4ef3085);
-        b = HH(b, c, d, a, x[k + 6], S34, 0x4881d05);
-        a = HH(a, b, c, d, x[k + 9], S31, 0xd9d4d039);
-        d = HH(d, a, b, c, x[k + 12], S32, 0xe6db99e5);
-        c = HH(c, d, a, b, x[k + 15], S33, 0x1fa27cf8);
-        b = HH(b, c, d, a, x[k + 2], S34, 0xc4ac5665);
-        a = II(a, b, c, d, x[k + 0], S41, 0xf4292244);
-        d = II(d, a, b, c, x[k + 7], S42, 0x432aff97);
-        c = II(c, d, a, b, x[k + 14], S43, 0xab9423a7);
-        b = II(b, c, d, a, x[k + 5], S44, 0xfc93a039);
-        a = II(a, b, c, d, x[k + 12], S41, 0x655b59c3);
-        d = II(d, a, b, c, x[k + 3], S42, 0x8f0ccc92);
-        c = II(c, d, a, b, x[k + 10], S43, 0xffeff47d);
-        b = II(b, c, d, a, x[k + 1], S44, 0x85845dd1);
-        a = II(a, b, c, d, x[k + 8], S41, 0x6fa87e4f);
-        d = II(d, a, b, c, x[k + 15], S42, 0xfe2ce6e0);
-        c = II(c, d, a, b, x[k + 6], S43, 0xa3014314);
-        b = II(b, c, d, a, x[k + 13], S44, 0x4e0811a1);
-        a = II(a, b, c, d, x[k + 4], S41, 0xf7537e82);
-        d = II(d, a, b, c, x[k + 11], S42, 0xbd3af235);
-        c = II(c, d, a, b, x[k + 2], S43, 0x2ad7d2bb);
-        b = II(b, c, d, a, x[k + 9], S44, 0xeb86d391);
-        a = addUnsigned(a, AA);
-        b = addUnsigned(b, BB);
-        c = addUnsigned(c, CC);
-        d = addUnsigned(d, DD);
-      }
-      var temp = wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d);
-      return temp.toLowerCase();
-    }
+    // 复用全局 coreMd5 纯 JS 算法（零外部 CDN 依赖）
 
     function getSignature() {
       const curr = Math.floor(Date.now() / 1000);
@@ -13235,6 +13374,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<div class="jhs-qs-control"><input type="checkbox" id="qs-plugin-dfPreview" class="mini-switch"></div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">悬停预览视频<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">封面大图弹出后，若持续悬停超过设定阈值，自动静音循环播放预览片段（双源容灾）</span></span></div>' +
+            '<div class="jhs-qs-control"><input type="checkbox" id="qs-dfvideopreview" class="mini-switch"></div>' +
+          '</div>' +
+          '<div class="jhs-qs-row">' +
             '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">外部播放站点<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在番号详情页提供多源跳转播放（MissAV / Jable / 123AV / 自定义等）</span></span></div>' +
             '<div class="jhs-qs-control"><input type="checkbox" id="qs-plugin-otherSite" class="mini-switch"></div>' +
           '</div>' +
@@ -13337,6 +13480,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         });
       }
     });
+
+    const qDfVideoPreview = pop.querySelector('#qs-dfvideopreview');
+    if (qDfVideoPreview) {
+      qDfVideoPreview.addEventListener('change', function () {
+        localStorage.setItem(SET_KEYS.dfVideoPreview, qDfVideoPreview.checked ? '1' : '0');
+        if (!qDfVideoPreview.checked) stopDfVideoPreview();
+        syncSettingsControls();
+      });
+    }
 
     const qLayout = pop.querySelector('#qs-layout');
     if (qLayout) {
@@ -13516,6 +13668,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<div class="jhs-item-row">' +
               '<div class="jhs-item-info"><div class="jhs-item-name">悬停大图大小 (<span id="full-dfsize-val">53%</span>)</div><div class="jhs-item-desc">弹出预览气泡占屏幕宽度的比例</div></div>' +
               '<div style="width:160px;"><input type="range" id="full-dfsize" min="25" max="85" step="1" style="width:100%;"></div>' +
+            '</div>' +
+            '<div class="jhs-item-row">' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">悬停预览视频</div><div class="jhs-item-desc">封面弹窗开启后，持续悬停自动无缝播放预览小视频（MissAV/123AV双源容灾）</div></div>' +
+              '<div><input type="checkbox" id="full-dfvideopreview" class="mini-switch"></div>' +
+            '</div>' +
+            '<div class="jhs-item-row">' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">预览视频延迟 (<span id="full-dfvideodelay-val">0.6s</span>)</div><div class="jhs-item-desc">封面弹出后，持续悬停等待开始加载播放视频的时长</div></div>' +
+              '<div style="width:160px;"><input type="range" id="full-dfvideodelay" min="0.1" max="3" step="0.1" style="width:100%;"></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
               '<div class="jhs-item-info"><div class="jhs-item-name">收藏夹随机背景</div><div class="jhs-item-desc">收藏夹底图使用库内随机番号海报墙</div></div>' +
@@ -13824,6 +13984,23 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       dfPopupHide();
       syncSettingsControls();
     });
+    const fDfVideo = mask.querySelector('#full-dfvideopreview');
+    if (fDfVideo) {
+      fDfVideo.addEventListener('change', function () {
+        localStorage.setItem(SET_KEYS.dfVideoPreview, fDfVideo.checked ? '1' : '0');
+        if (!fDfVideo.checked) stopDfVideoPreview();
+        syncSettingsControls();
+      });
+    }
+    const fDfVDelay = mask.querySelector('#full-dfvideodelay'), fDfVDelayV = mask.querySelector('#full-dfvideodelay-val');
+    if (fDfVDelay) {
+      fDfVDelay.addEventListener('input', function () {
+        const v = Math.round((parseFloat(fDfVDelay.value) || 0.6) * 10) / 10;
+        if (fDfVDelayV) fDfVDelayV.textContent = v.toFixed(1) + 's';
+        localStorage.setItem(SET_KEYS.dfVideoDelay, String(v));
+        syncSettingsControls();
+      });
+    }
     const fRBg = mask.querySelector('#full-randombg');
     fRBg.addEventListener('change', function () {
       localStorage.setItem(SET_KEYS.randomBg, fRBg.checked ? '1' : '0');
@@ -14936,6 +15113,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     localStorage.removeItem(SET_KEYS.dfPreview);
     localStorage.removeItem(SET_KEYS.dfPreviewDelay);
     localStorage.removeItem(SET_KEYS.dfPreviewSize);
+    localStorage.removeItem(SET_KEYS.dfVideoPreview);
+    localStorage.removeItem(SET_KEYS.dfVideoDelay);
     localStorage.removeItem(SET_KEYS.showNotes);
     localStorage.removeItem(SET_KEYS.expandCoact);
     PLUGIN_REGISTRY.forEach(function (pl) {
@@ -14982,6 +15161,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (qR) qR.checked = localStorage.getItem(SET_KEYS.randomBg) !== '0';
       const qN = pop.querySelector('#qs-show-notes');
       if (qN) qN.checked = localStorage.getItem(SET_KEYS.showNotes) !== '0';
+      const qv = pop.querySelector('#qs-dfvideopreview');
+      if (qv) qv.checked = localStorage.getItem(SET_KEYS.dfVideoPreview) === '1';
     }
 
     const blur = parseInt(localStorage.getItem(SET_KEYS.blur), 10);
@@ -15041,6 +15222,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const dsz = Math.round(dfPreviewSizeVw() * 100);
       const fdsz = mask.querySelector('#full-dfsize'), fdszv = mask.querySelector('#full-dfsize-val');
       if (fdsz) { fdsz.value = dsz; fdszv.textContent = dsz + '%'; }
+
+      const fv = mask.querySelector('#full-dfvideopreview');
+      if (fv) fv.checked = localStorage.getItem(SET_KEYS.dfVideoPreview) === '1';
+
+      const vd = parseFloat(localStorage.getItem(SET_KEYS.dfVideoDelay) || '0.6');
+      const vdVal = (!isNaN(vd) && vd >= 0.1 && vd <= 3) ? vd : 0.6;
+      const fvd = mask.querySelector('#full-dfvideodelay'), fvdv = mask.querySelector('#full-dfvideodelay-val');
+      if (fvd) { fvd.value = vdVal; fvdv.textContent = vdVal.toFixed(1) + 's'; }
 
       const frb = mask.querySelector('#full-randombg');
       if (frb) frb.checked = localStorage.getItem(SET_KEYS.randomBg) !== '0';
@@ -15357,7 +15546,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
    * - 位置实时跟随光标重新计算：气泡永远不盖住鼠标，上下随空间智能择向
    * - 底部黑底信息条镜像标准网格卡片：番号强标题 + 标题文字
    * ===================================================================== */
-  const dfPopup = { item: null, x: 0, y: 0, timer: 0, raf: 0, hidden: true, wh: null, mouseBound: 0, scrollBound: 0 };
+  const dfPopup = { item: null, x: 0, y: 0, timer: 0, videoTimer: 0, activeCode: null, raf: 0, hidden: true, wh: null, mouseBound: 0, scrollBound: 0 };
 
   function dfPreviewOn() {
     return (localStorage.getItem(SET_KEYS.dfPreview) || '1') !== '0';
@@ -15375,15 +15564,358 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     return Math.max(0.25, Math.min(0.85, v / 100));
   }
 
+  /* =======================================================================
+   * 封面大图视频预览控制器（双源容灾：MissAV / NjavTV 主源 + 123AV 备用源）
+   * ===================================================================== */
+  const dfVideoCache = new Map(); // cleanCode -> { type: 'direct'|'blob', url } | false
+  let dfVideoToken = 0;
+
+  function dfVideoPreviewOn() {
+    return localStorage.getItem(SET_KEYS.dfVideoPreview) === '1';
+  }
+
+  function dfVideoDelayMs() {
+    const v = parseFloat(localStorage.getItem(SET_KEYS.dfVideoDelay));
+    if (isNaN(v)) return 150;
+    return Math.max(0.05, Math.min(0.5, v)) * 1000;
+  }
+
+  function trimVideoCache() {
+    if (dfVideoCache.size <= 40) return;
+    const firstKey = dfVideoCache.keys().next().value;
+    const item = dfVideoCache.get(firstKey);
+    if (item && item.type === 'blob' && item.url) {
+      try { URL.revokeObjectURL(item.url); } catch (e) {}
+    }
+    dfVideoCache.delete(firstKey);
+  }
+
+  // 123AV 原生 fetch 直连：自带 Access-Control-Allow-Origin: *，原生 fetch 最快、零权限拦截、零 TM 扩展 IPC 序列化开销
+  function fetch123AvBlob(url, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      const tmLimit = timeoutMs || 3500;
+      let finished = false;
+      const timer = setTimeout(function () {
+        if (!finished) {
+          finished = true;
+          reject(new Error('123AV Timeout'));
+        }
+      }, tmLimit);
+
+      fetch(url, { referrerPolicy: 'no-referrer' })
+        .then(function (res) {
+          if (finished) return;
+          if (!res.ok) throw new Error('123AV Status ' + res.status);
+          return res.blob();
+        })
+        .then(function (blob) {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          if (!blob || blob.size < 1000) {
+            reject(new Error('123AV Invalid size: ' + (blob ? blob.size : 0)));
+            return;
+          }
+          resolve(new Blob([blob], { type: 'video/mp4' }));
+        })
+        .catch(function (err) {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
+  }
+
+  // MissAV / NjavTV (fourhoi)：必须经 GM_xmlhttpRequest 带 Referer: https://missav.ai/
+  function fetchMissAvBlob(url, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      const tmLimit = timeoutMs || 3500;
+      let finished = false;
+
+      function done(err, res) {
+        if (finished) return;
+        finished = true;
+        if (timer) { clearTimeout(timer); timer = 0; }
+        if (err) reject(err);
+        else resolve(res);
+      }
+
+      let timer = setTimeout(function () {
+        done(new Error('MissAV Timeout'));
+      }, tmLimit);
+
+      if (typeof GM_xmlhttpRequest === 'function') {
+        try {
+          GM_xmlhttpRequest({
+            method: 'GET',
+            url: url,
+            responseType: 'arraybuffer',
+            headers: {
+              'Referer': 'https://missav.ai/'
+            },
+            timeout: tmLimit,
+            onload: function (res) {
+              if (res.status >= 200 && res.status < 300 && res.response) {
+                const blob = new Blob([res.response], { type: 'video/mp4' });
+                if (blob.size < 1000) {
+                  done(new Error('MissAV Invalid size: ' + blob.size));
+                  return;
+                }
+                done(null, blob);
+              } else {
+                done(new Error('MissAV Status ' + res.status));
+              }
+            },
+            onerror: function (err) { done(err || new Error('MissAV Network error')); },
+            ontimeout: function () { done(new Error('MissAV Timeout')); }
+          });
+          return;
+        } catch (e) {}
+      }
+
+      fetch(url, { referrerPolicy: 'no-referrer' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('MissAV Status ' + res.status);
+          return res.arrayBuffer();
+        })
+        .then(function (buf) {
+          if (buf.byteLength < 1000) throw new Error('MissAV Invalid size: ' + buf.byteLength);
+          done(null, new Blob([buf], { type: 'video/mp4' }));
+        })
+        .catch(function (err) { done(err); });
+    });
+  }
+
+  function fetchPreviewBlob(code) {
+    const cleanCode = (code || '').trim().toLowerCase();
+    const hash = coreMd5(cleanCode).slice(0, 2);
+    const u123av = 'https://icdn.123av.me/preview/' + hash + '/' + encodeURIComponent(cleanCode) + '/preview.png';
+    const uMissav = 'https://fourhoi.com/' + encodeURIComponent(cleanCode) + '/preview.mp4';
+
+    return new Promise(function (resolve, reject) {
+      let resolved = false;
+      let settled = 0;
+
+      function onBlob(blob, srcName) {
+        if (resolved) return;
+        resolved = true;
+        resolve({ blob: blob, source: srcName });
+      }
+
+      function onError(err, srcName) {
+        settled++;
+        if (settled >= 2 && !resolved) {
+          reject(new Error('All preview sources unavailable'));
+        }
+      }
+
+      // 源1：123AV 原生 fetch 直连（CORS *，极速 Cloudflare CDN）
+      fetch123AvBlob(u123av, 3500)
+        .then(function (b) { onBlob(b, '123AV'); })
+        .catch(function (err) { onError(err, '123AV'); });
+
+      // 源2：MissAV / NjavTV（fourhoi，经 GM_xmlhttpRequest 代理带 Referer）
+      fetchMissAvBlob(uMissav, 3500)
+        .then(function (b) { onBlob(b, 'MissAV'); })
+        .catch(function (err) { onError(err, 'MissAV'); });
+    });
+  }
+
+  // 统一的预览视频拉取器（全局单例缓存共享 + 双源极速并发竞速）
+  async function getPreviewVideoBlobUrl(rawCode) {
+    const code = (rawCode || '').trim().toLowerCase();
+    if (!code) return null;
+
+    // 1. 检查本地会话缓存（秒级命中，避免重复网络请求）
+    if (dfVideoCache.has(code)) {
+      const entry = dfVideoCache.get(code);
+      if (entry && entry.url) {
+        console.log('[JAVDB→Emby Video] Hit cache for:', code);
+        return entry.url;
+      }
+      if (entry === false) return null; // 明确无视频源
+    }
+
+    // 2. 双源并发极速竞速：123AV 与 MissAV 并行拉取
+    console.log('[JAVDB→Emby Video] Concurrently requesting preview video for:', code);
+    try {
+      const res = await fetchPreviewBlob(code);
+      const blobUrl = URL.createObjectURL(res.blob);
+      dfVideoCache.set(code, { type: 'blob', url: blobUrl });
+      trimVideoCache();
+      console.log('[JAVDB→Emby Video] ' + res.source + ' preview fetched successfully for:', code);
+      return blobUrl;
+    } catch (err) {
+      console.log('[JAVDB→Emby Video] No preview video available for:', code, err && err.message ? err.message : '');
+      dfVideoCache.set(code, false);
+      trimVideoCache();
+      return null;
+    }
+  }
+
+  function tryPlayDirectSource(video, src, token) {
+    return new Promise(function (resolve) {
+      let resolved = false;
+      let timer = 0;
+
+      function cleanup() {
+        video.removeEventListener('playing', onPlaying);
+        video.removeEventListener('canplay', onReady);
+        video.removeEventListener('loadeddata', onReady);
+        video.removeEventListener('error', onError);
+        if (timer) { clearTimeout(timer); timer = 0; }
+      }
+
+      function finish(ok) {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        if (ok && (dfPopup.hidden || dfVideoToken !== token)) {
+          try { video.pause(); } catch (e) {}
+          resolve(false);
+          return;
+        }
+        resolve(ok);
+      }
+
+      function onPlaying() {
+        if (dfPopup.hidden || dfVideoToken !== token) {
+          try { video.pause(); } catch (e) {}
+          finish(false);
+          return;
+        }
+        video.classList.add('playing');
+        finish(true);
+      }
+
+      function onReady() {
+        if (dfPopup.hidden || dfVideoToken !== token) {
+          try { video.pause(); } catch (e) {}
+          finish(false);
+          return;
+        }
+        video.muted = true;
+        video.defaultMuted = true;
+        video.volume = 0;
+        video.play().then(function () {
+          if (dfPopup.hidden || dfVideoToken !== token) {
+            try { video.pause(); } catch (e) {}
+            finish(false);
+            return;
+          }
+          video.classList.add('playing');
+          finish(true);
+        }).catch(function (err) {
+          console.warn('[JAVDB→Emby Video] video.play() error:', err);
+          finish(false);
+        });
+      }
+
+      function onError(err) {
+        console.warn('[JAVDB→Emby Video] video error event for src:', src, err);
+        finish(false);
+      }
+
+      video.addEventListener('playing', onPlaying);
+      video.addEventListener('canplay', onReady);
+      video.addEventListener('loadeddata', onReady);
+      video.addEventListener('error', onError);
+
+      timer = setTimeout(function () {
+        console.warn('[JAVDB→Emby Video] Video load timeout for src:', src);
+        finish(false);
+      }, 4000);
+
+      video.muted = true;
+      video.defaultMuted = true;
+      video.volume = 0;
+      video.referrerPolicy = 'no-referrer';
+      video.src = src;
+      video.load();
+    });
+  }
+
+  async function loadAndPlayDfVideo(p, code, token) {
+    const video = p.querySelector('.dfp-video');
+    if (!video) return;
+
+    const blobUrl = await getPreviewVideoBlobUrl(code);
+    if (!blobUrl) return;
+
+    if (dfPopup.hidden || dfVideoToken !== token) {
+      return;
+    }
+    const ok = await tryPlayDirectSource(video, blobUrl, token);
+    if (ok) {
+      console.log('[JAVDB→Emby Video] Direct playback succeeded for:', code);
+    }
+  }
+
+  function stopDfVideoPreview(p) {
+    if (dfPopup.videoTimer) {
+      clearTimeout(dfPopup.videoTimer);
+      dfPopup.videoTimer = 0;
+    }
+    dfVideoToken++;
+    dfPopup.activeCode = null;
+    const container = p || document.getElementById('emby-df-preview');
+    if (!container) return;
+    const video = container.querySelector('.dfp-video');
+    if (video) {
+      try { video.pause(); } catch (e) {}
+      video.classList.remove('playing');
+      video.removeAttribute('src');
+      try { video.load(); } catch (e) {}
+    }
+  }
+
+  function startDfVideoPreview(p, item) {
+    if (!dfVideoPreviewOn()) {
+      console.log('[JAVDB→Emby Video] Video preview feature is disabled in settings');
+      return;
+    }
+    const rawCode = extractCodeFromItem(item);
+    if (!rawCode) {
+      console.warn('[JAVDB→Emby Video] Could not extract video code from hovered card:', item);
+      return;
+    }
+    const code = rawCode.trim().toLowerCase();
+    if (!code) return;
+
+    if (dfPopup.activeCode === code) return;
+    stopDfVideoPreview(p);
+    dfPopup.activeCode = code;
+
+    const currentToken = ++dfVideoToken;
+    const delay = dfVideoDelayMs();
+
+    console.log('[JAVDB→Emby Video] Hover triggered on:', code, 'Delay before playback:', delay + 'ms');
+
+    dfPopup.videoTimer = setTimeout(function () {
+      dfPopup.videoTimer = 0;
+      if (dfPopup.hidden || dfVideoToken !== currentToken) return;
+      loadAndPlayDfVideo(p, code, currentToken);
+    }, delay);
+  }
+
   function ensureDfPreview() {
     let p = document.getElementById('emby-df-preview');
+    if (p && !p.querySelector('.dfp-video')) {
+      p.remove();
+      p = null;
+    }
     if (p) return p;
-    const scrim = document.createElement('div');
+    const scrim = document.getElementById('emby-df-scrim') || document.createElement('div');
     scrim.id = 'emby-df-scrim';
-    document.body.appendChild(scrim);
+    if (!scrim.parentNode) document.body.appendChild(scrim);
     p = document.createElement('div');
     p.id = 'emby-df-preview';
-    p.innerHTML = '<div class="emby-df-preview-inner"><img alt="">' +
+    p.innerHTML = '<div class="emby-df-preview-inner">' +
+      '<div class="dfp-media-wrap">' +
+        '<img alt="">' +
+        '<video class="dfp-video" loop muted playsinline referrerpolicy="no-referrer"></video>' +
+      '</div>' +
       '<div class="emby-df-preview-info"><div class="dfp-title"></div><div class="dfp-meta"></div><div class="dfp-extra"></div></div>' +
       '</div>';
     document.body.appendChild(p);
@@ -15561,9 +16093,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     void p.offsetHeight; // 先让 transform-origin 生效，再加 .show 触发弹出动画
     p.classList.add('show');
     if (scrim) scrim.classList.add('show');
+    startDfVideoPreview(p, item);
   }
 
   function dfPopupHide() {
+    stopDfVideoPreview();
     const p = document.getElementById('emby-df-preview');
     const scrim = document.getElementById('emby-df-scrim');
     if (dfPopup.timer) { clearTimeout(dfPopup.timer); dfPopup.timer = 0; }
@@ -15576,6 +16110,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
   // 悬停进入：先清旧弹窗记录坐标，若开启预览则等待延迟后、光标仍卡在卡片内才弹出
   function dfHoverStart(item, mx, my) {
+    if (dfPopup.item === item) {
+      dfPopup.x = mx; dfPopup.y = my;
+      return;
+    }
     dfPopupHide();
     dfPopup.item = item;
     dfPopup.x = mx; dfPopup.y = my;
@@ -21370,6 +21908,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     eye: '<span class="material-symbols-outlined" style="font-size:1.35rem;line-height:1;pointer-events:none;">order_approve</span>',
     heart: '<span class="material-symbols-outlined" style="font-size:1.35rem;line-height:1;pointer-events:none;">play_lesson</span>',
     preview: '<span class="material-symbols-outlined" style="font-size:1.35rem;line-height:1;pointer-events:none;">image_search</span>',
+    videoPreview: '<span class="material-symbols-outlined" style="font-size:1.35rem;line-height:1;pointer-events:none;">video_template</span>',
     list: '<span class="material-symbols-outlined" style="font-size:1.35rem;line-height:1;pointer-events:none;">format_list_bulleted_add</span>'
   };
 
@@ -22007,6 +22546,333 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
   };
 
+  /* =======================================================================
+   * 详情页预览视频悬停播放控制器 (Detail Video Preview)
+   * 鼠标悬停在预览栏右侧 video_template 按钮上时触发
+   * 弹窗播放窗口大小根据视频自身分辨率 (videoWidth x videoHeight) 自适应
+   * ===================================================================== */
+  const DetailVideoPreview = {
+    pop: null,
+    video: null,
+    resBadge: null,
+    codeBadge: null,
+    loadingEl: null,
+    errorEl: null,
+    anchorBtn: null,
+    currentCode: null,
+    currentToken: 0,
+    showTimer: null,
+    hideTimer: null,
+    boundScroll: false,
+
+    init: function () {
+      if (this.pop && document.body.contains(this.pop)) return;
+      const old = document.getElementById('emby-detail-video-pop');
+      if (old) old.remove();
+
+      const pop = document.createElement('div');
+      pop.id = 'emby-detail-video-pop';
+      pop.className = 'emby-detail-video-pop';
+      pop.innerHTML =
+        '<div class="edv-header">' +
+          '<div class="edv-title">' +
+            '<span class="material-symbols-outlined edv-icon">movie</span>' +
+            '<span class="edv-code"></span>' +
+            '<span class="edv-res-badge" style="display:none;"></span>' +
+          '</div>' +
+          '<button type="button" class="edv-close-btn" title="关闭">✕</button>' +
+        '</div>' +
+        '<div class="edv-body">' +
+          '<div class="edv-loading">' +
+            '<div class="edv-spinner"></div>' +
+            '<span class="edv-loading-text">正在加载预览视频...</span>' +
+          '</div>' +
+          '<div class="edv-error" style="display:none;">' +
+            '<span class="material-symbols-outlined edv-err-icon">error_outline</span>' +
+            '<span class="edv-error-text">暂无可用预览视频</span>' +
+          '</div>' +
+          '<video class="edv-video" playsinline controls loop preload="auto"></video>' +
+        '</div>';
+
+      document.body.appendChild(pop);
+      this.pop = pop;
+      this.video = pop.querySelector('.edv-video');
+      this.resBadge = pop.querySelector('.edv-res-badge');
+      this.codeBadge = pop.querySelector('.edv-code');
+      this.loadingEl = pop.querySelector('.edv-loading');
+      this.errorEl = pop.querySelector('.edv-error');
+
+      const self = this;
+
+      // 弹窗悬停保活机制：鼠标进入弹窗取消隐藏计时器，离开后延时隐藏
+      pop.addEventListener('mouseenter', function () {
+        self.clearHideTimer();
+      });
+      pop.addEventListener('mouseleave', function () {
+        self.scheduleHide(250);
+      });
+
+      // 右上角关闭按钮
+      pop.querySelector('.edv-close-btn').addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        self.hide(true);
+      });
+
+      // 视频元数据就绪后立即自适应计算窗口尺寸
+      this.video.addEventListener('loadedmetadata', function () {
+        self.adaptResolution();
+      });
+      this.video.addEventListener('canplay', function () {
+        if (self.video && self.video.videoWidth) self.adaptResolution();
+      });
+      this.video.addEventListener('playing', function () {
+        if (self.loadingEl) self.loadingEl.style.display = 'none';
+        if (self.video && self.video.videoWidth) self.adaptResolution();
+      });
+      this.video.addEventListener('error', function () {
+        if (self.loadingEl) self.loadingEl.style.display = 'none';
+        if (self.errorEl) {
+          self.errorEl.style.display = 'flex';
+          const txt = self.errorEl.querySelector('.edv-error-text');
+          if (txt) txt.textContent = '视频加载失败';
+        }
+      });
+
+      if (!this.boundScroll) {
+        this.boundScroll = true;
+        window.addEventListener('scroll', function () {
+          if (self.pop && self.pop.classList.contains('is-visible') && self.anchorBtn) {
+            const w = parseFloat(self.pop.style.width) || 480;
+            const h = (parseFloat(self.video ? self.video.style.height : '270') || 270) + 38;
+            self.reposition(self.anchorBtn, w, h);
+          }
+        }, { passive: true });
+
+        window.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && self.pop && self.pop.classList.contains('is-visible')) {
+            self.hide(true);
+          }
+        });
+      }
+    },
+
+    adaptResolution: function () {
+      if (!this.video || !this.pop) return;
+      const vw = this.video.videoWidth;
+      const vh = this.video.videoHeight;
+      if (!vw || !vh) return;
+
+      // 更新分辨率标签，直观向用户呈现原始分辨率
+      if (this.resBadge) {
+        this.resBadge.textContent = vw + ' × ' + vh;
+        this.resBadge.style.display = 'inline-block';
+      }
+
+      // 尺寸根据视频自身原生分辨率自适应，并兼顾当前视口边界安全边距
+      const maxW = Math.min(window.innerWidth - 32, 1280);
+      const maxH = Math.min(window.innerHeight - 100, 720);
+
+      let targetW = vw;
+      let targetH = vh;
+
+      // 超过视口可用尺寸时等比例缩放
+      if (targetW > maxW || targetH > maxH) {
+        const scale = Math.min(maxW / targetW, maxH / targetH);
+        targetW = Math.round(targetW * scale);
+        targetH = Math.round(targetH * scale);
+      }
+
+      // 保证标题栏与播放控件安全显示的最小宽度（>=320px）
+      const finalW = Math.max(targetW, 320);
+      const finalH = Math.round(finalW * (vh / vw));
+
+      this.video.style.width = finalW + 'px';
+      this.video.style.height = finalH + 'px';
+      this.pop.style.width = finalW + 'px';
+
+      if (this.anchorBtn) {
+        this.reposition(this.anchorBtn, finalW, finalH + 38);
+      }
+    },
+
+    reposition: function (btn, popW, popH) {
+      if (!this.pop || !btn) return;
+      const rect = btn.getBoundingClientRect();
+      const margin = 8;
+
+      let left = rect.left;
+      let top = rect.bottom + margin;
+
+      // 右侧视口边界检测
+      if (left + popW > window.innerWidth - 16) {
+        left = window.innerWidth - popW - 16;
+      }
+      if (left < 16) left = 16;
+
+      // 下方视口边界检测：若下方溢出，尝试翻转至按钮上方
+      if (top + popH > window.innerHeight - 16) {
+        const topAbove = rect.top - popH - margin;
+        if (topAbove >= 16) {
+          top = topAbove;
+        } else {
+          top = Math.max(16, window.innerHeight - popH - 16);
+        }
+      }
+
+      this.pop.style.left = Math.round(left) + 'px';
+      this.pop.style.top = Math.round(top) + 'px';
+    },
+
+    bindBtn: function (btn, getCodeFn) {
+      if (!btn) return;
+      const self = this;
+
+      btn.addEventListener('mouseenter', function () {
+        self.clearHideTimer();
+        const code = (typeof getCodeFn === 'function' ? getCodeFn() : '') || '';
+        self.showTimer = setTimeout(function () {
+          self.show(btn, code);
+        }, 120);
+      });
+
+      btn.addEventListener('mouseleave', function () {
+        if (self.showTimer) {
+          clearTimeout(self.showTimer);
+          self.showTimer = null;
+        }
+        self.scheduleHide(250);
+      });
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (self.pop && self.pop.classList.contains('is-visible')) {
+          self.hide(true);
+        } else {
+          self.clearHideTimer();
+          const code = (typeof getCodeFn === 'function' ? getCodeFn() : '') || '';
+          self.show(btn, code);
+        }
+      });
+    },
+
+    clearHideTimer: function () {
+      if (this.hideTimer) {
+        clearTimeout(this.hideTimer);
+        this.hideTimer = null;
+      }
+    },
+
+    scheduleHide: function (delayMs) {
+      this.clearHideTimer();
+      const self = this;
+      this.hideTimer = setTimeout(function () {
+        self.hide();
+      }, delayMs || 250);
+    },
+
+    show: async function (btn, code) {
+      if (!code) return;
+      this.init();
+      this.anchorBtn = btn;
+      this.clearHideTimer();
+
+      if (btn) btn.classList.add('is-active');
+
+      const token = ++this.currentToken;
+      this.currentCode = code;
+
+      if (this.codeBadge) this.codeBadge.textContent = code;
+      if (this.resBadge) {
+        this.resBadge.textContent = '';
+        this.resBadge.style.display = 'none';
+      }
+
+      // 默认初始占位尺寸 (16:9 初始比例)，等待 metadata 获得视频实际分辨率后重算自适应
+      const defaultW = 480;
+      const defaultH = 270;
+      this.pop.style.width = defaultW + 'px';
+      if (this.video) {
+        this.video.style.width = defaultW + 'px';
+        this.video.style.height = defaultH + 'px';
+      }
+      this.reposition(btn, defaultW, defaultH + 38);
+
+      // 显示弹窗与加载态
+      this.pop.style.display = 'block';
+      void this.pop.offsetWidth;
+      this.pop.classList.add('is-visible');
+
+      if (this.loadingEl) this.loadingEl.style.display = 'flex';
+      if (this.errorEl) this.errorEl.style.display = 'none';
+
+      // 停止上一段播放
+      try {
+        this.video.pause();
+        this.video.removeAttribute('src');
+        this.video.load();
+      } catch (e) {}
+
+      // 复用统一的视频拉取器（单例缓存共享 + 双源极速并发竞速）
+      const blobUrl = await getPreviewVideoBlobUrl(code);
+
+      if (this.currentToken !== token) return;
+
+      if (!blobUrl) {
+        if (this.loadingEl) this.loadingEl.style.display = 'none';
+        if (this.errorEl) {
+          this.errorEl.style.display = 'flex';
+          const txt = this.errorEl.querySelector('.edv-error-text');
+          if (txt) txt.textContent = '暂无可用预览视频';
+        }
+        return;
+      }
+
+      if (this.currentToken !== token) return;
+
+      this.video.muted = true;
+      this.video.defaultMuted = true;
+      this.video.volume = 0;
+      this.video.src = blobUrl;
+      this.video.load();
+      this.video.play().catch(function (err) {
+        console.warn('[DetailVideoPreview] play error:', err);
+      });
+    },
+
+    hide: function (immediate) {
+      this.clearHideTimer();
+      if (this.showTimer) {
+        clearTimeout(this.showTimer);
+        this.showTimer = null;
+      }
+      if (this.anchorBtn) {
+        this.anchorBtn.classList.remove('is-active');
+        this.anchorBtn = null;
+      }
+      if (this.pop) {
+        this.pop.classList.remove('is-visible');
+        if (immediate) {
+          this.pop.style.display = 'none';
+        } else {
+          const p = this.pop;
+          setTimeout(function () {
+            if (!p.classList.contains('is-visible')) {
+              p.style.display = 'none';
+            }
+          }, 220);
+        }
+      }
+      if (this.video) {
+        try {
+          this.video.pause();
+        } catch (e) {}
+      }
+      this.currentToken++;
+    }
+  };
+
   /* 快捷标记与预览大图挂载与事件 */
   function extractVideoIdFromItem(item) {
     if (!item) return '';
@@ -22036,10 +22902,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (box && box.dataset && box.dataset.code) return box.dataset.code;
     const titleEl = item.querySelector('.video-title strong, strong.video-number, .video-number');
     if (titleEl && titleEl.textContent.trim()) return titleEl.textContent.trim();
-    if (box && box.getAttribute('title')) {
-      const m = box.getAttribute('title').match(/^[A-Za-z0-9\-_]+/);
-      if (m) return m[0];
-    }
+    const candidateText = ((box && box.getAttribute('title')) || '') + ' ' + (item.textContent || '');
+    const m = candidateText.match(/\b([A-Za-z]{2,8}[-_]?[0-9]{2,6}|[0-9]{6}[-_][0-9]{3}|FC2[-_]PPV[-_][0-9]{5,8}|HEYZO[-_][0-9]{4})\b/i);
+    if (m) return m[1];
     return '';
   }
 
@@ -22814,6 +23679,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   // 关键：Turbolinks 式换页（点相关影片等局部导航）后旧引用变成游离节点，若不清理，
   // buildDetailRoot 的 !previewNode 判断会失败 → 新页面的预览图永远不会被搬进 Emby 布局（预览区丢失）。
   function restorePreviewNode() {
+    if (typeof DetailVideoPreview !== 'undefined' && DetailVideoPreview.hide) {
+      try { DetailVideoPreview.hide(true); } catch (e) {}
+    }
     if (previewNode && previewParent && previewParent.isConnected) {
       try { previewParent.insertBefore(previewNode, previewNext); }
       catch (e) { try { previewParent.appendChild(previewNode); } catch (e2) {} }
@@ -24154,6 +25022,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '<button type="button" class="csb-preview-icon-container emby-preview-sniff-btn" title="嗅探外部高清预览大图与剧照">' +
             QuickIcons.preview +
           '</button>' +
+          '<button type="button" class="csb-preview-icon-container emby-preview-video-btn" title="悬停播放预览视频">' +
+            QuickIcons.videoPreview +
+          '</button>' +
         '</div>';
       if (nativePrev) {
         sec.appendChild(nativePrev);
@@ -24182,6 +25053,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             sniffBtn.classList.remove('is-loading');
             log('详情页嗅探大图失败: ' + err.message);
           }
+        });
+      }
+
+      const videoBtn = sec.querySelector('.emby-preview-video-btn');
+      if (videoBtn && typeof DetailVideoPreview !== 'undefined') {
+        DetailVideoPreview.bindBtn(videoBtn, function () {
+          return currentPageCode() || code;
         });
       }
     }
@@ -25196,12 +26074,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
      'emby-df-preview','emby-df-scrim',
      'efav-gallery-lb','efav-style-morph','efav-filter-mask','efav-collect-mask','efav-backup-mask','emby-note-tip',
      'jhs-settings-mask','emby-quick-settings-popover','jhs-wd-list-modal','jhs-infinite-loader','plugin-diag-modal','top250-login-modal',
-     'jdbe-preview-modal'].forEach(function (id) {
+     'jdbe-preview-modal','emby-detail-video-pop'].forEach(function (id) {
       const el = document.getElementById(id);
       if (el) el.remove();
     });
+    if (typeof DetailVideoPreview !== 'undefined') {
+      try { DetailVideoPreview.hide(true); DetailVideoPreview.pop = null; DetailVideoPreview.video = null; } catch (e) {}
+    }
     // 清理快捷标记与预览相关注入节点（确保关闭皮肤后绝无残留溢出影响原生页面）
-    document.querySelectorAll('.cover-status-buttons, .cover-modal-base, .jdbe-modal-v2, #jdbe-preview-modal').forEach(function (el) {
+    document.querySelectorAll('.cover-status-buttons, .cover-modal-base, .jdbe-modal-v2, #jdbe-preview-modal, #emby-detail-video-pop').forEach(function (el) {
       el.remove();
     });
     // 清理过渡遮罩
@@ -25522,7 +26403,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     '#emby-gallery-panel,#emby-top250-panel,#emby-df-preview,#emby-df-scrim,#emby-search-modal,#emby-settings-panel,#jhs-settings-mask,' +
     '#emby-quick-settings-popover,#jhs-wd-list-modal,#emby-compact-bar,#emby-detail-root,#emby-detail-bg,' +
     '#emby-detail-scrim,#emby-backtop,#emby-toast,#javdb-emby-toggle,.emby-home-tabs,' +
-    '.emby-morph-overlay,.efav-modal-mask,.emby-card-shine,.emby-note-tip,#efav-gallery-lb,#jhs-infinite-loader,.jhs-infinite-loader';
+    '.emby-morph-overlay,.efav-modal-mask,.emby-card-shine,.emby-note-tip,#efav-gallery-lb,#jhs-infinite-loader,.jhs-infinite-loader,#emby-detail-video-pop';
   // 全部变化都落在皮肤子树内 → true（跳过调度）。任一记录的目标或新增节点在皮肤子树外 → false（相关）。
   // 纯移除类记录（无 addedNodes）只看 target：javdb 原生区移除属于相关，面板内移除属于皮肤自管。
   function allInsideSkinChrome(muts) {

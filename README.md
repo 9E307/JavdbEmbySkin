@@ -13,7 +13,7 @@
 [![Platform](https://img.shields.io/badge/platform-Tampermonkey%20%7C%20ScriptCat%20%7C%20Violentmonkey-orange.svg?style=flat-square)](https://www.tampermonkey.net/)
 [![Style](https://img.shields.io/badge/theme-Emby%20%7C%20Glass%20%7C%20Liquid-purple.svg?style=flat-square)](https://github.com/)
 [![License](https://img.shields.io/badge/license-BSD-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-3-Clause)
-[![Changelog](https://img.shields.io/badge/changelog-v7.335-blue.svg?style=flat-square)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-v7.336-blue.svg?style=flat-square)](CHANGELOG.md)
 
 **`JavdbEmbySkin` 是一个运行在浏览器里的Javdb前端重构脚本。将 JAVDB 原来的老式网页界面替换成一套美观优雅的界面现代化样式结构与高级数据收藏管理脚本——风格参考了大家熟悉的影音服务器 Emby。**
 
