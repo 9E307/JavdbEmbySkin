@@ -1,19 +1,19 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（26,046 行，v7.336）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（26,636 行，v7.336）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
 ## 领域词汇表 (Domain Language & Glossary)
 
-### 1. 核心实体与元数据体系
+### 1. 核心实体与元数据体系 (Core Entities & Metadata)
 
 **Movie Record (m)**:
 收藏夹与列表页的核心影片实体对象，主键为唯一番号（`code`），包含标题 (`title`)、封面 (`cover`)、时长、日期、演员列表、自定义纠错及主观标记。
 _Avoid_: Video, Film, TorrentItem, MediaItem
 
 **userScore**:
-用户对影片的**个人主观星级评分**（数字 1~5，0 或缺失代表未评分）。具有最高主观优先级，不得被任何外部抓取数据覆盖。
+用户对影片的**个人主观星级评分**（数字 1~5，0 或缺失代表未评分）。具有最高主观优先级，享有绝对免冲刷特权，不得被任何外部抓取数据或云端同步空值覆盖。
 _Avoid_: rating, starCount, score, myScore
 
 **rating.score**:
@@ -25,20 +25,72 @@ _Avoid_: userScore, personalScore, myRating
 _Avoid_: status, watchState, markType
 
 **customMeta**:
-用户在元数据纠错管理器中手动修正并加锁的自定义元数据字典（覆盖片名、演员名单、片商、标签、封面）。
+用户在元数据纠错管理器中手动修正并加锁的自定义元数据字典（覆盖片名、演员名单、片商、标签、封面）。在被动采集与数据合并中享有绝对不可侵犯权。
 _Avoid_: userMeta, editData, patchInfo, overrideMeta
 
 **officialMeta**:
 从 JAVDB 原始详情页或搜索接口解析出的未经人工修改的官方元数据快照。
 _Avoid_: rawData, siteMeta, defaultInfo
 
-**Entity Token & Noise Filter**:
+**Movie Note (本地个人观影笔记)**:
+用户针对特定番号撰写的私密观影记录与长文本批注，保存在独立对象仓库中，支持 Markdown 与离线持久化，享有与主观打星相同的高权重保护。
+_Avoid_: Comment, ReviewText, ShortComment, UserReview
+
+**Entity Token & Noise Filter (实体候选名与噪声过滤器)**:
 从页面 `<h2>` 标题中提取实体候选名时，针对演员按标点分割，但针对片商（如 `S1 NO.1 STYLE`）保留空格且保留日文间隔号（`・`），并剔除 `ENTITY_NAME_NOISE`（如“部影片”、“作品”、“出演”等噪声词）。
 _Avoid_: rawTitle, cleanString, entitySlug
 
 ---
 
-### 2. 详情页排版与封面四态引擎
+### 2. 收藏夹、清单与画廊体系 (Favorites, Custom Lists & Gallery)
+
+**FAV (收藏夹存储系统)**:
+封装 IndexedDB `javdb-emby-fav-db` 数据库访问、事务队列、内存双向映射与实体持久化的底层单例模块。
+_Avoid_: DBManager, StorageService, IndexedDBHelper
+
+**Custom List (自定义清单)**:
+用户在收藏夹中自建的多分类影片合辑（通过 `listIds` 关联），支持清单创建、重命名、拖拽排序、批量移入/移出以及独立导出。
+_Avoid_: Playlist, Folder, Category, TagGroup
+
+**Gallery View (画廊视图)**:
+区别于传统数据列表、以大图流式瀑布为核心的纯沉浸式图片浏览模式。复用收藏夹底层实体，但在视图层彻底剥离复杂文本与控制按钮。
+_Avoid_: PictureList, ImageWall, BigImageView
+
+**Batch Action Suite (批量管理套件)**:
+在收藏夹与画廊模式下支持跨卡片多选、批量标记（想看/已看）、批量打分、批量转移清单及批量脱敏导出的原子操作控制器。
+_Avoid_: MultiSelect, BulkOperation, SelectAllBar
+
+**Orphan Movie (数据库孤儿影片)**:
+既无自定义清单归属、又无本地主观笔记或纠错加锁标记，因历史版本残留或未登录游客状态下误写入本地数据库的孤立影片记录。
+_Avoid_: DeadMovie, GhostRecord, DirtyData
+
+**Symmetrical Orphan Purger (对称孤儿清洗器)**:
+基于绝对对称原则构建的静默孤儿清理管道，在清洗时对未登录态或无归属记录一视同仁，确保本地数据库与云端真实资产绝对一致。
+_Avoid_: Cleaner, GarbageCollector, DbPrune
+
+---
+
+### 3. 多维流式筛选器与共演算子体系 (Multi-Dimensional Filter & Co-acting Engine)
+
+**Draft Filter Snapshot (筛选器即时草稿快照)**:
+打开筛选器模态窗（`openFilterModal`）时基于主界面状态深拷贝出的独立沙箱草稿对象 `tmp`。用户在弹窗内的任何高频微调均隔离在草稿内，关闭即丢弃，仅在点击「确定」时原子化提交。
+_Avoid_: LiveFilter, ModalState, ActiveFilter
+
+**Candidate Sub-Universe (候选子宇宙 / `modalVids`)**:
+在筛选器内部根据用户当前已勾选的维度特征，毫秒级即时收敛推导出的当前有效影片候选 ID 集合，作为后续各维度动态频次计算的唯一样本底座。
+_Avoid_: FilteredMovies, TempIds, CurrentMatches
+
+**Co-acting Intersection Operator (共演交集算子)**:
+在多选演员时从默认的并集关系（$A \cup B$）动态切换为严格的共同出演子集交集（$A \cap B$），并联动驱动其他维度的候选项实时收敛至共演作品范围内。
+_Avoid_: ActressFilter, CoactSearch, MultipleActorsMode
+
+**Dimension Frequency Recomputation (多维频次与热度重算)**:
+筛选器在用户勾选任意项后，基于候选子宇宙对片商、标签、演员、年代等全维度实时重新统计计数值，并自动隐藏/剔除频次为 0 的虚假无效选项。
+_Avoid_: Recount, DynamicCount, UpdateBadges
+
+---
+
+### 4. 详情页排版与封面四态引擎 (Detail Page Layout & Four-State Cover Engine)
 
 **Cover Crop (裁切海报模式)**:
 海报钉住原宽幅封面右侧主体内容，裁掉左侧留白与多余区域，使 2:3 竖版框内满铺，封面顶部与标题永远保持水平平行锚定。
@@ -56,13 +108,25 @@ _Avoid_: StickyCover, DynamicLayout, MorphPoster
 三栏排布体系：左栏大封面固定，中栏展示标题、详细元数据与剧情简介，右栏展示操作按钮行与多源播放列表。
 _Avoid_: ThreeColumn, LetterboxdStyle, FlexHero
 
+**Fusion Shift & Transform Matrix (融合矩阵位移)**:
+融合模式下随滚动距离通过 `requestAnimationFrame` 动态计算注入根节点的 `--fusion-shift` CSS 变量与变形矩阵，控制海报平滑收缩转为两栏布局。
+_Avoid_: ScrollOffset, CoverTranslate, MorphStyle
+
+**Hysteresis Dead Zone (滞后死区与绝对顶部守卫)**:
+融合模式在页面滚动至顶部 `y <= 30` 设立的硬性无条件复位守卫与计算保底（`titleTop >= 450px`），彻底免疫尺寸毒化与海报残缺。
+_Avoid_: TopGuard, ScrollReset, StickyDeadzone
+
 ---
 
-### 3. 视觉与渲染引擎
+### 5. 视觉渲染栈、流体动效与聚焦体系 (Visual Rendering, Fluid Motion & Focus System)
 
-**LiquidGlass (液态玻璃)**:
-基于纯 SVG 矢量位移滤镜 (`<feDisplacementMap>`) 和 CSS 动态混合的拟物流体玻璃态渲染风格，彻底避开 Canvas 跨域安全污染。
+**LiquidGlass (液态玻璃 2.0)**:
+基于纯离线烘焙位移图（Data URI）与纯 SVG 矢量位移滤镜 (`<feDisplacementMap>`) 由 GPU 片元着色器硬件级执行的拟物流体折射风格，彻底避开主线程 Canvas 跨域安全污染。
 _Avoid_: Glassmorphism, BlurEffect, CanvasFilter
+
+**Micro-Saturate Jitter (微饱和度滚动抖动机制)**:
+在液态玻璃下以 50ms 节流向 `saturate()` 注入万分之五的浮点微抖动，迫使 Chromium 合成层（GPU Compositing Layer）实时刷新采样，破解滚动冻结。
+_Avoid_: CompositorHack, ForceRepaint, CacheBuster
 
 **Glass (毛玻璃)**:
 基于 CSS `backdrop-filter: blur(...)` 的经典现代化磨砂半透明视觉风格。
@@ -76,24 +140,24 @@ _Avoid_: DarkMode, DefaultTheme, EmbyStyle
 根据视口宽度动态计算多列高度、调度卡片绝对定位、并在演员折叠徽章展开与图片懒加载时执行防抖重排的布局控制器。
 _Avoid_: MasonryGrid, ColumnLayout, FlexGrid
 
-**Native Grid Coexistence Guard (原生网格共存守卫)**:
-当用户关闭 Emby 皮肤时，通过同步拔除容器 `.emby-masonry` 类名并切断所有后台布局引擎异步调度的防御机制，确保 JAVDB 原生基于 CSS Grid 的 4/5 列排版 100% 无缝复原。
-_Avoid_: ClearLayout, SkinDisabler, ResetGrid
-
-**Element-level Image Referrer Policy (元素级防盗链免溯源策略)**:
-严禁在 `<head>` 注入全局 `<meta name="referrer" content="no-referrer">`（避免破坏 Rails CSRF 同源校验与表单登录 POST 标头），仅在常规图片属性级施加 `referrerPolicy = 'no-referrer'` 并主动排除图形验证码（`rucaptcha-image`）。配合鉴权路由严格避让守卫，从根本上免疫官方图床 403 Forbidden 拦截同时确保整站会话与登录完整。
-_Avoid_: GlobalNoReferrer, Anti403, ImageFix, RefererHack
+**Dynamic Focus (动态聚焦流体布局)**:
+以 2:3 黄金无缝竖版流体宫格为骨架，海报强制采用 200% 宽右对齐黄金人脸裁切，悬停时卡片平滑放大并浮现未裁切原图浮层的沉浸式浏览模式。
+_Avoid_: BigCard, FluidGrid, HoverZoom
 
 **Steam 3D Tilt (卡牌高光倾角)**:
-鼠标在卡片悬停移动时，实时计算光标偏移比例，赋予卡牌透视 3D 倾斜（`transform: perspective(1000px) rotateX(...) rotateY(...)`）并渲染跟随高光。
+基于 `transform-origin: top left` 锚点与 RAF 单帧锁的物理透视 3D 倾斜，跟随光标渲染反光高光层（`.emby-card-shine`）。
 _Avoid_: HoverShine, TiltEffect, CardHover
+
+**Ambient Focus Scrim (动态聚焦全屏暗色流光遮罩)**:
+`#emby-df-scrim`，在动态聚焦卡片悬停放大时全屏下沉淡入的半透明遮罩，使背景页面变暗以突出当前焦点卡片，具备 `pointer-events: none` 点击穿透。
+_Avoid_: DarkMask, BackdropOverlay, Dimmer
 
 ---
 
-### 4. 头像与媒体资产
+### 6. 头像、女优画像与共演折叠体系 (Avatar, Actress Profile & Cast Engine)
 
 **Gfriends Avatar (高清头像)**:
-由 Gfriends 开源仓库索引收录的 400x400 分辨率定妆照，覆盖男女演员，具有最高头像展示优先级。
+由 Gfriends 开源仓库索引收录的 400x400 分辨率定妆照，覆盖男女演员，具备四级 CDN 容灾降级（jsDelivr -> Fastly -> Statically -> GitHub Raw），具有最高头像展示优先级。
 _Avoid_: GirlAvatar, ActressPic, HDAvatar
 
 **Official Avatar (官方头像)**:
@@ -104,29 +168,65 @@ _Avoid_: SiteAvatar, JdbPic, DefaultAvatar
 当官方头像亦不存在时，通过演员姓名哈希算法生成的彩色渐变背景配单字纯文本微标。
 _Avoid_: DefaultIcon, EmptyAvatar, Placeholder
 
+**Actress Profile Bubble (女优悬浮画像卡片)**:
+鼠标悬停在演员名字上时弹出的气泡卡片（`.emby-note-tip`），整合高清定妆照、生日生平、三围特征、现役退役状态与一键穿透筛选。
+_Avoid_: ActressTooltip, CastModal, ActorPopover
+
+**Actress Career Status (现役/退役活跃探针)**:
+通过 JAV_info 爬虫与维基百科异步回退机制探测女优的演艺生涯状态（现役 / 退役 / 移籍）。
+_Avoid_: CareerState, IsRetired, ActiveDetector
+
+**Co-actress Stack & Collapse Badge (共演女优堆叠与折叠展开徽章)**:
+当单部影片参演女优较多时，超出阈值的女优自动折叠为 `+N` 堆叠徽章，点击展开/收起时主动触发 `WaterfallEngine.refresh()` 重排以防布局重叠。
+_Avoid_: ActorCollapse, CastTag, MoreActorsBtn
+
 ---
 
-### 5. 存储、持久化与同步底层
+### 7. 媒体预览、视频流控与自适应播放体系 (Media Preview, Video Streaming & Adaptive Playback)
 
-**FAV (收藏夹存储系统)**:
-封装 IndexedDB `javdb-emby-fav-db` 数据库访问、事务队列、内存双向映射与实体持久化的底层单例模块。
-_Avoid_: DBManager, StorageService, IndexedDBHelper
+**PreviewVideoEngine (双源并发视频预览引擎)**:
+全局单例拉取管道（`getPreviewVideoBlobUrl`）。统一对原始番号实施强制去空去斜杠与小写归一化（`(rawCode || '').trim().toLowerCase()`），并发竞速拉取 123AV（计算小写番号 MD5 哈希路径，接收 `video/mp4` 二进制并包装为 Blob URL）与 MissAV（通过 `GM_xmlhttpRequest` 伪造 `Referer: https://missav.ai/` 绕过防盗链取得 direct/blob 视频流）。具备失败重试与瞬时竞速熔断机制。
+_Avoid_: VideoLoader, TrailerFetcher, Mp4Downloader, StreamScraper
+
+**DetailVideoPreview (详情页自适应视频播放器)**:
+详情页预览工具栏右侧的 `video_template` 悬停/点击交互按钮及其驱动的动态弹窗（`#emby-detail-video-pop`）。独立于卡片悬停预览，提供主动式视频预览；监听视频 `loadedmetadata` 事件提取原生分辨率（`videoWidth` 与 `videoHeight`），在视口安全边界内按原始高宽比自适应锁定弹窗物理尺寸（`Math.round(finalW * (vh / vw))`），配合右上角关闭按钮与视口外点击自动销毁。
+_Avoid_: DetailPlayer, VideoModal, FloatingVideo, InlinePlayer
+
+**dfVideoCache (视频流会话内存镜像缓存)**:
+独立于永久数据库的内存会话级 Map 结构，映射表为 `cleanCode -> { type, url }` 或负向标记 `false`。设定 40 条容量硬上限，采用 FIFO 机制结合 `URL.revokeObjectURL()` 实施显存与内存安全回收。在卡片悬停预览（`attachDynamicFocus`）与详情页播放器（`DetailVideoPreview`）之间 100% 双向共享，实现同一影片多次预览的 0ms 瞬间秒开与 0 额外网络消耗。
+_Avoid_: VideoStorage, MediaCache, BlobStore, LocalVideoDb
+
+**Two-Stage Hover Debounce (两阶段悬停时序流控)**:
+动态聚焦（Dynamic Focus）卡片悬停的两阶段渐进式交互防抖状态机：第一阶段（0ms）即时浮现未裁切原图大封面（`#emby-df-preview`）；仅当光标在卡片上持续悬停达到 `dfVideoDelay` 设定阈值（默认 0.6s）且用户开启视频预览时，才进入第二阶段唤醒 `PreviewVideoEngine` 注入 `<video class="dfp-video">`，光标提前移出立即打断异步任务，彻底杜绝快速滑动扫视时的网络请求风暴与 CDN 429 拦截。
+_Avoid_: InstantPlay, HoverDelay, SimpleDebounce, PlainTimer
+
+**Resolution-Adaptive Viewport Lock (原生宽高比自适应视口锁)**:
+针对详情页预览视频不同分辨率（如 720p 16:9 横屏、竖版甚至非常规比例），播放器容器在 `loadedmetadata` 触发前保持标准 16:9 骨架等待态；一旦解析出原生宽高，依据视口可用安全区域（`vw * 0.85`, `vh * 0.8`）计算最大外接矩形，并强制将容器高度锁定为 `Math.round(finalW * (vh / vw))`，彻底消除视频拉伸、画面裁切及黑色留边。
+_Avoid_: AspectRatioFix, StretchBox, StaticVideoContainer, FixedModalSize
+
+**PreviewSys (多站点剧照画廊嗅探引擎)**:
+聚合 JavFree、JavStore、BlogJav、ProjectJav 等外部图床的多源剧照嗅探模块。具备多级双域名净化清洗、Pixhost 缩略图大图推导升级、以及「L1 同步内存 Map + L2 IndexedDB `meta` 表 7 天 TTL」两级缓存机制，负向状态仅限单次会话。
+_Avoid_: GalleryScraper, ScreenshotLoader, ImageCrawler
+
+---
+
+### 8. 存储持久化、数据统计与云端同步体系 (Storage, Analytics & Cloud Sync)
 
 **MetaStore (元数据倒排表)**:
-IndexedDB 中独立的 `meta` 表（对象仓库），用于存储非影片实体数据（如 7天 TTL 的 Gfriends 头像倒排索引树、系统配置标记）。
+IndexedDB 中独立的 `meta` 表（对象仓库），用于存储非影片实体数据（如 7天 TTL 的 Gfriends 头像倒排索引树、系统配置标记、剧照缓存）。
 _Avoid_: ConfigTable, SystemKV, CacheStore
 
 **Passive Collection (被动静默采集)**:
-用户在日常浏览 JAVDB 影片列表或详情页时，后台自动增量补全本地数据库缺失字段的数据采集机制。
+用户在日常浏览 JAVDB 影片列表或详情页时，后台自动增量补全本地数据库缺失字段的数据采集机制，强制受纠错锁保护。
 _Avoid_: AutoScrape, BackgroundSync, AutoSave
+
+**Field Richness Score (字段丰富度胜者算法)**:
+多端数据同步与备份导入（`FAV.importJSON`）时用于衡量影片记录完整度的权重评分算法，结合修改时间戳与本地资产不可侵犯原则自动裁决属性级合并胜者。
+_Avoid_: CompletenessScore, MergePriority, BestRecord
 
 **Desensitized Backup (脱敏备份)**:
 排除所有第三方授权凭据（WebDAV 密码、Git Token、App 鉴权凭证）的纯净配置与收藏夹数据导出结构。
 _Avoid_: PublicBackup, SafeJson, CleanExport
-
----
-
-### 6. 数据统计、榜单与播放矩阵
 
 **StatisticsCenter (媒体库数据统计中心)**:
 基于 IndexedDB 全表异步并发聚合的数据统计面板，提供核心资产 KPI 汇总（片量、女优、笔记、清单、订正数）、评分阶梯文字与百分比进度条（神作/优秀/良好/普通）、年代标签以及女优/片商/导演/系列排行榜卡片。
@@ -136,13 +236,29 @@ _Avoid_: ChartDashboard, DataVisualization, ChartCenter
 管理总榜、日榜、周榜、月榜的异步抓取与渲染，利用**请求代数令牌（Sequence Token / `top250LoadSeq`）**严格防御异步乱序回包覆盖。
 _Avoid_: RankingManager, BillboardService, TopList
 
+**Sequence Token (请求代数令牌 / `top250LoadSeq`)**:
+在异步跨域拉取前单调递增的代数计数器，回包到达时严格校验代数匹配性，彻底丢弃慢速迟到的旧请求响应，杜绝界面内容乱序错位。
+_Avoid_: RequestId, AsyncLock, VersionTag
+
+---
+
+### 9. 多源在线播放矩阵与第三方网关体系 (Multi-Source Playback & External Gateway)
+
 **PlaySitesService (多源播放站点矩阵)**:
 整合 123AV, njavTV, MissAV, Jable, NetFlav 等 10+ 外部在线播放站，支持 `{code}`, `{code_lower}`, `{code_num}` 动态模板变量替换与有效性探测。
 _Avoid_: VideoLinks, PlayerHub, OnlineSource
 
+**Dynamic Playback Template (动态播放模板参数)**:
+多源播放站针对目标番号推导的动态替换变量（`{code}`, `{code_lower}`, `{code_num}`），支持不同外链站点各异的 URL 路由规则。
+_Avoid_: UrlPattern, RouteParams, CodeReplacer
+
+**VIP 302 Bypass Guard (服务端 VIP 302 拦截墙规避守卫)**:
+针对非会员或未登录用户触发 JAVDB 服务端 302 重定向至 `/plans/ypay` 时，前端精准拦截并无感替换为高级搜索路由（`/advanced_search`）穿透访问。
+_Avoid_: PaywallBypass, RedirectHack, VipCrack
+
 ---
 
-### 7. 路由、安全与稳定性守卫 (Routing, Security & Resiliency Guards)
+### 10. 路由、安全与稳定性守卫体系 (Routing, Security & Resiliency Guards)
 
 **Searchbox Autofill Immunity Guard (搜索框凭据嗅探深度免疫守卫)**:
 由 `type="search"`、`role="searchbox"`、11 项反嗅探忽略属性、`sanitizeSearchInputs()` 全局生命周期动态清洗与聚焦主动冲刷（Focus Flush）构筑的四层立体纵深防御体系。彻底根治 Chromium `PasswordAutofillAgent` 误填已保存账号密码以及用户点击时弹出“一键填写账号密码/管理密码”系统悬浮下拉框的问题，同时在 CSS 层消除 WebKit 默认清除小图标。
@@ -160,9 +276,25 @@ _Avoid_: TraditionalChineseOnly, HardcodedLabel, StaticSelector
 在脚本启动入口提前写入官方 `over18=1` Cookie 实现服务端免检，并仅针对 `.over18-modal` 或显式带有 `a[href*="/over18"]` 的模态层直接从 DOM 树移除解绑；绝对禁止跨全 DOM 扫描 `a, button` 模拟盲点击，杜绝误点普通影片卡片（如番号含 18 的热播作品）引发恶性弹窗死循环。
 _Avoid_: AutoClick18, ModalClicker, RegexClick
 
+**Rails RESTful DELETE Session Guard (Rails UJS DELETE 会话生命周期守卫)**:
+Emby 抽屉提取原生 navbar 菜单项时必须完整保全 `data-method`、`data-confirm` 与 `rel` 属性；登出操作必须通过专属安全管道（优先触发隐藏的原生 Rails UJS 登出节点，兜底构造 `_method=delete` + CSRF Token 的 POST 表单），并清空本地临时凭据缓存；`isJavdbUserLoggedIn()` 的 Cookie 匹配必须使用严格正则排除 `_rucaptcha_session_id`。
+_Avoid_: LogoutHelper, DirectGetLogout, FormSubmitter
+
+**Native Grid Coexistence Guard (原生网格共存守卫)**:
+当用户关闭 Emby 皮肤时，通过同步拔除容器 `.emby-masonry` 类名并切断所有后台布局引擎异步调度的防御机制，确保 JAVDB 原生基于 CSS Grid 的 4/5 列排版 100% 无缝复原。
+_Avoid_: ClearLayout, SkinDisabler, ResetGrid
+
+**Element-level Image Referrer Policy (元素级防盗链免溯源策略)**:
+严禁在 `<head>` 注入全局 `<meta name="referrer" content="no-referrer">`（避免破坏 Rails CSRF 同源校验与表单登录 POST 标头），仅在常规图片属性级施加 `referrerPolicy = 'no-referrer'` 并主动排除图形验证码（`rucaptcha-image`）。配合鉴权路由严格避让守卫，从根本上免疫官方图床 403 Forbidden 拦截同时确保整站会话与登录完整。
+_Avoid_: GlobalNoReferrer, Anti403, ImageFix, RefererHack
+
+**Reentrant Lock & Mutation Recursion Guard (可重入锁与突变递归守卫)**:
+针对全局 `window.confirm` 猴子补丁必须保存原函数并在 `finally` 块中无条件恢复；任何由 MutationObserver 监听的节点在写入前必须判断目标值是否已一致，阻断微任务死循环。
+_Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
+
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 25,539 Lines)
+## 架构子系统全景地图 (Architecture Map Across 26,636 Lines)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -171,46 +303,66 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
                                               │ 拦截与注入
                                               ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│ JavdbEmbySkin 核心运行时 (Monolithic Sandbox, Host Guard: javdb*.com / jdforrepam.com)       │
+│ JavdbEmbySkin 核心运行时 (Monolithic Sandbox, Host Guard: javdb*.com / jdforrepam.com)      │
 │                                                                                             │
-│ 1. 路由拦截、安全守卫与限制突破层 (Lines 32 - 198 & Lines 8600 - 9196)                      │
+│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 198 & Lines 25300 - 26636)                    │
 │    • 严格域名守卫与鉴权路由避让 (/login, /user_sessions 等 100% 保持原生 Rails POST)        │
-│    • 元素级 Referrer 免溯源策略 (针对普通图片 no-referrer，排除验证码防 403 阻断)           │
+│    • SPA 路由接管: Turbolinks / PJAX 跨页监听、无感局部刷新与全局生命周期重置               │
+│    • 元素级 Referrer 免溯源策略 (图片 no-referrer 隔离，主动豁免验证码防 403 阻断)          │
 │    • 官方 age-gate 年龄确认预写 over18=1 Cookie 免检，严格禁止全 DOM 盲点击                 │
-│    • 规避 JAVDB 服务端 302 拦截 (/plans/ypay 强转高级搜索，免登录穿透)                     │
-│    • ReviewListInfiniteManager: 突破限制，无刷新异步抓取并拼接长短评与相关清单              │
-│    • InfiniteScrollManager: 瀑布流滚动探底无缝加载下一页                                    │
+│    • 规避 JAVDB 服务端 302 拦截 (/plans/ypay 强转高级搜索，免登录穿透)                      │
+│    • 卸载与突变隔离: removeEmbyDOM 彻底复原原生 Navbar/Grid，SKIN_CHROME_SEL 阻断递归       │
+│    • 首次运行零侵入守卫 (localStorage === '1' 判定，未激活态 100% 保持原生界面)             │
 │                                                                                             │
-│ 2. 详情页重构与多模式排版引擎 (Lines 7322 - 7410, Lines 7821 - 8050 & Lines 22800 - 24750)  │
-│    • 四大封面形态引擎：Crop(裁切) | Full(全宽) | Fusion(触顶收缩融合) | Hybrid(Letterboxd) │
-│    • 详情页 Hero 区多语言健壮性解析 (简/繁/英/日正则自适应提取 + /actors/ 路由特征探测)     │
+│ 2. 视觉风格渲染栈与特效引擎 (Lines 738 - 6500 & Lines 7140 - 7790)                          │
+│    • 风格切换: Emby Native 经典深色 / Glass 毛玻璃 / LiquidGlass 2.0 (离线 SVG GPU 折射)    │
+│    • Micro-Saturate Jitter: 50ms 节流注入万分之五微抖动，破除 Chromium 合成层 GPU 缓存冻结  │
+│    • Steam 3D Tilt: transform-origin: top left 锚点与 RAF 帧率锁，全息跟随高光层            │
+│    • WaterfallEngine: 视口宽度横向瀑布流，绝对定位高度计算、防抖重排与树状监听解绑          │
+│    • Dynamic Focus Grid: 2:3 无缝流体宫格、200% 宽右对齐黄金人脸裁切与全屏暗色环境遮罩      │
+│    • 原生网格共存守卫: 关闭皮肤时拔除 emby-masonry，熔断后台排版引擎，完美复原 CSS Grid     │
+│                                                                                             │
+│ 3. 详情页重构与四态排版引擎 (Lines 7322 - 7410, Lines 7821 - 8050 & Lines 22800 - 25300)    │
+│    • 四大封面形态引擎: Crop(裁切海报) | Full(全宽) | Fusion(触顶收缩融合) | Hybrid(三栏)    │
+│    • Cover Fusion 引擎: requestAnimationFrame 矩阵变换，y <= 30 绝对顶部守卫与防毒死区      │
+│    • 多语言健壮性解析器: 简/繁/英/日四国正则自适应提取 + /actors/ 路由特征双重探测          │
 │    • 实体备注小气泡 (.emby-note-tip): 女优/片商/系列悬浮卡片 (生平+现役退役+穿透筛选)       │
 │    • 详情页操作行 (.emby-action-row) 与 10+ 多源在线播放按钮矩阵联动                        │
+│    • ReviewListInfiniteManager: 突破限制，无刷新异步抓取并拼接长短评与相关清单              │
+│    • InfiniteScrollManager: 瀑布流滚动探底无缝加载下一页 (Lines 8735 - 8915)                │
 │                                                                                             │
-│ 3. 视觉风格渲染栈与特效 (Lines 738 - 6421, Lines 7140 - 7790 & Lines 15613 - 15663)        │
-│    • 风格切换：Emby Native / Glass 毛玻璃 / LiquidGlass 液态玻璃真折射层 (SVG Filter)        │
-│    • Steam 3D Tilt: 卡牌跟随光标 3D 倾斜与反光层 (attachCard3D)                             │
-│    • WaterfallEngine: 绝对定位横向流，布局抖动节流与共演折叠展开重排                        │
+│ 4. 媒体预览与自适应视频流控子系统 (Lines 15570 - 15960 & Lines 22550 - 22850)               │
+│    • PreviewVideoEngine: 全局单例管道，小写番号归一化，MissAV + 123AV 伪PNG并发竞速         │
+│    • dfVideoCache: 40条容量上限 LRU/FIFO 内存会话缓存，双向共享，二次播放 0ms 瞬间秒开      │
+│    • Two-Stage Hover Debounce: 卡片悬停两阶段时序防抖 (0.6s)，大图与小视频无缝融合流控      │
+│    • DetailVideoPreview: 详情页 video_template 按钮悬停/点击，按需启动独立流媒体            │
+│    • Resolution-Adaptive Viewport Lock: loadedmetadata 原生宽高比动态外接约束锁定           │
+│    • 卸载与突变隔离: 纳管至 removeEmbyDOM 卸载集与 SKIN_CHROME_SEL 突变隔离白名单           │
 │                                                                                             │
-│ 4. FAV 核心存储系统 (Lines 15664 - 18676)                                                   │
+│ 5. FAV 核心存储系统与数据自愈 (Lines 16238 - 18676)                                         │
 │    • Tier 1: 同步内存镜像 (favMoviesCache, scoreMemCache, noteMap, actorGenderMap)          │
-│    • Tier 2: IndexedDB (javdb-emby-fav-db, v5) 实体表: movies, lists, gallery, meta, notes │
-│    • 事务控制: dbPutMovies 严格按 50 条分批切片事务，兼顾吞吐与防卡死                      │
-│    • 原型链防护: 导入反序列化全量采用 Object.create(null) 字典                             │
+│    • Tier 2: IndexedDB (javdb-emby-fav-db, v5) 实体表: movies, lists, gallery, meta, notes  │
+│    • 事务控制: dbPutMovies 严格按 50 条分批切片事务，兼顾响应度与吞吐                       │
+│    • 原型链防护: 导入与反序列化全量采用 Object.create(null) 字典，防御 XSS 原型污染         │
+│    • 被动静默采集 (passiveCollectMovie): 列表滑动后台增量补全，纠错锁 (customMeta) 豁免     │
+│    • 对称孤儿清洗 (dbPurgeOrphanMovies): 遵循绝对对称原则，彻底清除无归属的未登录幽灵记录   │
 │                                                                                             │
-│ 5. 交互界面与业务中心 (Lines 9197 - 11349, Lines 13420 - 15200 & Lines 18677 - 22800)      │
-│    • FAVUI: 收藏夹/画廊复合面板 (清单管理、多维筛选器 openFilterModal、批量打标)            │
-│    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、评分阶梯占比、排行榜)               │
+│ 6. 交互界面、业务中心与多维筛选系统 (Lines 9341 - 15500 & Lines 18677 - 21915)              │
+│    • FAVUI & GalleryView: 收藏夹/画廊双模态面板 (多自定义清单 CRUD、拖拽排序、批量管理套件) │
+│    • 多维流式筛选器 (openFilterModal): 即时草稿快照 (tmp 沙箱)、候选子宇宙 (modalVids) 重构 │
+│    • 共演交集算子: 多选演员从并集 (OR) 切严格子集交集 (AND)，全维度频次动态重新汇算         │
+│    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、四阶评分梯队占比、排行榜)           │
 │    • Top250ViewManager: 日榜/周榜/月榜/总榜 (基于 Sequence Token 请求代数令牌防乱序覆盖)    │
-│    • sanitizeSearchInputs: 搜索框全域防嗅探与四层纵深防御 (type=search, 11项属性, focus冲刷)│
-│    • buildHomeTabs & restructureGrid: 主页常驻4导航 Tab 与跨层级直接子节点安全挂载沙盒      │
+│    • 导航外壳与设置控制台: buildHomeTabs 常驻导航 (直接子节点契约) + 6分类全功能设置中心    │
+│    • 凭据防嗅探体系 (sanitizeSearchInputs): type=search, role=searchbox, 11项属性与聚焦冲刷 │
 │                                                                                             │
-│ 6. 外部服务与云端网关 (Lines 11350 - 13419 & Lines 14640 - 15060 & Lines 21390 - 21630)    │
-│    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 官方头像降级        │
-│    • ActressService: JAV_info 现役/退役检测与维基百科异步回退                               │
-│    • PlaySitesService: 123AV / njav / MissAV 等 10+ 在线播放源与模板替换                    │
-│    • PreviewSys: JavFree / JavStore / BlogJav / ProjectJav 嗅探 + L1/L2 7天本地持久化缓存   │
-│    • CloudSync: WebDAV / GitHub / Gitee 双向同步，强制凭据脱敏白名单过滤                    │
+│ 7. 外部服务、女优智能画像与云端网关 (Lines 11350 - 15060 & Lines 21915 - 22540)             │
+│    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 四级 CDN 容灾降级   │
+│    • ActressService: JAV_info 现役/退役活跃探针与维基百科异步回退，生成女优生平卡片         │
+│    • PlaySitesService: 123AV / njav / MissAV 等 10+ 外部在线源与动态模板参数变量替换        │
+│    • PreviewSys: JavFree / JavStore / BlogJav / ProjectJav 嗅探 + L1/L2 7天两级缓存         │
+│    • CloudSync: WebDAV / GitHub / Gitee 双向同步，字段丰富度胜者算法 (fieldRichness) 合并   │
+│    • 凭据脱敏安全管道: 备份与云端同步默认剔除敏感授权 Token 与密码，防凭据外泄              │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -218,17 +370,21 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 
 ## 🛑 项目最高工程哲学与排查零号准则 (Axiom 0: First Principles & Surgical Fix)
 
-任何后续接手本项目的 AI 智能体或开发者，在开始阅读具体业务代码与排查任何 Bug 前，**必须将以下三大第一性原理作为最高行为公理（Axiom 0）深植于推理上下文**：
+任何后续接手本项目的 AI 智能体或开发者，在开始阅读具体业务代码与排查任何 Bug 前，**必须将以下四大第一性原理作为最高行为公理（Axiom 0）深植于推理上下文**：
 
 1. **坚决抵御“用大重构掩盖排查不足”的浮躁冲动**：
    * 严禁在未定位到真实物理根因前，轻易向用户提议“推翻重写已有成熟模块”（如重写 `removeEmbyDOM`、重写网格重构或重写事件委托）；
-   * 本项目是一个拥有 25,000+ 行紧密耦合单文件、历经数十轮实战对抗审计的生产级应用，盲目推翻成熟函数往往会在修好 1 个表象问题的同时，瞬间踩中此前填平的 5 个深层隐性地雷。
+   * 本项目是一个拥有 26,000+ 行紧密耦合单文件、历经数十轮实战对抗审计的生产级应用，盲目推翻成熟函数往往会在修好 1 个表象问题的同时，瞬间踩中此前填平的 5 个深层隐性地雷。
 2. **第一性原理深度穿透本质（First Principles Root-Cause Analysis）**：
    * 排查任何异常必须追本溯源到最底层的物理本质：到底是不是 Chromium 合成层（Compositing Layer）GPU 缓存未刷？是不是 DOM 脱水期未连接 DOM 树时的 `isConnected === false` 时序竞争？是不是 CSS Specificity 权重被原生类名覆盖？是不是 W3C 标准下的直接子节点（Direct Child）断言失败？是不是 IndexedDB 异步事务未就绪？
    * 必须拿出具有底层依据的确凿结论，严禁靠“我猜可能在这里”、“试着包裹一个 setTimeout”来盲目试错。
 3. **极简手术级微调原则（Surgical Precision）**：
    * **能用 3~6 行最小侵入代码在源头精准修复的，绝对不允许擅自动动 50 行以上的周边逻辑**；
    * 修复方案必须像显微外科手术一样，以最小的扰动解决根本问题，对既有庞大生态保持最大的敬畏与零侵入性。
+4. **警惕“近期偏差”与宏观全局锚定（Global Anchoring & Anti-Recency Bias）**：
+   * 严禁将最近几个对话轮次或局部版本中接触到的微观特性、局部 Bug 错当作系统全局的核心事实；
+   * 交付前自检清单（Checklist）必须保持为纯粹的“动作执行协议”，严禁夹带任何具体功能或偶发个案的碎片化枚举（彻底杜绝幸存者偏差）；
+   * 凡涉及修改全局规范、领域模型或架构图，落笔前必须强制执行「零上下文遗忘测试（Zero-Context Test）」——假设清空所有近期会话记忆，审视该表述对一个面对全量数万行代码的后续维护者是否依然具备客观、普适的全局指导价值。
 
 ---
 
@@ -237,15 +393,15 @@ _Avoid_: AutoClick18, ModalClicker, RegexClick
 后续任何 AI 智能体在向用户汇报或提交代码前，必须在内部反思链（Chain of Thought）中逐项核对并确保符合以下四步交付准则：
 
 1. **[语法与静态安全]**：是否已执行 `node -c .\JavdbEmbySkin.user.js` 并确保 100% 零语法错误与未闭合语法结构？
-2. **[31条铁律红线核查]**：本次改动是否侵犯了后文 31 条业务铁律中的任何一条？（尤其关注：`userScore` 是否被客观评分污染？密码管理器是否误触下拉框？DOM 挂载是否保持直接子节点？图片路径是否仍为无域名相对路径？）。
+2. **[32条铁律红线核查]**：本次改动是否侵犯了后文 32 条业务铁律中的任何一条？必须对照本次修改所触碰的代码模块与子系统，逐条检索核查后文对应的业务铁律与历史陷阱，坚决不触碰任何既有防线。
 3. **[侵入度与重构判定]**：本次修改是否严格做到了“最小必要侵入”？是否存在用推翻重构掩盖排查不足的嫌疑？
 4. **[文档与版本原子化同步]**：若涉及版本递增，是否已将脚本头部 `@version`、脚本内部 `VERSION` 常量、`CONTEXT.md` 顶栏行数与版本号、以及 [`CHANGELOG.md`](./CHANGELOG.md) 严格按 Keep a Changelog 格式同步更新？
 
 ---
 
-## 核心“弯弯绕绕”与历史避坑铁律 (31 Critical Invariants & Gotchas)
+## 核心“弯弯绕绕”与历史避坑铁律 (32 Critical Invariants & Gotchas)
 
-这 31 条铁律是整个项目 25,699 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 32 条铁律是整个项目 26,636 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
