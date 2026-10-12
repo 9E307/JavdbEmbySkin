@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（26,636 行，v7.336）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（27,052 行，v7.337）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -294,7 +294,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 26,636 Lines)
+## 架构子系统全景地图 (Architecture Map Across 27,052 Lines)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -305,7 +305,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ JavdbEmbySkin 核心运行时 (Monolithic Sandbox, Host Guard: javdb*.com / jdforrepam.com)      │
 │                                                                                             │
-│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 198 & Lines 25300 - 26636)                    │
+│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 265 & Lines 25300 - 27052)                    │
 │    • 严格域名守卫与鉴权路由避让 (/login, /user_sessions 等 100% 保持原生 Rails POST)        │
 │    • SPA 路由接管: Turbolinks / PJAX 跨页监听、无感局部刷新与全局生命周期重置               │
 │    • 元素级 Referrer 免溯源策略 (图片 no-referrer 隔离，主动豁免验证码防 403 阻断)          │
@@ -318,7 +318,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 │    • 风格切换: Emby Native 经典深色 / Glass 毛玻璃 / LiquidGlass 2.0 (离线 SVG GPU 折射)    │
 │    • Micro-Saturate Jitter: 50ms 节流注入万分之五微抖动，破除 Chromium 合成层 GPU 缓存冻结  │
 │    • Steam 3D Tilt: transform-origin: top left 锚点与 RAF 帧率锁，全息跟随高光层            │
-│    • WaterfallEngine: 视口宽度横向瀑布流，绝对定位高度计算、防抖重排与树状监听解绑          │
+│    • WaterfallEngine: 视口宽度横向瀑布流，绝对定位高度计算、70ms 批重排与树状监听解绑       │
 │    • Dynamic Focus Grid: 2:3 无缝流体宫格、200% 宽右对齐黄金人脸裁切与全屏暗色环境遮罩      │
 │    • 原生网格共存守卫: 关闭皮肤时拔除 emby-masonry，熔断后台排版引擎，完美复原 CSS Grid     │
 │                                                                                             │
@@ -347,20 +347,20 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 │    • 被动静默采集 (passiveCollectMovie): 列表滑动后台增量补全，纠错锁 (customMeta) 豁免     │
 │    • 对称孤儿清洗 (dbPurgeOrphanMovies): 遵循绝对对称原则，彻底清除无归属的未登录幽灵记录   │
 │                                                                                             │
-│ 6. 交互界面、业务中心与多维筛选系统 (Lines 9341 - 15500 & Lines 18677 - 21915)              │
+│ 6. 交互界面、业务中心与多维筛选系统 (Lines 9341 - 15800 & Lines 18677 - 22220)              │
 │    • FAVUI & GalleryView: 收藏夹/画廊双模态面板 (多自定义清单 CRUD、拖拽排序、批量管理套件) │
 │    • 多维流式筛选器 (openFilterModal): 即时草稿快照 (tmp 沙箱)、候选子宇宙 (modalVids) 重构 │
 │    • 共演交集算子: 多选演员从并集 (OR) 切严格子集交集 (AND)，全维度频次动态重新汇算         │
 │    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、四阶评分梯队占比、排行榜)           │
-│    • Top250ViewManager: 日榜/周榜/月榜/总榜 (基于 Sequence Token 请求代数令牌防乱序覆盖)    │
-│    • 导航外壳与设置控制台: buildHomeTabs 常驻导航 (直接子节点契约) + 6分类全功能设置中心    │
+│    • Top250ViewManager: 网页登录态优先 (Cookie直连) + 移动端 Token 双轨容灾 + 代数令牌防乱序│
+│    • 导航外壳与设置控制台: buildHomeTabs 常驻导航 + 全局 `/` 搜索快捷键 + 6分类设置中心     │
 │    • 凭据防嗅探体系 (sanitizeSearchInputs): type=search, role=searchbox, 11项属性与聚焦冲刷 │
 │                                                                                             │
-│ 7. 外部服务、女优智能画像与云端网关 (Lines 11350 - 15060 & Lines 21915 - 22540)             │
+│ 7. 外部服务、女优智能画像与云端网关 (Lines 11350 - 15060 & Lines 22220 - 22620)             │
 │    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 四级 CDN 容灾降级   │
 │    • ActressService: JAV_info 现役/退役活跃探针与维基百科异步回退，生成女优生平卡片         │
 │    • PlaySitesService: 123AV / njav / MissAV 等 10+ 外部在线源与动态模板参数变量替换        │
-│    • PreviewSys: JavFree / JavStore / BlogJav / ProjectJav 嗅探 + L1/L2 7天两级缓存         │
+│    • PreviewSys: 多站嗅探 + L1/L2 7天两级缓存 + 在途去重 (pending) + AbortSignal 超时取消   │
 │    • CloudSync: WebDAV / GitHub / Gitee 双向同步，字段丰富度胜者算法 (fieldRichness) 合并   │
 │    • 凭据脱敏安全管道: 备份与云端同步默认剔除敏感授权 Token 与密码，防凭据外泄              │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -374,7 +374,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 1. **坚决抵御“用大重构掩盖排查不足”的浮躁冲动**：
    * 严禁在未定位到真实物理根因前，轻易向用户提议“推翻重写已有成熟模块”（如重写 `removeEmbyDOM`、重写网格重构或重写事件委托）；
-   * 本项目是一个拥有 26,000+ 行紧密耦合单文件、历经数十轮实战对抗审计的生产级应用，盲目推翻成熟函数往往会在修好 1 个表象问题的同时，瞬间踩中此前填平的 5 个深层隐性地雷。
+   * 本项目是一个拥有 27,000+ 行紧密耦合单文件、历经数十轮实战对抗审计的生产级应用，盲目推翻成熟函数往往会在修好 1 个表象问题的同时，瞬间踩中此前填平的 5 个深层隐性地雷。
 2. **第一性原理深度穿透本质（First Principles Root-Cause Analysis）**：
    * 排查任何异常必须追本溯源到最底层的物理本质：到底是不是 Chromium 合成层（Compositing Layer）GPU 缓存未刷？是不是 DOM 脱水期未连接 DOM 树时的 `isConnected === false` 时序竞争？是不是 CSS Specificity 权重被原生类名覆盖？是不是 W3C 标准下的直接子节点（Direct Child）断言失败？是不是 IndexedDB 异步事务未就绪？
    * 必须拿出具有底层依据的确凿结论，严禁靠“我猜可能在这里”、“试着包裹一个 setTimeout”来盲目试错。
@@ -393,15 +393,15 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 后续任何 AI 智能体在向用户汇报或提交代码前，必须在内部反思链（Chain of Thought）中逐项核对并确保符合以下四步交付准则：
 
 1. **[语法与静态安全]**：是否已执行 `node -c .\JavdbEmbySkin.user.js` 并确保 100% 零语法错误与未闭合语法结构？
-2. **[32条铁律红线核查]**：本次改动是否侵犯了后文 32 条业务铁律中的任何一条？必须对照本次修改所触碰的代码模块与子系统，逐条检索核查后文对应的业务铁律与历史陷阱，坚决不触碰任何既有防线。
+2. **[33条铁律红线核查]**：本次改动是否侵犯了后文 33 条业务铁律中的任何一条？必须对照本次修改所触碰的代码模块与子系统，逐条检索核查后文对应的业务铁律与历史陷阱，坚决不触碰任何既有防线。
 3. **[侵入度与重构判定]**：本次修改是否严格做到了“最小必要侵入”？是否存在用推翻重构掩盖排查不足的嫌疑？
 4. **[文档与版本原子化同步]**：若涉及版本递增，是否已将脚本头部 `@version`、脚本内部 `VERSION` 常量、`CONTEXT.md` 顶栏行数与版本号、以及 [`CHANGELOG.md`](./CHANGELOG.md) 严格按 Keep a Changelog 格式同步更新？
 
 ---
 
-## 核心“弯弯绕绕”与历史避坑铁律 (32 Critical Invariants & Gotchas)
+## 核心“弯弯绕绕”与历史避坑铁律 (33 Critical Invariants & Gotchas)
 
-这 32 条铁律是整个项目 26,636 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 33 条铁律是整个项目 27,052 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -565,6 +565,14 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：若无两阶段延迟防抖，光标快速扫视卡片时会瞬间并发几十个视频网络请求，导致浏览器网络栈堵塞并触发第三方 CDN 429 频控；若未对番号强制转换为小写，大写番号会导致 MD5 哈希错误（如 `IPZZ-934` 计算为 `b9` 而非正确的 `94`）进而触发双源同时 404；若未将弹窗纳入 `SKIN_CHROME_SEL`，弹窗载入动画会造成全局路由监听频繁抖动。
 * **参见决策**：[ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
 
+### 33. 排行榜路由精确解耦、TOP250 网页登录态优先拉取与高频 DOM/网络无阻塞防抖准则
+* **铁律**：
+  1. **排行榜路由边界隔离**：常规影片排行榜（`/rankings/movies` 日榜/周榜/月榜）必须保留标准 Emby 网格瀑布流渲染，严禁将其纳入 `Top250ViewManager` 视图劫持；仅允许对 `/rankings/top`（TOP250）与 `/rankings/playback`（热播榜）挂载 `Top250ViewManager`，且在访问 `/rankings/movies` 时必须通过 `normalizeRankingHash()` 自动剥离残留的 `#top250` Hash。
+  2. **TOP250 网页会话优先与凭据防误删**：`Top250ViewManager` 拉取榜单数据时，必须优先通过当前浏览器的网页登录态（`fetch('/rankings/top?page=1..8', { credentials: 'include' })`）解析 `.movie-list .item` 节点并批量写入 `setCachedMany(entries)` 单事务缓存，仅在网页会话不可用时回退至移动端 API Token；当拉取返回 `OfficialSessionError` 或网络超时等非 JWT 校验错误时，严禁执行 `localStorage.removeItem(APP_AUTH_KEY)` 误删用户已保存的 API Token。
+  3. **高频 DOM 观察与网络请求节流**：全局 `MutationObserver` 必须先经 `hasRelevantPageMutation(muts)` 预过滤（忽略纯脚本皮肤节点及无关属性变动）并按页面类型分级防抖（详情页 `90ms` / 列表页 `500ms`），`ensureImageNoReferrer(scope)` 仅允许增量扫描新增子树而非全量 `document`；严禁使用 `querySelectorAll('body *')` 全表扫描公告弹窗，必须使用带节点预算上限（2500 节点）的 `document.createTreeWalker`；网络层通过 `embyNetRun` 实现同 URL 在途 `GET` 请求单飞去重（In-Flight Deduplication）与 429/403 指数退避重试，且严禁设置硬编码的低并发上限（如 3 并发队列锁）阻塞瀑布流多图加载，同时必须完整保留 7 天 IndexedDB L2 高清大图持久化缓存与 `projectjav` 等全量图源。
+* **陷阱**：若用 `/rankings/movies` 宽泛匹配 TOP250 视图，用户点击日榜/周榜/月榜时会被强制劫持到 TOP250 面板导致常规排行榜彻底无法访问；若在网页会话过期时无差别清除 `APP_AUTH_KEY`，会导致用户辛苦获取的移动端 Token 被静默清空；若在 `MutationObserver` 中无过滤地触发全量 DOM 查询，会在瀑布流无限滚动时引发严重的帧率暴跌与主线程卡顿。
+* **参见决策**：[ADR-0029: 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构](./docs/adr/0029-rankings-route-decoupling-web-session-top250-and-runtime-throttling.md)
+
 ---
 
 ## 架构决策档案索引 (Architectural Decision Records)
@@ -599,5 +607,6 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 26. [ADR-0026: 媒体库多维流式筛选器即时草稿状态机与共演交集算子](./docs/adr/0026-multi-dimensional-filter-draft-snapshot-and-coact-intersection-engine.md)
 27. [ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
 28. [ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
+29. [ADR-0029: 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构](./docs/adr/0029-rankings-route-decoupling-web-session-top250-and-runtime-throttling.md)
 
 
