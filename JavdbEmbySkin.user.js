@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.337
+// @version      7.4.0
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -85,7 +85,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.337';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.4.0';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -4246,6 +4246,118 @@ html:not(.emby-skin) #emby-favorites-panel { display:none !important; }
 .jhs-btn-secondary { background:rgba(255,255,255,.08); color:var(--e-text2, #ccc); border:1px solid rgba(255,255,255,.1); }
 .jhs-btn-secondary:hover { background:rgba(255,255,255,.14); color:#fff; }
 
+/* ====== 设置中心：关于与说明面板样式 ====== */
+#panel-about.active {
+  display: block !important;
+}
+.about-hero-card {
+  position: relative;
+  padding: 24px 20px 22px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.75) 0%, rgba(88, 28, 135, 0.45) 50%, rgba(15, 23, 42, 0.85) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.45);
+  text-align: center;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.about-logo-wrapper {
+  perspective: 900px;
+  display: inline-block;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 10;
+}
+.about-logo-wrapper:hover {
+  z-index: 99;
+}
+.about-logo-card {
+  width: 104px;
+  height: 104px;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform .18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow .25s ease;
+  box-shadow: 0 10px 24px rgba(0,0,0,.45);
+}
+.about-logo-card:hover {
+  box-shadow: 0 24px 60px rgba(0,0,0,.85);
+  z-index: 100;
+}
+.about-card-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity .25s ease;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,255,255,.45), rgba(255,255,255,0) 45%);
+}
+.about-section-box {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+/* 流动渐变发光按钮 (GitHub) */
+.about-gh-glow-btn {
+  color: #fff;
+  background: #0d1117;
+  cursor: pointer;
+  position: relative;
+  z-index: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,.14);
+  transition: transform .18s ease-in-out;
+}
+.about-gh-glow-btn:before {
+  content: "";
+  background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  background-size: 400%;
+  z-index: -1;
+  filter: blur(14px);
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  animation: ghGlowing 20s linear infinite;
+  opacity: .4;
+  transition: opacity .28s ease-in-out;
+  border-radius: inherit;
+}
+.about-gh-glow-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+.about-gh-glow-btn:hover:before {
+  opacity: 1;
+}
+.about-gh-glow-btn:after {
+  z-index: -1;
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0d1117;
+  border-radius: inherit;
+}
+@keyframes ghGlowing {
+  0% { background-position: 0 0; }
+  50% { background-position: 400% 0; }
+  100% { background-position: 0 0; }
+}
+
 /* ====== 设置面板与悬浮窗风格适配：毛玻璃状态 (emby-style-glass) ====== */
 html.emby-skin.emby-style-glass .jhs-settings-mask,
 html.emby-skin.emby-style-glass .efav-modal-mask {
@@ -7754,7 +7866,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     showNotes: 'javdbEmbyShowNotes',
     expandCoact: 'javdbEmbyExpandCoact',
     style: 'javdbEmbyStyle',
-    filterCollapsed: 'javdbEmbyFilterCollapsed'
+    filterCollapsed: 'javdbEmbyFilterCollapsed',
+    favSort: 'javdbEmbyFavSort'
   };
 
   // 各封面模式（裁切/融合/混合/全封面）独立尺寸记忆与智能默认值
@@ -12679,6 +12792,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     { id: 'avmates', name: 'AvMates', template: 'https://avmates.com/?s={code}', icon: 'https://avmates.com/wp-content/uploads/2026/05/cropped-avmates-1-1-32x32.png', group: '综合', enabled: true },
     { id: 'hohoj', name: 'HOHOJ', template: 'https://hohoj.tv/search?text={code}', icon: 'https://hohoj.tv/resources/img/small_icon.png', group: '综合', enabled: true },
     { id: 'xszav', name: 'XSZ-AV', template: 'https://cn.xsz-av.com/search/videos/{code}', icon: 'https://cn.xsz-av.com/favicon.ico', group: '综合', enabled: true },
+    { id: 'javday', name: 'JavDay', template: 'https://javday.app/search/?wd={code}', icon: 'https://javday.app/favicon.ico', group: '综合', enabled: true },
+    { id: 'javrate', name: 'JavRate', template: 'https://www.javrate.com/search/{code}', icon: 'https://www.javrate.com/imgs/site.ico', group: '综合', enabled: true },
     { id: 'javhdtoday', name: 'JavHD', template: 'https://javhd.today/cn/search/video/?s={code}', icon: 'https://javhd.today/favicon-32x32.png', group: '综合', enabled: true }
   ];
 
@@ -13753,7 +13868,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           setPluginEnabled(pid, cb.checked);
           if (pid === 'dfPreview') {
             localStorage.setItem(SET_KEYS.dfPreview, cb.checked ? '1' : '0');
-            if (!cb.checked) dfPopupHide();
+            if (!cb.checked) {
+              dfPopupHide();
+              localStorage.setItem(SET_KEYS.dfVideoPreview, '0');
+              stopDfVideoPreview();
+            }
           } else if (pid === 'infiniteScroll' && cb.checked) {
             if (typeof InfiniteScrollManager !== 'undefined') InfiniteScrollManager.init();
           }
@@ -13766,7 +13885,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (qDfVideoPreview) {
       qDfVideoPreview.addEventListener('change', function () {
         localStorage.setItem(SET_KEYS.dfVideoPreview, qDfVideoPreview.checked ? '1' : '0');
-        if (!qDfVideoPreview.checked) stopDfVideoPreview();
+        if (qDfVideoPreview.checked) {
+          if (!dfPreviewOn()) {
+            setPluginEnabled('dfPreview', true);
+            localStorage.setItem(SET_KEYS.dfPreview, '1');
+          }
+        } else {
+          stopDfVideoPreview();
+        }
         syncSettingsControls();
       });
     }
@@ -13908,6 +14034,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '<div class="jhs-side-item" data-tab="data"><span class="material-symbols-outlined" style="font-size:16px;">database</span> 数据管理</div>' +
           '<div class="jhs-side-item" data-tab="diagnostics"><span class="material-symbols-outlined" style="font-size:16px;">query_stats</span> 统计中心</div>' +
           '<div class="jhs-side-item" data-tab="meta-correct"><span class="material-symbols-outlined" style="font-size:16px;">edit_note</span> 元数据纠错管理</div>' +
+          '<div class="jhs-side-item" data-tab="about"><span class="material-symbols-outlined" style="font-size:16px;">info</span> 关于与说明</div>' +
         '</div>' +
         '<div class="jhs-content">' +
 
@@ -14165,6 +14292,134 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '</div>' +
           '</div>' +
 
+          // 9. 关于与说明 (v7.4.0)
+          '<div class="jhs-panel" id="panel-about">' +
+            // 顶部品牌画卷 Hero 横幅
+            '<div class="about-hero-card">' +
+              // 3D Steam 风格互动 Logo
+              '<div class="about-logo-wrapper">' +
+                '<div id="about-logo-card" class="about-logo-card">' +
+                  '<img src="https://raw.githubusercontent.com/9E307/JavdbEmbySkin/main/aboutlogo.webp" alt="JavdbEmbySkin Logo" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;pointer-events:none;user-select:none;" onerror="if(this.src!==\'https://testingcf.jsdelivr.net/gh/9E307/JavdbEmbySkin@main/aboutlogo.webp\'){this.src=\'https://testingcf.jsdelivr.net/gh/9E307/JavdbEmbySkin@main/aboutlogo.webp\';}" />' +
+                  '<span class="about-card-shine"></span>' +
+                '</div>' +
+              '</div>' +
+
+              '<h2 style="font-size:22px;font-weight:900;letter-spacing:0.06em;color:#fff;margin:0 0 4px;background:linear-gradient(90deg,#ffffff 0%,#bae6fd 50%,#e9d5ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">JAVDB EMBY SKIN</h2>' +
+              '<div style="font-size:13px;font-weight:700;color:#bae6fd;margin-bottom:6px;letter-spacing:0.04em;">次世代前端重构 · 打造私人专属影库</div>' +
+              '<div style="font-size:11.5px;color:rgba(255,255,255,.65);line-height:1.5;margin-bottom:14px;">零账号改动 · 本地独立数据库 · 多源播放秒达 · 剧照画廊与自愈纠错</div>' +
+
+              // 当前版本检查更新与 GitHub 实时 Star 按钮
+              '<div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;">' +
+                '<a id="about-ver-btn" href="https://greasyfork.org/zh-CN/scripts/596423" target="_blank" title="点击前往 GreasyFork 检查更新" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);text-decoration:none;transition:all .2s ease;">' +
+                  '<span class="material-symbols-outlined" style="font-size:15px;color:#4ade80;">verified</span>' +
+                  '<span id="about-ver-text">当前版本 v' + VERSION + '</span>' +
+                '</a>' +
+
+                '<a id="about-gh-btn" class="about-gh-glow-btn" href="https://github.com/9E307/JavdbEmbySkin" target="_blank" title="前往 GitHub 项目仓库 Star 支持">' +
+                  '<svg height="15" viewBox="0 0 16 16" width="15" style="fill:currentColor;vertical-align:middle;"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>' +
+                  '<span>GitHub</span>' +
+                  '<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,.12);font-size:11px;color:#fde047;">' +
+                    '<span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:\'FILL\' 1;">star</span>' +
+                    '<span id="about-gh-stars">82</span>' +
+                  '</span>' +
+                '</a>' +
+              '</div>' +
+            '</div>' +
+
+            // 为什么要做这个脚本？
+            '<div class="about-section-box" style="border-left:4px solid var(--e-accent,#00a4dc);">' +
+              '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' +
+                '<span class="material-symbols-outlined" style="font-size:17px;color:var(--e-accent,#00a4dc);">psychology_alt</span> 为什么要做这个脚本？' +
+              '</div>' +
+              '<div style="font-size:12px;color:#ccc;line-height:1.6;">' +
+                '官方 JAVDB 虽信息详尽但界面陈旧、收藏夹功能单一且不支持多维聚合搜索，数据纠错更依赖漫长的官方审核流程；而仓鼠症影迷为了欣赏好看的海报墙往往花费大量硬盘下片。<b>JavdbEmbySkin</b> 的核心理念是：<b>完全依托浏览器本地构建独立媒体库，界面好看、检索顺手、在线多源直达，无需下片即可拥有专属私人流媒体影库！</b>' +
+              '</div>' +
+            '</div>' +
+
+            // 本项目功能移植与开源致谢
+            '<div class="about-section-box">' +
+              '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' +
+                '<span class="material-symbols-outlined" style="font-size:17px;color:#a855f7;">handshake</span> 脚本功能移植与开源致谢' +
+              '</div>' +
+              '<div style="font-size:11.5px;color:#999;margin-bottom:10px;">移植以下优秀脚本与项目的核心功能，感谢原作者的开源奉献：</div>' +
+              '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;margin-bottom:12px;">' +
+                '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 12px;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:2px;"><a href="https://greasyfork.org/zh-CN/scripts/590210" target="_blank" style="color:inherit;text-decoration:none;">JHS-Pro ↗</a></div>' +
+                  '<div style="font-size:11px;color:#aaa;line-height:1.4;">翻译功能、女优信息、设置界面、插件开关、WebDAV 备份、跳转外部观看</div>' +
+                '</div>' +
+                '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 12px;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:2px;"><a href="https://greasyfork.org/scripts/590818" target="_blank" style="color:inherit;text-decoration:none;">JavDB 增强：评论 & 清单无限加载 ↗</a></div>' +
+                  '<div style="font-size:11px;color:#aaa;line-height:1.4;">JAVDB 评论和清单绕过会员限制展开</div>' +
+                '</div>' +
+                '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 12px;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:2px;"><a href="https://greasyfork.org/scripts/586120" target="_blank" style="color:inherit;text-decoration:none;">JavDB Power Tools ↗</a></div>' +
+                  '<div style="font-size:11px;color:#aaa;line-height:1.4;">热播与 Top250 榜单、GitHub 备份机制</div>' +
+                '</div>' +
+                '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 12px;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:2px;"><a href="https://greasyfork.org/zh-CN/scripts/539525" target="_blank" style="color:inherit;text-decoration:none;">Javdb 增强脚本 ↗</a></div>' +
+                  '<div style="font-size:11px;color:#aaa;line-height:1.4;">想看/看过标记状态和预览图嗅探获取</div>' +
+                '</div>' +
+                '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:9px 12px;grid-column:1/-1;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:2px;"><a href="https://github.com/gfriends/gfriends" target="_blank" style="color:inherit;text-decoration:none;">gfriends 媒体服务器演员头像仓库 ↗</a></div>' +
+                  '<div style="font-size:11px;color:#aaa;line-height:1.4;">用以替换 JAVDB 官方普通头像为 Gfriends 超清写真档案</div>' +
+                '</div>' +
+              '</div>' +
+              '<div style="font-size:11.5px;color:#999;margin-bottom:8px;">感谢技术平权与前沿大模型的架构协同协助：</div>' +
+              '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">' +
+                '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:8px 10px;text-align:center;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">' +
+                    '<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;flex-shrink:0;"><circle cx="12" cy="12" fill="#0055E9" r="12"></circle><path d="M12 0c.518 0 1.028.033 1.528.096A6.188 6.188 0 0112.12 12.28l-.12.001c-2.99 0-5.242 2.179-5.554 5.11-.223 2.086.353 4.412 2.242 6.146C3.672 22.1 0 17.479 0 12 0 5.373 5.373 0 12 0z" fill="#A8DFF5"></path><path d="M5.286 5a2.438 2.438 0 01.682 3.38c-3.962 5.966-3.215 10.743 2.648 15.136C3.636 22.056 0 17.452 0 12c0-1.787.39-3.482 1.09-5.006.253-.435.525-.872.817-1.311A2.438 2.438 0 015.286 5z" fill="#0055E9"></path><path d="M12.98.04c.272.021.543.053.81.093.583.106 1.117.254 1.538.44 6.638 2.927 8.07 10.052 1.748 15.642a4.125 4.125 0 01-5.822-.358c-1.51-1.706-1.3-4.184.357-5.822.858-.848 3.108-1.223 4.045-2.441 1.257-1.634 2.122-6.009-2.523-7.506L12.98.039z" fill="#00BCFF"></path><path d="M13.528.096A6.187 6.187 0 0112 12.281a5.75 5.75 0 00-1.71.255c.147-.905.595-1.784 1.321-2.501.858-.848 3.108-1.223 4.045-2.441 1.27-1.651 2.14-6.104-2.676-7.554.184.014.367.033.548.056z" fill="#ECECEE"></path></svg>' +
+                    '<span>Tencent HY3</span>' +
+                  '</div>' +
+                  '<div style="font-size:10.5px;color:#888;">基础架构搭建初版完善</div>' +
+                '</div>' +
+                '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:8px 10px;text-align:center;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">' +
+                    '<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;flex-shrink:0;"><path fill="url(#about-gemini-sparkle)" d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/><defs><linearGradient id="about-gemini-sparkle" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#9b72cb"/><stop offset="50%" stop-color="#d96570"/><stop offset="100%" stop-color="#1ea3e8"/></linearGradient></defs></svg>' +
+                    '<span>Google Gemini 3.8Flash</span>' +
+                  '</div>' +
+                  '<div style="font-size:10.5px;color:#888;">前端优化、核心开发</div>' +
+                '</div>' +
+                '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:8px 10px;text-align:center;">' +
+                  '<div style="font-size:12px;font-weight:700;color:#e2e8f0;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:3px;">' +
+                    '<svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align:middle;flex-shrink:0;"><path d="M23.748 4.482c-.254-.124-.364.113-.512.234-.051.039-.094.09-.137.136-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.156-.708-.311-.955-.65-.172-.241-.219-.51-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.093.172.187.129.323-.082.28-.18.552-.266.833-.055.179-.137.217-.329.14a5.526 5.526 0 01-1.736-1.18c-.857-.828-1.631-1.742-2.597-2.458a11.365 11.365 0 00-.689-.471c-.985-.957.13-1.743.388-1.836.27-.098.093-.432-.779-.428-.872.004-1.67.295-2.687.684a3.055 3.055 0 01-.465.137 9.597 9.597 0 00-2.883-.102c-1.885.21-3.39 1.102-4.497 2.623C.082 8.606-.231 10.684.152 12.85c.403 2.284 1.569 4.175 3.36 5.653 1.858 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.133-.284 4.994-1.86.47.234.962.327 1.78.397.63.059 1.236-.03 1.705-.128.735-.156.684-.837.419-.961-2.155-1.004-1.682-.595-2.113-.926 1.096-1.296 2.746-2.642 3.392-7.003.05-.347.007-.565 0-.845-.004-.17.035-.237.23-.256a4.173 4.173 0 001.545-.475c1.396-.763 1.96-2.015 2.093-3.517.02-.23-.004-.467-.247-.588zM11.581 18c-2.089-1.642-3.102-2.183-3.52-2.16-.392.024-.321.471-.235.763.09.288.207.486.371.739.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.167-1.361-.802-2.5-1.86-3.301-3.307-.774-1.393-1.224-2.887-1.298-4.482-.02-.386.093-.522.477-.592a4.696 4.696 0 011.529-.039c2.132.312 3.946 1.265 5.468 2.774.868.86 1.525 1.887 2.202 2.891.72 1.066 1.494 2.082 2.48 2.914.348.292.625.514.891.677-.802.09-2.14.11-3.054-.614zm1-6.44a.306.306 0 01.415-.287.302.302 0 01.2.288.306.306 0 01-.31.307.303.303 0 01-.304-.308zm3.11 1.596c-.2.081-.399.151-.59.16a1.245 1.245 0 01-.798-.254c-.274-.23-.47-.358-.552-.758a1.73 1.73 0 01.016-.588c.07-.327-.008-.537-.239-.727-.187-.156-.426-.199-.688-.199a.559.559 0 01-.254-.078c-.11-.054-.2-.19-.114-.358.028-.054.16-.186.192-.21.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.391.451.462.576.685.914.176.265.336.537.445.848.067.195-.019.354-.25.452z" fill="#4D6BFE"></path></svg>' +
+                    '<span>DeepSeek v4.1Flash</span>' +
+                  '</div>' +
+                  '<div style="font-size:10.5px;color:#888;">客观审计与对抗测试</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            // 近期版本演进亮点 (最近两版) + 查看完整更新日志
+            '<div class="about-section-box">' +
+              '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+                '<div style="font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
+                  '<span class="material-symbols-outlined" style="font-size:17px;color:#38bdf8;">auto_graph</span> 近期主要版本演进亮点' +
+                '</div>' +
+                '<a href="https://github.com/9E307/JavdbEmbySkin/blob/main/CHANGELOG.md" target="_blank" class="jhs-btn jhs-btn-secondary" style="font-size:11.5px;padding:3px 10px;height:26px;text-decoration:none;">' +
+                  '<span class="material-symbols-outlined" style="font-size:14px;">history</span> 查看完整更新日志' +
+                '</a>' +
+              '</div>' +
+              '<div id="about-changelog-recent" style="display:flex;flex-direction:column;gap:10px;">' +
+                '<div style="padding:16px;background:rgba(0,0,0,.25);border-radius:8px;border:1px solid rgba(255,255,255,.05);text-align:center;font-size:12px;color:#888;">' +
+                  '<span class="material-symbols-outlined" style="font-size:16px;animation:spin 1.5s linear infinite;vertical-align:middle;margin-right:6px;">sync</span> 正在拉取 GitHub 最新版本演进日志...' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            // 底部开源协议与免责声明
+            '<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:#888;">' +
+              '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+                '<div>Made with ❤️ for all Cinephiles · 数据 100% 存留浏览器本地</div>' +
+                '<div>开源协议：<a href="https://github.com/9E307/JavdbEmbySkin/blob/main/LICENSE" target="_blank" style="color:#38bdf8;text-decoration:none;">BSD-3-Clause</a></div>' +
+              '</div>' +
+              '<div style="color:#666;font-size:11px;line-height:1.4;">' +
+                '免责声明：本脚本仅用于个人前端界面样式美化与本地收藏管理学习交流，不存储、不分发任何受版权保护的音视频内容；请自觉遵守当地法律法规。' +
+              '</div>' +
+            '</div>' +
+
+          '</div>' +
+
         '</div>' +
       '</div>';
 
@@ -14186,6 +14441,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           target.classList.add('active');
           if (tab === 'meta-correct') renderFullMetaCorrectList(mask);
           if (tab === 'sites') renderFullPreviewSiteList(mask);
+          if (tab === 'about') initAboutPanel(mask);
         }
       });
     });
@@ -14269,7 +14525,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (fDfVideo) {
       fDfVideo.addEventListener('change', function () {
         localStorage.setItem(SET_KEYS.dfVideoPreview, fDfVideo.checked ? '1' : '0');
-        if (!fDfVideo.checked) stopDfVideoPreview();
+        if (fDfVideo.checked) {
+          if (!dfPreviewOn()) {
+            setPluginEnabled('dfPreview', true);
+            localStorage.setItem(SET_KEYS.dfPreview, '1');
+          }
+        } else {
+          stopDfVideoPreview();
+        }
         syncSettingsControls();
       });
     }
@@ -14767,7 +15030,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           setPluginEnabled(pl.id, cb.checked);
           if (pl.id === 'dfPreview') {
             localStorage.setItem(SET_KEYS.dfPreview, cb.checked ? '1' : '0');
-            if (!cb.checked) dfPopupHide();
+            if (!cb.checked) {
+              dfPopupHide();
+              localStorage.setItem(SET_KEYS.dfVideoPreview, '0');
+              stopDfVideoPreview();
+            }
           }
           if (pl.id === 'infiniteScroll' && cb.checked && typeof InfiniteScrollManager !== 'undefined') {
             InfiniteScrollManager.init();
@@ -15422,7 +15689,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (pop) {
       ['translate', 'dfPreview', 'otherSite', 'infiniteScroll', 'reviewListInfinite', 'quickStatusPreview'].forEach(function (pid) {
         const cb = pop.querySelector('#qs-plugin-' + pid);
-        if (cb) cb.checked = isPluginEnabled(pid);
+        if (cb) {
+          if (pid === 'dfPreview') cb.checked = dfPreviewOn();
+          else cb.checked = isPluginEnabled(pid);
+        }
       });
     }
 
@@ -15531,7 +15801,235 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       renderFullInfoSiteList(mask);
       renderFullPreviewSiteList(mask);
       renderFullMetaCorrectList(mask);
+      initAboutPanel(mask);
     }
+  }
+
+  /* =======================================================================
+   * 关于与说明模块 (v7.4.0)
+   * 包含 3D 卡牌倾斜互动 Logo、GitHub Star 实时计数、版本检测与致谢
+   * ===================================================================== */
+  function attachLogo3DTilt(card) {
+    if (!card || card.dataset.tilt3d) return;
+    card.dataset.tilt3d = '1';
+    let raf = null;
+    const shine = card.querySelector('.about-card-shine');
+
+    card.addEventListener('mousemove', function (e) {
+      const r = card.getBoundingClientRect();
+      const px = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      const py = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+      const ry = (px - 0.5) * 18;
+      const rx = (0.5 - py) * 18;
+
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () {
+        card.style.transform = 'perspective(900px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg) scale(1.6)';
+        card.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
+        card.style.setProperty('--my', (py * 100).toFixed(1) + '%');
+        if (shine) shine.style.opacity = '1';
+      });
+    });
+
+    card.addEventListener('mouseleave', function () {
+      if (raf) cancelAnimationFrame(raf);
+      card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale(1)';
+      if (shine) shine.style.opacity = '0';
+    });
+  }
+
+  function fetchAboutGitHubStats(mask) {
+    if (typeof fetch !== 'function') return;
+    const starEl = mask ? mask.querySelector('#about-gh-stars') : document.getElementById('about-gh-stars');
+    if (!starEl) return;
+    try {
+      const cached = sessionStorage.getItem('javdbEmbyGhStars');
+      const cachedTime = sessionStorage.getItem('javdbEmbyGhStarsTime');
+      if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 15 * 60 * 1000)) {
+        starEl.textContent = cached;
+        return;
+      }
+    } catch (e) {}
+
+    fetch('https://api.github.com/repos/9E307/JavdbEmbySkin')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && typeof data.stargazers_count === 'number') {
+          starEl.textContent = String(data.stargazers_count);
+          try {
+            sessionStorage.setItem('javdbEmbyGhStars', String(data.stargazers_count));
+            sessionStorage.setItem('javdbEmbyGhStarsTime', String(Date.now()));
+          } catch (e) {}
+        }
+      })
+      .catch(function () {});
+  }
+
+  function compareSemver(v1, v2) {
+    const p1 = (v1 || '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
+    const p2 = (v2 || '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
+    const len = Math.max(p1.length, p2.length);
+    for (let i = 0; i < len; i++) {
+      const a = p1[i] || 0, b = p2[i] || 0;
+      if (a > b) return 1;
+      if (a < b) return -1;
+    }
+    return 0;
+  }
+
+  function checkAboutVersionUpdate(mask) {
+    if (typeof fetch !== 'function') return;
+    const verText = mask ? mask.querySelector('#about-ver-text') : document.getElementById('about-ver-text');
+    const verBtn = mask ? mask.querySelector('#about-ver-btn') : document.getElementById('about-ver-btn');
+    if (!verText || !verBtn) return;
+    verText.textContent = '当前版本 v' + VERSION;
+
+    fetch('https://testingcf.jsdelivr.net/gh/9E307/JavdbEmbySkin@main/JavdbEmbySkin.user.js', { cache: 'no-cache' })
+      .then(function (res) { return res.text(); })
+      .then(function (code) {
+        const m = code && code.match(/@version\s+([0-9.]+)/);
+        if (m && m[1]) {
+          const remoteVer = m[1];
+          if (compareSemver(remoteVer, VERSION) > 0) {
+            verText.innerHTML = '当前版本 v' + VERSION + ' <span style="color:#fde047;font-weight:700;">(发现新版本 v' + remoteVer + ')</span>';
+            verBtn.style.borderColor = 'rgba(234,179,8,.5)';
+            verBtn.style.background = 'rgba(234,179,8,.15)';
+          } else {
+            verText.textContent = '当前版本 v' + VERSION + ' (已是最新)';
+          }
+        }
+      })
+      .catch(function () {});
+  }
+
+  function syncRecentChangelogOnline(mask) {
+    if (typeof fetch !== 'function') return;
+    const listEl = mask ? mask.querySelector('#about-changelog-recent') : document.getElementById('about-changelog-recent');
+    if (!listEl) return;
+
+    try {
+      const cached = sessionStorage.getItem('javdbEmbyRecentChangelogHtml');
+      const cachedTime = sessionStorage.getItem('javdbEmbyRecentChangelogTime');
+      if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 10 * 60 * 1000)) {
+        listEl.innerHTML = cached;
+        return;
+      }
+    } catch (e) {}
+
+    function formatMarkdownLine(str) {
+      if (!str) return '';
+      return str
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/`([^`]+)`/g, '<code style="padding:1px 5px;background:rgba(255,255,255,.08);border-radius:4px;font-family:monospace;font-size:11px;color:#bae6fd;">$1</code>');
+    }
+
+    function renderChangelog(md) {
+      if (!md) throw new Error('Empty');
+      const sections = md.split(/(?=^##\s+\[)/m).filter(function (s) { return s.trim().startsWith('## ['); });
+      if (!sections || sections.length === 0) throw new Error('No version');
+      const recents = sections.slice(0, 2).map(function (sec) {
+        const lines = sec.trim().split('\n');
+        const header = lines[0].replace(/^##\s+/, '').trim();
+        const verMatch = header.match(/\[(.*?)\]\s*(?:-\s*(.*))?/);
+        const version = verMatch ? verMatch[1] : '';
+        const date = verMatch && verMatch[2] ? verMatch[2].trim() : '';
+
+        const groups = [];
+        let currentGroup = { title: '', bullets: [] };
+
+        for (let i = 1; i < lines.length; i++) {
+          const rawLine = lines[i].trim();
+          if (rawLine.startsWith('### ')) {
+            if (currentGroup.bullets.length > 0 || currentGroup.title) {
+              groups.push(currentGroup);
+            }
+            currentGroup = { title: rawLine.replace(/^###\s+/, '').trim(), bullets: [] };
+          } else if (rawLine.startsWith('* ')) {
+            currentGroup.bullets.push(rawLine.substring(2).trim());
+          }
+        }
+        if (currentGroup.bullets.length > 0 || currentGroup.title) {
+          groups.push(currentGroup);
+        }
+        return { version: version, date: date, groups: groups };
+      });
+
+      let html = '';
+      recents.forEach(function (r, idx) {
+        const isLatest = idx === 0;
+        const badgeBg = isLatest ? 'rgba(34,197,94,.2)' : 'rgba(56,189,248,.2)';
+        const badgeColor = isLatest ? '#4ade80' : '#38bdf8';
+        const extraTag = isLatest ? ' · 最新发布' : '';
+
+        let groupsHtml = '';
+        r.groups.forEach(function (g) {
+          if (!g.bullets || g.bullets.length === 0) return;
+          let titleBadgeColor = '#38bdf8';
+          if (/新增|Added/i.test(g.title)) titleBadgeColor = '#4ade80';
+          else if (/修复|Fixed/i.test(g.title)) titleBadgeColor = '#f87171';
+          else if (/优化|Optimized/i.test(g.title)) titleBadgeColor = '#38bdf8';
+          else if (/核心|Core/i.test(g.title)) titleBadgeColor = '#c084fc';
+
+          groupsHtml += '<div style="margin-top:10px;">';
+          if (g.title) {
+            groupsHtml += '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:6px;display:flex;align-items:center;gap:6px;">' +
+              '<span style="display:inline-block;width:3px;height:11px;border-radius:2px;background:' + titleBadgeColor + ';"></span>' +
+              escapeHtml(g.title) +
+            '</div>';
+          }
+          groupsHtml += '<div style="display:flex;flex-direction:column;gap:6px;padding-left:4px;">';
+          g.bullets.forEach(function (b) {
+            groupsHtml += '<div style="font-size:11.5px;color:#d1d5db;line-height:1.6;position:relative;padding-left:14px;">' +
+              '<span style="position:absolute;left:2px;top:0;color:#888;">•</span>' +
+              formatMarkdownLine(b) +
+            '</div>';
+          });
+          groupsHtml += '</div></div>';
+        });
+
+        html += '<div style="padding:12px 14px;background:rgba(0,0,0,.3);border-radius:8px;border:1px solid rgba(255,255,255,.05);margin-bottom:10px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06);">' +
+            '<span style="padding:2px 7px;border-radius:4px;background:' + badgeBg + ';color:' + badgeColor + ';font-family:monospace;font-weight:700;font-size:11.5px;">' + escapeHtml(r.version) + '</span>' +
+            '<span style="font-size:11px;color:#888;">' + escapeHtml(r.date) + extraTag + '</span>' +
+          '</div>' +
+          groupsHtml +
+        '</div>';
+      });
+
+      listEl.innerHTML = html;
+      try {
+        sessionStorage.setItem('javdbEmbyRecentChangelogHtml', html);
+        sessionStorage.setItem('javdbEmbyRecentChangelogTime', String(Date.now()));
+      } catch (e) {}
+    }
+
+    fetch('https://raw.githubusercontent.com/9E307/JavdbEmbySkin/main/CHANGELOG.md', { cache: 'no-cache' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(renderChangelog)
+      .catch(function () {
+        // Fallback to jsDelivr CDN
+        fetch('https://testingcf.jsdelivr.net/gh/9E307/JavdbEmbySkin@main/CHANGELOG.md', { cache: 'no-cache' })
+          .then(function (res) { return res.text(); })
+          .then(renderChangelog)
+          .catch(function () {
+            listEl.innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.08);border-radius:8px;border:1px solid rgba(239,68,68,.2);font-size:12px;color:#fca5a5;display:flex;align-items:center;gap:6px;">' +
+              '<span class="material-symbols-outlined" style="font-size:16px;">error</span> 暂未获取到在线日志，请点击右上角按钮直接在 GitHub 查看完整记录。' +
+            '</div>';
+          });
+      });
+  }
+
+  function initAboutPanel(mask) {
+    if (!mask) return;
+    const logoCard = mask.querySelector('#about-logo-card');
+    if (logoCard) attachLogo3DTilt(logoCard);
+    fetchAboutGitHubStats(mask);
+    checkAboutVersionUpdate(mask);
+    syncRecentChangelogOnline(mask);
   }
 
   function openSettingsPanel(defaultTab) {
@@ -15866,7 +16364,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
    * - 位置实时跟随光标重新计算：气泡永远不盖住鼠标，上下随空间智能择向
    * - 底部黑底信息条镜像标准网格卡片：番号强标题 + 标题文字
    * ===================================================================== */
-  const dfPopup = { item: null, x: 0, y: 0, timer: 0, videoTimer: 0, activeCode: null, raf: 0, hidden: true, wh: null, mouseBound: 0, scrollBound: 0 };
+  const dfPopup = { item: null, suppressedItem: null, x: 0, y: 0, timer: 0, videoTimer: 0, activeCode: null, raf: 0, hidden: true, wh: null, mouseBound: 0, scrollBound: 0 };
 
   function dfPreviewOn() {
     return (localStorage.getItem(SET_KEYS.dfPreview) || '1') !== '0';
@@ -15891,7 +16389,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   let dfVideoToken = 0;
 
   function dfVideoPreviewOn() {
-    return localStorage.getItem(SET_KEYS.dfVideoPreview) === '1';
+    return dfPreviewOn() && localStorage.getItem(SET_KEYS.dfVideoPreview) === '1';
   }
 
   function dfVideoDelayMs() {
@@ -16269,6 +16767,16 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           try { if (g) updateDynamicFocusGrid(g, null); } catch (err) {} // 收回该网格所有缩放
           return;
         }
+        // 光标若滑出封面图片区进入下方标题/文字区，立即收回大图与视频，恢复气泡文字
+        const cv = it.querySelector ? it.querySelector('.cover') : null;
+        if (cv) {
+          const cr = cv.getBoundingClientRect();
+          const outCover = e.clientX < cr.left || e.clientX > cr.right || e.clientY < cr.top || e.clientY > cr.bottom;
+          if (outCover) {
+            dfPopupHide();
+            return;
+          }
+        }
       }
       if (dfPopup.hidden) return;   // 延迟等待期不重定位
       if (dfPopup.raf) return;
@@ -16366,9 +16874,56 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     return html;
   }
 
+  // 悬停封面大图/预览视频激活时，自动临时隐藏卡片原生的 title 提示，避免浏览器原生番号标题气泡遮挡浮动画面
+  function suppressCardTitles(item) {
+    if (!item) return;
+    try {
+      dfPopup.suppressedItem = item;
+      if (item.hasAttribute && item.hasAttribute('title')) {
+        item.setAttribute('data-df-title', item.getAttribute('title') || '');
+        item.removeAttribute('title');
+      }
+      const els = item.querySelectorAll ? item.querySelectorAll('[title]') : [];
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        el.setAttribute('data-df-title', el.getAttribute('title') || '');
+        el.removeAttribute('title');
+      }
+    } catch (e) {}
+  }
+
+  function restoreCardTitles(item) {
+    const target = item || dfPopup.suppressedItem;
+    if (target) {
+      try {
+        if (target.hasAttribute && target.hasAttribute('data-df-title')) {
+          target.setAttribute('title', target.getAttribute('data-df-title') || '');
+          target.removeAttribute('data-df-title');
+        }
+        const els = target.querySelectorAll ? target.querySelectorAll('[data-df-title]') : [];
+        for (let i = 0; i < els.length; i++) {
+          const el = els[i];
+          el.setAttribute('title', el.getAttribute('data-df-title') || '');
+          el.removeAttribute('data-df-title');
+        }
+      } catch (e) {}
+    }
+    dfPopup.suppressedItem = null;
+    try {
+      const leftovers = document.querySelectorAll('[data-df-title]');
+      for (let j = 0; j < leftovers.length; j++) {
+        const lo = leftovers[j];
+        lo.setAttribute('title', lo.getAttribute('data-df-title') || '');
+        lo.removeAttribute('data-df-title');
+      }
+    } catch (e) {}
+  }
+
   function dfPopupShow(item) {
     if (!item || !item.isConnected) return;
     if (!dfPreviewOn()) return; // 全局开关关闭：任何布局都不弹大图
+    suppressCardTitles(item);
+    try { hideNoteTip(0); } catch (e) {}
     const p = ensureDfPreview();
     const scrim = document.getElementById('emby-df-scrim');
     const img = p.querySelector('img');
@@ -16423,6 +16978,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (dfPopup.timer) { clearTimeout(dfPopup.timer); dfPopup.timer = 0; }
     if (dfPopup.raf) { cancelAnimationFrame(dfPopup.raf); dfPopup.raf = 0; }
     dfPopup.hidden = true;
+    restoreCardTitles(dfPopup.item);
     dfPopup.item = null;
     if (p) p.classList.remove('show');
     if (scrim) scrim.classList.remove('show');
@@ -16438,16 +16994,30 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     dfPopup.item = item;
     dfPopup.x = mx; dfPopup.y = my;
     if (!dfPreviewOn()) return; // 全局开关关闭：不弹大图（动态聚焦的宫格缩放不受影响）
+    suppressCardTitles(item);
+    try { hideNoteTip(0); } catch (e) {}
     const delay = dfPreviewDelayMs();
     dfPopup.timer = setTimeout(function () {
       dfPopup.timer = 0;
       if (!dfPreviewOn()) return;
       if (!item || !item.isConnected) return;
-      // 光标若已移出该卡片范围则不开（防止从卡片滑出后仍弹出）
-      const r = item.getBoundingClientRect();
-      if (dfPopup.x < r.left || dfPopup.x > r.right || dfPopup.y < r.top || dfPopup.y > r.bottom) return;
+      // 光标若已移出封面图片范围（如滑入文字区或移出卡片）则不开
+      const cv = item.querySelector ? item.querySelector('.cover') : null;
+      if (cv) {
+        const cr = cv.getBoundingClientRect();
+        if (dfPopup.x < cr.left || dfPopup.x > cr.right || dfPopup.y < cr.top || dfPopup.y > cr.bottom) return;
+      } else {
+        const r = item.getBoundingClientRect();
+        if (dfPopup.x < r.left || dfPopup.x > r.right || dfPopup.y < r.top || dfPopup.y > r.bottom) return;
+      }
       dfPopupShow(item);
     }, delay);
+  }
+
+  // 判断当前鼠标事件目标是否落在卡片上方封面图区域（排除快捷标记按钮）
+  function isCoverTarget(target) {
+    if (!target || !target.closest) return false;
+    return !!(target.closest('.cover') && !target.closest('.cover-status-buttons'));
   }
 
   // 网格级 mouseover 委托（首页同款绑定方式）：收藏夹网格由 FAVUI 每轮重建，
@@ -16462,7 +17032,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const cell = box.parentElement;
       if (e.relatedTarget && cell.contains(e.relatedTarget)) return;
       updateDynamicFocusGrid(grid, cell);
-      dfHoverStart(cell, e.clientX, e.clientY);
+      if (isCoverTarget(e.target)) {
+        dfHoverStart(cell, e.clientX, e.clientY);
+      }
     });
     grid.addEventListener('mouseleave', function () {
       updateDynamicFocusGrid(grid, null);
@@ -16488,7 +17060,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 任一步异常都不再阻断后续逻辑，缩放收回由网格 mouseleave + 全局 mousemove 双重兜底。
       try { ensureDynamicFocusGrid(grid); } catch (err) {}
       try { updateDynamicFocusGrid(grid, cell); } catch (err) {}
-      try { dfHoverStart(cell, ev.clientX, ev.clientY); } catch (err) {}
+      const elUnder = (ev.target && ev.target !== box) ? ev.target : (document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : ev.target);
+      if (isCoverTarget(elUnder)) {
+        try { dfHoverStart(cell, ev.clientX, ev.clientY); } catch (err) {}
+      }
     });
   }
 
@@ -16522,9 +17097,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     // 悬停封面预览（全局）：标准网格/瀑布流/动态聚焦卡片共用同一套气泡；
     // noPreview 用于详情页推荐行等场景——保留倾斜/辉光，不弹封面预览
     const noPreview = !!(opts && opts.noPreview);
+    const cell = box.closest('.item') || box;
     box.addEventListener('mouseenter', function (ev) {
       if (noPreview) return;
-      try { dfHoverStart(box.closest('.item') || box, ev.clientX, ev.clientY); } catch (err) {}
+      const elUnder = (ev.target && ev.target !== box) ? ev.target : (document.elementFromPoint ? document.elementFromPoint(ev.clientX, ev.clientY) : ev.target);
+      if (isCoverTarget(elUnder)) {
+        try { dfHoverStart(cell, ev.clientX, ev.clientY); } catch (err) {}
+      }
     });
     box.addEventListener('mousemove', function (e) {
       const r = box.getBoundingClientRect();
@@ -16538,6 +17117,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         box.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
         box.style.setProperty('--my', (py * 100).toFixed(1) + '%');
       });
+
+      if (noPreview) return;
+      if (isCoverTarget(e.target)) {
+        if (!dfPopup.item || dfPopup.item !== cell || (dfPopup.hidden && !dfPopup.timer)) {
+          try { dfHoverStart(cell, e.clientX, e.clientY); } catch (err) {}
+        }
+      } else {
+        if (dfPopup.item === cell) {
+          dfPopupHide();
+        }
+      }
     });
     box.addEventListener('mouseleave', function () {
       if (raf) cancelAnimationFrame(raf);
@@ -19599,10 +20189,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         }
       }
     } catch (e) {}
+    function getSavedFavSort() {
+      try {
+        const s = localStorage.getItem(SET_KEYS.favSort);
+        if (s) return s;
+      } catch (e) {}
+      return 'added_desc';
+    }
     const state = {
       scope: [],               // 选中的清单 id（空=全部）
       keyword: '',
-      sort: 'date_desc',       // date_desc | score_desc | score_count_desc | code_asc | added_desc
+      sort: getSavedFavSort(), // 默认为入库时间排序（added_desc），记住用户选择态
       coactMode: false,        // 共演筛选（交集模式）
       showActorAvatars: false, // 演员头像显示（仅筛选弹窗内）
       actorAvatarSize: 'small', // 演员头像尺寸：small（默认，圆图+名字同行）| large（大图在上名字在下）
@@ -19736,16 +20333,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (saved) {
         state.scope = saved.scope || [];
         state.keyword = saved.keyword || '';
-        state.sort = saved.sort || 'date_desc';
+        state.sort = saved.sort || getSavedFavSort();
         if (saved.filters) state.filters = saved.filters;
+      } else {
+        state.sort = getSavedFavSort();
       }
       buildToolbar();
+      if (sortSel) sortSel.value = state.sort;
       if (saved) {
         if (searchInput) {
           searchInput.value = state.keyword;
           if (state.keyword) searchInput.dataset.userEdited = '1';
         }
-        if (sortSel) sortSel.value = state.sort;
       }
       buildProgress();
       buildChipsRow();
@@ -19883,17 +20482,23 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         kwTimer = setTimeout(function () { state.keyword = searchInput.value.trim(); applyAndRender(); }, 250);
       });
       bar.appendChild(searchInput);
-      // 排序
+      // 排序（默认为入库时间排序 added_desc，记住用户选择态）
       sortSel = h('<select>' +
+        '<option value="added_desc">入库 新→旧</option>' +
         '<option value="date_desc">日期 新→旧</option>' +
         '<option value="score_desc">评分 高→低</option>' +
         '<option value="score_count_desc">评价人数 多→少</option>' +
         '<option value="code_asc">番号 A→Z</option>' +
-        '<option value="added_desc">入库 新→旧</option>' +
         '<option value="views_desc">常浏览 多→少</option>' +
         '<option value="awards_asc">金标标识 正序</option>' +
         '</select>');
-      sortSel.addEventListener('change', function () { state.sort = sortSel.value; applyAndRender(); });
+      sortSel.value = state.sort || 'added_desc';
+      sortSel.addEventListener('change', function () {
+        state.sort = sortSel.value;
+        try { localStorage.setItem(SET_KEYS.favSort, state.sort); } catch (e) {}
+        saveState();
+        applyAndRender();
+      });
       bar.appendChild(sortSel);
       // 按钮组
       // 注意：openFilterModal(galleryMode) 有布尔参数，不能把函数引用直接交给 click
@@ -20484,6 +21089,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const STATE_KEY = 'javdbEmbyFavState';
     function saveState() {
       try {
+        if (state.sort) localStorage.setItem(SET_KEYS.favSort, state.sort);
         sessionStorage.setItem(STATE_KEY, JSON.stringify({
           scope: state.scope, keyword: state.keyword, sort: state.sort,
           coactMode: !!state.coactMode, showActorAvatars: !!state.showActorAvatars,
@@ -20504,6 +21110,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         const raw = sessionStorage.getItem(STATE_KEY);
         if (!raw) return null;
         const s = JSON.parse(raw);
+        if (!s.sort) s.sort = getSavedFavSort();
         if (typeof s.coactMode === 'boolean') state.coactMode = s.coactMode;
         if (typeof s.showActorAvatars === 'boolean') state.showActorAvatars = s.showActorAvatars;
         if (s.actorAvatarSize === 'large' || s.actorAvatarSize === 'small') state.actorAvatarSize = s.actorAvatarSize;
@@ -24198,7 +24805,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const actorEls = Array.from(root.querySelectorAll('.panel-block'))
       .filter(function (b) {
         const s = (b.querySelector('strong') || {}).textContent || '';
-        return /演員|演员|actor|女優|出演/i.test(s) || !!b.querySelector('a[href^="/actors/"]');
+        return /演員|演员|actor|出演/i.test(s) || !!b.querySelector('a[href^="/actors/"]');
       })
       .reduce(function (acc, b) { return acc.concat(Array.from(b.querySelectorAll('a[href^="/actors/"]'))); }, []);
     const actors = actorEls.map(function (a) {
