@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.4.0
+// @version      7.4.1
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -85,7 +85,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.4.0';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.4.1';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -8421,7 +8421,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function applySettings() {
     const root = document.documentElement;
     const blur = parseInt(localStorage.getItem(SET_KEYS.blur), 10);
-    root.style.setProperty('--e-blur', (isNaN(blur) ? 4 : blur) + 'px');
+    const safeBlur = isNaN(blur) ? 4 : Math.min(30, Math.max(0, blur));
+    root.style.setProperty('--e-blur', safeBlur + 'px');
     // 封面框架大小（设置面板滑块）：控制详情页 hero 封面（各封面模式独立记忆与响应）与下方推荐封面。
     // --e-card-w / --mz-col-w（收藏夹网格/瀑布流）仍由收藏夹外部工具条滑块驱动，互不干扰。
     const curCoverMode = localStorage.getItem(SET_KEYS.coverMode) || 'fusion';
@@ -10459,10 +10460,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '</div>' +
             '<div id="sec-login-pwd">' +
               '<div style="margin-bottom:12px;">' +
-                '<input type="text" id="t250-login-user" class="jhs-input-text" placeholder="用户名 / 注册邮箱" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#141720;border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;">' +
+                '<input type="text" id="t250-login-user" class="jhs-input-text" placeholder="用户名 / 注册邮箱" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#141720;border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;">' +
               '</div>' +
               '<div style="margin-bottom:14px;">' +
-                '<input type="password" id="t250-login-pass" class="jhs-input-text" placeholder="密码" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#141720;border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;">' +
+                '<input type="text" id="t250-login-pass" class="jhs-input-text" placeholder="密码" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#141720;border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:13px;-webkit-text-security:disc!important;text-security:disc!important;">' +
               '</div>' +
               '<button id="t250-login-submit" style="width:100%;padding:10px;background:#00a4dc;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:700;cursor:pointer;transition:background .2s;">立即登录获取凭证</button>' +
             '</div>' +
@@ -13837,7 +13838,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '<div class="jhs-qs-section-title">外观微调</div>' +
           '<div class="jhs-qs-row jhs-qs-row-stacked">' +
             '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">背景模糊<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">调节全站海报背景的高斯模糊半径（像素越高越柔和虚化）</span></span></div>' +
-            '<div class="jhs-qs-control"><div class="jhs-qs-range"><input type="range" id="qs-blur" min="0" max="80" step="1"><span id="qs-blur-val">4px</span></div></div>' +
+            '<div class="jhs-qs-control"><div class="jhs-qs-range"><input type="range" id="qs-blur" min="0" max="30" step="1"><span id="qs-blur-val">4px</span></div></div>' +
           '</div>' +
           '<div class="jhs-qs-row jhs-qs-row-stacked">' +
             '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">封面框架大小<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">调节当前封面模式的海报尺寸（裁切/融合各模式自动独立记忆）</span></span></div>' +
@@ -13948,7 +13949,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const qBlur = pop.querySelector('#qs-blur'), qBlurV = pop.querySelector('#qs-blur-val');
     if (qBlur && qBlurV) {
       qBlur.addEventListener('input', function () {
-        const v = qBlur.value;
+        const v = String(Math.min(30, Math.max(0, parseInt(qBlur.value, 10) || 0)));
         qBlurV.textContent = v + 'px';
         localStorage.setItem(SET_KEYS.blur, v);
         document.documentElement.style.setProperty('--e-blur', v + 'px');
@@ -14059,7 +14060,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '</div>' +
             '<div class="jhs-item-row">' +
               '<div class="jhs-item-info"><div class="jhs-item-name">背景模糊强度 (<span id="full-blur-val">4px</span>)</div><div class="jhs-item-desc">背景大图毛玻璃模糊半径</div></div>' +
-              '<div style="width:160px;"><input type="range" id="full-blur" min="0" max="80" step="1" style="width:100%;"></div>' +
+              '<div style="width:160px;"><input type="range" id="full-blur" min="0" max="30" step="1" style="width:100%;"></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
               '<div class="jhs-item-info"><div class="jhs-item-name">封面框架大小 (<span id="full-cover-val">340px</span>)</div><div class="jhs-item-desc">调节海报卡片尺寸（裁切/融合等模式各自独立记忆）</div></div>' +
@@ -14192,9 +14193,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
                 '&nbsp;&nbsp;• 填你的 WebDAV 完整根路径（如 <code>http://192.168.1.100:5005/</code> 或 <code>https://xxx.infinicloud.jp/dav/</code>），输入对应账号与密码即可。<br>' +
                 '3. <b>自动建目与同步</b>：系统会自动在服务根目录下创建 <code>JavdbEmbySkin_backup</code> 专属文件夹存放所有备份，点【测试 WebDAV 连接】验证无误后即可一键备份与恢复。' +
               '</div>' +
-              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">服务地址</div><div class="jhs-item-desc">如：https://dav.jianguoyun.com/dav/</div></div><div style="width:280px;"><input type="text" id="wd-url" class="jhs-input-text" placeholder="https://dav.jianguoyun.com/dav/"></div></div>' +
-              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">用户名 / 账号</div></div><div style="width:280px;"><input type="text" id="wd-user" class="jhs-input-text" placeholder="账号邮箱"></div></div>' +
-              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">密码 / 应用授权码</div><div class="jhs-item-desc">坚果云等必须使用第三方应用授权密码</div></div><div style="width:280px;"><input type="password" id="wd-pass" class="jhs-input-text" placeholder="******"></div></div>' +
+              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">服务地址</div><div class="jhs-item-desc">如：https://dav.jianguoyun.com/dav/</div></div><div style="width:280px;"><input type="text" id="wd-url" class="jhs-input-text" placeholder="https://dav.jianguoyun.com/dav/" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true"></div></div>' +
+              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">用户名 / 账号</div></div><div style="width:280px;"><input type="text" id="wd-user" class="jhs-input-text" placeholder="账号邮箱" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other"></div></div>' +
+              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">密码 / 应用授权码</div><div class="jhs-item-desc">坚果云等必须使用第三方应用授权密码</div></div><div style="width:280px;"><input type="text" id="wd-pass" class="jhs-input-text" placeholder="******" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" style="-webkit-text-security:disc !important;text-security:disc !important;"></div></div>' +
               '<div style="display:flex;gap:10px;margin-top:12px;">' +
                 '<button type="button" id="btn-wd-test" class="jhs-btn jhs-btn-secondary"><span class="material-symbols-outlined" style="font-size:15px;">wifi_protected_setup</span> 测试 WebDAV 连接</button>' +
                 '<button type="button" id="btn-wd-backup" class="jhs-btn jhs-btn-success"><span class="material-symbols-outlined" style="font-size:15px;">cloud_upload</span> 立即备份到 WebDAV</button>' +
@@ -14218,7 +14219,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">API 服务地址</div><div class="jhs-item-desc">默认 https://api.github.com，Gitee 填 https://gitee.com/api/v5</div></div><div style="width:280px;"><input type="text" id="git-url" class="jhs-input-text" placeholder="https://api.github.com"></div></div>' +
               '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">Git 仓库 (owner/repo)</div><div class="jhs-item-desc">例如：yourname/my-javdb-backup</div></div><div style="width:280px;"><input type="text" id="git-repo" class="jhs-input-text" placeholder="owner/repo"></div></div>' +
               '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">仓库分支</div><div class="jhs-item-desc">默认 main 或 master</div></div><div style="width:280px;"><input type="text" id="git-branch" class="jhs-input-text" placeholder="main"></div></div>' +
-              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">访问令牌 (PAT Token)</div><div class="jhs-item-desc">GitHub: Settings → Developer Settings → PAT (精细化令牌勾选 Contents 读写)</div></div><div style="width:280px;"><input type="password" id="git-token" class="jhs-input-text" placeholder="ghp_... 或 gitee token"></div></div>' +
+              '<div class="jhs-item-row"><div class="jhs-item-info"><div class="jhs-item-name">访问令牌 (PAT Token)</div><div class="jhs-item-desc">GitHub: Settings → Developer Settings → PAT (精细化令牌勾选 Contents 读写)</div></div><div style="width:280px;"><input type="text" id="git-token" class="jhs-input-text" placeholder="ghp_... 或 gitee token" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" style="-webkit-text-security:disc !important;text-security:disc !important;"></div></div>' +
               '<div style="display:flex;gap:10px;margin-top:12px;">' +
                 '<button type="button" id="btn-git-test" class="jhs-btn jhs-btn-secondary"><span class="material-symbols-outlined" style="font-size:15px;">wifi_protected_setup</span> 测试 Git 连接</button>' +
                 '<button type="button" id="btn-git-backup" class="jhs-btn jhs-btn-success"><span class="material-symbols-outlined" style="font-size:15px;">cloud_upload</span> 立即备份到 Git</button>' +
@@ -14479,9 +14480,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
     const fBlur = mask.querySelector('#full-blur'), fBlurV = mask.querySelector('#full-blur-val');
     fBlur.addEventListener('input', function () {
-      fBlurV.textContent = fBlur.value + 'px';
-      localStorage.setItem(SET_KEYS.blur, fBlur.value);
-      document.documentElement.style.setProperty('--e-blur', fBlur.value + 'px');
+      const v = String(Math.min(30, Math.max(0, parseInt(fBlur.value, 10) || 0)));
+      fBlurV.textContent = v + 'px';
+      localStorage.setItem(SET_KEYS.blur, v);
+      document.documentElement.style.setProperty('--e-blur', v + 'px');
       syncSettingsControls();
     });
     const fCover = mask.querySelector('#full-cover'), fCoverV = mask.querySelector('#full-cover-val');
@@ -14809,7 +14811,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (gitUrlInp) gitUrlInp.value = localStorage.getItem('javdb_git_api_url') || 'https://api.github.com';
     if (gitRepoInp) gitRepoInp.value = localStorage.getItem('javdb_git_repo') || '';
     if (gitBranchInp) gitBranchInp.value = localStorage.getItem('javdb_git_branch') || 'main';
-    if (gitTokenInp) gitTokenInp.value = localStorage.getItem('javdb_git_token') || '';
+    if (gitTokenInp) gitTokenInp.value = '';
 
     [gitUrlInp, gitRepoInp, gitBranchInp, gitTokenInp].forEach(function (inp) {
       if (!inp) return;
@@ -15717,7 +15719,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
 
     const blur = parseInt(localStorage.getItem(SET_KEYS.blur), 10);
-    const blurVal = !isNaN(blur) ? blur : 4;
+    const blurVal = !isNaN(blur) ? Math.min(30, Math.max(0, blur)) : 4;
     if (pop) {
       const qb = pop.querySelector('#qs-blur'), qbv = pop.querySelector('#qs-blur-val');
       if (qb) { qb.value = blurVal; qbv.textContent = blurVal + 'px'; }
@@ -15789,12 +15791,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const fco = mask.querySelector('#full-expandcoact');
       if (fco) fco.checked = localStorage.getItem(SET_KEYS.expandCoact) === '1';
 
+      const isMaskOpen = mask.classList.contains('open') || mask.style.display === 'flex';
       const wu = mask.querySelector('#wd-url');
       if (wu) wu.value = localStorage.getItem('javdb_webdav_url') || '';
       const wus = mask.querySelector('#wd-user');
-      if (wus) wus.value = localStorage.getItem('javdb_webdav_user') || '';
+      if (wus) wus.value = isMaskOpen ? (localStorage.getItem('javdb_webdav_user') || '') : '';
       const wp = mask.querySelector('#wd-pass');
-      if (wp) wp.value = localStorage.getItem('javdb_webdav_pass') || '';
+      if (wp) wp.value = isMaskOpen ? (localStorage.getItem('javdb_webdav_pass') || '') : '';
+      const gt = mask.querySelector('#git-token');
+      if (gt) gt.value = isMaskOpen ? (localStorage.getItem('javdb_git_token') || '') : '';
 
       renderFullPluginList(mask);
       renderFullSiteList(mask);
@@ -15866,8 +15871,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   }
 
   function compareSemver(v1, v2) {
-    const p1 = (v1 || '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
-    const p2 = (v2 || '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
+    const p1 = (v1 || '').trim().replace(/^v/i, '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
+    const p2 = (v2 || '').trim().replace(/^v/i, '').split('.').map(function (n) { return parseInt(n, 10) || 0; });
     const len = Math.max(p1.length, p2.length);
     for (let i = 0; i < len; i++) {
       const a = p1[i] || 0, b = p2[i] || 0;
@@ -15884,8 +15889,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (!verText || !verBtn) return;
     verText.textContent = '当前版本 v' + VERSION;
 
-    fetch('https://testingcf.jsdelivr.net/gh/9E307/JavdbEmbySkin@main/JavdbEmbySkin.user.js', { cache: 'no-cache' })
-      .then(function (res) { return res.text(); })
+    const ts = Date.now();
+    // 优先从 GreasyFork 官方 meta.js 获取最新版本（仅 1KB，且与发布页无延迟同步，彻底免去 1.4MB 全量脚本与 CDN 缓存滞后）
+    fetch('https://update.greasyfork.org/scripts/596423/JavdbEmbySkin.meta.js?_t=' + ts, { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('GF HTTP ' + res.status);
+        return res.text();
+      })
+      .catch(function () {
+        // 降级使用 jsDelivr CDN 探测（带时间戳穿透缓存）
+        return fetch('https://testingcf.jsdelivr.net/gh/9E307/JavdbEmbySkin@main/JavdbEmbySkin.user.js?_t=' + ts, { cache: 'no-store' })
+          .then(function (res) { return res.text(); });
+      })
       .then(function (code) {
         const m = code && code.match(/@version\s+([0-9.]+)/);
         if (m && m[1]) {
@@ -16043,6 +16058,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
     mask.style.display = 'flex';
     mask.classList.add('open');
+    // 面板激活开启态，动态载入用户凭据
+    const wus = mask.querySelector('#wd-user');
+    if (wus) wus.value = localStorage.getItem('javdb_webdav_user') || '';
+    const wp = mask.querySelector('#wd-pass');
+    if (wp) wp.value = localStorage.getItem('javdb_webdav_pass') || '';
+    const gt = mask.querySelector('#git-token');
+    if (gt) gt.value = localStorage.getItem('javdb_git_token') || '';
     if (typeof LiquidGlass !== 'undefined') {
       requestAnimationFrame(function () {
         const dialog = mask.querySelector('.jhs-settings-dialog');
@@ -16056,12 +16078,35 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (mask) {
       mask.classList.remove('open');
       mask.style.display = 'none';
+      // 关闭设置面板时立即抹除 DOM 输入框内的明文密码凭据，防止常驻 DOM 触发 Chrome 嗅探
+      const wp = mask.querySelector('#wd-pass');
+      if (wp) wp.value = '';
+      const gt = mask.querySelector('#git-token');
+      if (gt) gt.value = '';
+      const wus = mask.querySelector('#wd-user');
+      if (wus) wus.value = '';
     }
   }
   /* =======================================================================
-   * 搜索输入框自动填充防御
-   * 彻底根治 Chrome/Chromium 密码管理器误将保存的 JAVDB 账号/邮箱自动填入搜索框的问题。
+   * 搜索与凭据自动填充防御
+   * 彻底根治 Chrome/Chromium 密码管理器误将保存的 JAVDB 账号/邮箱自动填入搜索框，
+   * 以及搜索后触发 Chrome 密码保存提示框（误将搜索词/设置备份凭据作为登录账密）的问题。
    * ===================================================================== */
+  function purgeCredentialsFromDOM() {
+    try {
+      const ids = ['wd-pass', 'git-token', 'wd-user', 't250-login-pass', 't250-login-user'];
+      ids.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    } catch (e) {}
+  }
+
+  if (typeof window !== 'undefined' && !window.__jhs_beforeunload_guarded) {
+    window.__jhs_beforeunload_guarded = true;
+    window.addEventListener('beforeunload', purgeCredentialsFromDOM);
+  }
+
   function sanitizeSearchInputs(root) {
     const scope = root || document;
     const isSearchPage = location.pathname.startsWith('/search');
@@ -16069,6 +16114,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     try {
       if (isSearchPage) urlQ = (new URLSearchParams(location.search).get('q') || '').trim();
     } catch (e) {}
+
+    // 防御所有搜索表单提交，避免 Chrome 表单嗅探将表单提交动作与常驻凭据输入框关联
+    const forms = scope.querySelectorAll('form[action*="/search"], form.search-form, #search-bar-container form');
+    forms.forEach(function (form) {
+      if (!form || form.dataset.searchGuarded) return;
+      form.dataset.searchGuarded = '1';
+      if (form.getAttribute('autocomplete') !== 'off') form.setAttribute('autocomplete', 'off');
+      if (form.getAttribute('role') !== 'search') form.setAttribute('role', 'search');
+      form.addEventListener('submit', function () {
+        purgeCredentialsFromDOM();
+      });
+    });
 
     const inputs = scope.querySelectorAll(
       '#search-bar-container input, #emby-search-modal input, .search-bar-wrap input, ' +
@@ -16171,13 +16228,27 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const inp = inner.querySelector('.search-input input');
     const sub = inner.querySelector('.search-submit button');
     const typ = inner.querySelector('.search-type select');
+    const form = inner.querySelector('form');
+    if (form) {
+      if (form.getAttribute('autocomplete') !== 'off') form.setAttribute('autocomplete', 'off');
+      if (form.getAttribute('role') !== 'search') form.setAttribute('role', 'search');
+    }
     if (!inp || !sub) return;
     function doSearch() {
       const q = (inp.value || '').trim();
       if (!q) { inp.focus(); return; }
+      // 搜索前立即清除 DOM 中任何凭据输入框内容，彻底杜绝 Chrome 弹出密码保存提示
+      purgeCredentialsFromDOM();
       const t = typ ? typ.value : 'all';
       location.href = '/search?q=' + encodeURIComponent(q) +
         (t && t !== 'all' ? '&type=' + encodeURIComponent(t) : '');
+    }
+    if (form && !form.dataset.cloneSubmitGuarded) {
+      form.dataset.cloneSubmitGuarded = '1';
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        doSearch();
+      });
     }
     sub.addEventListener('click', doSearch);
     inp.addEventListener('keydown', function (e) {
