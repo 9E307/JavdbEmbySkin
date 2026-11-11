@@ -1,17 +1,19 @@
 # 0012. JAVDB 服务端 VIP 302 拦截墙规避与多源在线播放矩阵
 
 ## 状态
-已接受 (Accepted)
+已接受 (Accepted；v7.5.0 增补顶层 TDZ 防护与来源严格路径判定)
 
 ## 上下文
 JAVDB 官方为了商业变现，对非登录访客或普通免费用户设置了严格的浏览拦截墙：在访问热播排行榜、无码专区或深层分页时，服务端会强行 302 重定向至收费推广页 `/plans/ypay`；同时，JAVDB 官方影片详情页本身不直接提供在线视频点播服务，只能查看磁力链接。
 
 ## 决策
-我们决定**在脚本中设立“无感路由穿透器”与“可扩展多源在线播放矩阵（PlaySitesService）”**：
-1. **VIP 302 拦截墙无感穿透（第 167-180 行）**：
+我们决定**在脚本中设立“无感路由穿透器”与“可扩展多源在线播放矩阵（`DEFAULT_PLAY_SITES` 驱动）”**：
+1. **VIP 302 拦截墙无感穿透（第 481-551 行）**：
    * 监听 URL 前缀 `location.pathname.startsWith('/plans')`；
-   * 当用户开启突破限制且为非会员时，自动检测来路与意图，将其无感替换为等价的高级搜索接口（`/advanced_search?handleTop=1...` 或 `/advanced_search?handlePlayback=1...`），利用官方搜索接口不受 302 拦截的漏洞实现免登录/免费穿透。
-2. **解耦的多源在线播放矩阵（第 12040-12534 行）**：
+   * **依赖表前置初始化**：将 `PLUGIN_REGISTRY`、`isPluginEnabled` 与 `setPluginEnabled` 统一前置声明于早期路由守卫之前，确保首次安装未写入 `localStorage` 时访问 `/plans` 不触发 ES6 TDZ `ReferenceError`；
+   * **来源页精确路径校验**：通过 `getReferrerPathname()` / `isReferrerRankingPath()` 使用 `new URL(document.referrer, location.origin).pathname` 正则锚定 `/^\/rankings\/(top|playback)(\/|$)/`，替代宽松子串匹配，避免从 `/topics/...` 等含关键词路径跳转时误触发；
+   * 当用户开启突破限制且为非会员时，依据上述严格意图判定将其无感替换为等价的高级搜索接口（`/advanced_search?handleTop=1...` 或 `/advanced_search?handlePlayback=1...`），利用官方搜索接口不受 302 拦截的机制实现免登录/免费穿透。
+2. **解耦的多源在线播放矩阵（第 12801 行附近 `DEFAULT_PLAY_SITES` 起）**：
    * 预设 123AV, njavTV, MissAV, Jable, NetFlav 等 10+ 业界主流点播站点；
    * 设计标准的变量插值模板系统，支持 `{code}` (原始番号), `{code_lower}` (小写), `{code_upper}` (大写), `{code_num}` (纯数字部分) 等通配符替换；
    * 允许用户在设置面板中自主添加、排序、启用/禁用自定义播放站点，并对所有自定义 URL 进行严格的协议白名单审查（阻断 `javascript:` 伪协议）。

@@ -11,12 +11,12 @@
 1. **Tier 1 (同步内存镜像)**：启动时一次性将核心实体与索引加载至内存中的 `Map` / `Object`，供所有 UI 渲染函数同步读取；
 2. **Tier 2 (持久层 IndexedDB)**：全量业务数据（movies, lists, gallery, meta, actor_genders, notes）持久化于 IndexedDB `javdb-emby-fav-db`；
 3. **Tier 3 (标量配置持久化)**：`localStorage` / `GM_setValue` 仅用于存储总容量 < 500KB 的轻量布尔开关、选中的皮肤模式与鉴权 Token；
-4. **批量写入协议**：所有多条数据写回操作强制使用分片事务（以 50 条为一批切片）。
+4. **批量写入与删除协议**：所有多条数据写回或批量清理操作（含导入写回 `dbBulkPut` 与孤儿清理 `dbPurgeOrphanMovies` / `dbBulkDelete`）强制通过共享批处理函数 `dbBulkWrite` 实施分片事务（以 50 条为一批切片）。
 
 ## 原因与权衡
 * **为什么弃用 localStorage 存影片**：浏览器对 `localStorage` 有 5MB~10MB 的硬性配额限制，存入上千条带封面与演员元数据的 JSON 会触发不可逆的 `QUOTA_EXCEEDED_ERR` 导致数据丢失；且 `localStorage` 的所有 I/O 均阻塞浏览器主线程。
 * **为什么必须加内存镜像**：IndexedDB 全部为异步 Promise API。如果卡片渲染必须逐条 `await dbGetMovie`，列表页与瀑布流在滚动时会出现明显的文字和头像闪烁跳动；内存镜像使渲染保持纯同步，首屏毫秒级就绪。
-* **为什么必须 50 条分批**：实测表明，万条数据导入时，如果逐条开启 `await dbPutMovie`，会产生上万次跨进程 IPC 事务切换，耗时超过数分钟；而若放入一个超级大事务，低配设备或 Safari 隐私模式极易超时崩溃。按 50 条切片是性能吞吐与防卡死的黄金平衡点。
+* **为什么必须 50 条分批**：实测表明，万条数据导入或成百上千条未登录孤儿记录清理时，如果逐条开启 `await dbPutMovie` / `await dbDeleteMovie`，会产生大量跨进程 IPC 事务切换，耗时极长或卡顿；而若放入一个超级大事务，低配设备或 Safari 隐私模式极易超时崩溃。按 50 条切片是性能吞吐与防卡死的黄金平衡点。
 
 ## 结果与影响
 * **收益**：轻松支撑 20,000+ 影片本地秒开；彻底杜绝配额溢出；UI 渲染完全无异步跳动。

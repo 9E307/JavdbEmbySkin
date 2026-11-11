@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（27,729 行，v7.4.1）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（27,784 行，v7.5.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -294,7 +294,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 27,729 Lines)
+## 架构子系统全景地图 (Architecture Map Across 27,784 Lines)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -305,16 +305,16 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ JavdbEmbySkin 核心运行时 (Monolithic Sandbox, Host Guard: javdb*.com / jdforrepam.com)      │
 │                                                                                             │
-│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 265 & Lines 25300 - 27052)                    │
+│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 552 & Lines 25317 - 27784)                    │
 │    • 严格域名守卫与鉴权路由避让 (/login, /user_sessions 等 100% 保持原生 Rails POST)        │
 │    • SPA 路由接管: Turbolinks / PJAX 跨页监听、无感局部刷新与全局生命周期重置               │
 │    • 元素级 Referrer 免溯源策略 (图片 no-referrer 隔离，主动豁免验证码防 403 阻断)          │
 │    • 官方 age-gate 年龄确认预写 over18=1 Cookie 免检，严格禁止全 DOM 盲点击                 │
-│    • 规避 JAVDB 服务端 302 拦截 (/plans/ypay 强转高级搜索，免登录穿透)                      │
+│    • 规避 JAVDB 服务端 302 拦截 (/plans 强转高级搜索；依赖表前置防 TDZ，referrer 精确匹配)  │
 │    • 卸载与突变隔离: removeEmbyDOM 彻底复原原生 Navbar/Grid，SKIN_CHROME_SEL 阻断递归       │
 │    • 首次运行零侵入守卫 (localStorage === '1' 判定，未激活态 100% 保持原生界面)             │
 │                                                                                             │
-│ 2. 视觉风格渲染栈与特效引擎 (Lines 738 - 6500 & Lines 7140 - 7790)                          │
+│ 2. 视觉风格渲染栈与特效引擎 (Lines 1064 - 6500 & Lines 7752 - 8150)                         │
 │    • 风格切换: Emby Native 经典深色 / Glass 毛玻璃 / LiquidGlass 2.0 (离线 SVG GPU 折射)    │
 │    • Micro-Saturate Jitter: 50ms 节流注入万分之五微抖动，破除 Chromium 合成层 GPU 缓存冻结  │
 │    • Steam 3D Tilt: transform-origin: top left 锚点与 RAF 帧率锁，全息跟随高光层            │
@@ -322,16 +322,16 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 │    • Dynamic Focus Grid: 2:3 无缝流体宫格、200% 宽右对齐黄金人脸裁切与全屏暗色环境遮罩      │
 │    • 原生网格共存守卫: 关闭皮肤时拔除 emby-masonry，熔断后台排版引擎，完美复原 CSS Grid     │
 │                                                                                             │
-│ 3. 详情页重构与四态排版引擎 (Lines 7322 - 7410, Lines 7821 - 8050 & Lines 22800 - 25300)    │
+│ 3. 详情页重构与四态排版引擎 (Lines 2410 - 2890 & Lines 22800 - 27052)                       │
 │    • 四大封面形态引擎: Crop(裁切海报) | Full(全宽) | Fusion(触顶收缩融合) | Hybrid(三栏)    │
 │    • Cover Fusion 引擎: requestAnimationFrame 矩阵变换，y <= 30 绝对顶部守卫与防毒死区      │
 │    • 多语言健壮性解析器: 简/繁/英/日四国正则自适应提取 + /actors/ 路由特征双重探测          │
 │    • 实体备注小气泡 (.emby-note-tip): 女优/片商/系列悬浮卡片 (生平+现役退役+穿透筛选)       │
 │    • 详情页操作行 (.emby-action-row) 与 10+ 多源在线播放按钮矩阵联动                        │
 │    • ReviewListInfiniteManager: 突破限制，无刷新异步抓取并拼接长短评与相关清单              │
-│    • InfiniteScrollManager: 瀑布流滚动探底无缝加载下一页 (Lines 8735 - 8915)                │
+│    • InfiniteScrollManager: 瀑布流滚动探底无缝加载下一页 (Lines 9000 - 9183)                │
 │                                                                                             │
-│ 4. 媒体预览与自适应视频流控子系统 (Lines 15570 - 15960 & Lines 22550 - 22850)               │
+│ 4. 媒体预览与自适应视频流控子系统 (Lines 16647 - 17050 & Lines 22968 - 24540)               │
 │    • PreviewVideoEngine: 全局单例管道，小写番号归一化，MissAV + 123AV 伪PNG并发竞速         │
 │    • dfVideoCache: 40条容量上限 LRU/FIFO 内存会话缓存，双向共享，二次播放 0ms 瞬间秒开      │
 │    • Two-Stage Hover Debounce: 卡片悬停两阶段时序防抖 (0.6s)，大图与小视频无缝融合流控      │
@@ -339,24 +339,24 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 │    • Resolution-Adaptive Viewport Lock: loadedmetadata 原生宽高比动态外接约束锁定           │
 │    • 卸载与突变隔离: 纳管至 removeEmbyDOM 卸载集与 SKIN_CHROME_SEL 突变隔离白名单           │
 │                                                                                             │
-│ 5. FAV 核心存储系统与数据自愈 (Lines 16238 - 18676)                                         │
+│ 5. FAV 核心存储系统与数据自愈 (Lines 17242 - 20300)                                         │
 │    • Tier 1: 同步内存镜像 (favMoviesCache, scoreMemCache, noteMap, actorGenderMap)          │
 │    • Tier 2: IndexedDB (javdb-emby-fav-db, v5) 实体表: movies, lists, gallery, meta, notes  │
-│    • 事务控制: dbPutMovies 严格按 50 条分批切片事务，兼顾响应度与吞吐                       │
+│    • 事务控制: dbBulkWrite 统一按 50 条分批切片读写/删除，兼顾响应度与吞吐                  │
 │    • 原型链防护: 导入与反序列化全量采用 Object.create(null) 字典，防御 XSS 原型污染         │
-│    • 被动静默采集 (passiveCollectMovie): 列表滑动后台增量补全，纠错锁 (customMeta) 豁免     │
-│    • 对称孤儿清洗 (dbPurgeOrphanMovies): 遵循绝对对称原则，彻底清除无归属的未登录幽灵记录   │
+│    • 被动静默采集 (passiveCollect): 同路径在途合并与 2500ms 冷却去重，纠错锁 (customMeta)   │
+│    • 对称孤儿清洗 (dbPurgeOrphanMovies): 遵循绝对对称原则，按 50 条分批清理无归属幽灵记录   │
 │                                                                                             │
-│ 6. 交互界面、业务中心与多维筛选系统 (Lines 9341 - 15800 & Lines 18677 - 22220)              │
+│ 6. 交互界面、业务中心与多维筛选系统 (Lines 9645 - 12570 & Lines 20305 - 22967)              │
 │    • FAVUI & GalleryView: 收藏夹/画廊双模态面板 (多自定义清单 CRUD、拖拽排序、批量管理套件) │
 │    • 多维流式筛选器 (openFilterModal): 即时草稿快照 (tmp 沙箱)、候选子宇宙 (modalVids) 重构 │
 │    • 共演交集算子: 多选演员从并集 (OR) 切严格子集交集 (AND)，全维度频次动态重新汇算         │
 │    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、四阶评分梯队占比、排行榜)           │
 │    • Top250ViewManager: 网页登录态优先 (Cookie直连) + 移动端 Token 双轨容灾 + 代数令牌防乱序│
-│    • 导航外壳与设置控制台: buildHomeTabs 常驻导航 + 全局 `/` 搜索快捷键 + 6分类设置中心     │
+│    • 导航外壳与设置控制台: buildHomeTabs 常驻导航 + 全局 `/` 与单次 Esc 快捷键 + 设置中心   │
 │    • 凭据防嗅探体系 (sanitizeSearchInputs): type=search, role=searchbox, 11项属性与聚焦冲刷 │
 │                                                                                             │
-│ 7. 外部服务、女优智能画像与云端网关 (Lines 11350 - 15060 & Lines 22220 - 22620)             │
+│ 7. 外部服务、女优智能画像与云端网关 (Lines 12575 - 16117 & Lines 22983 - 23666)             │
 │    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 四级 CDN 容灾降级   │
 │    • ActressService: JAV_info 现役/退役活跃探针与维基百科异步回退，生成女优生平卡片         │
 │    • PlaySitesService: 123AV / njav / MissAV 等 10+ 外部在线源与动态模板参数变量替换        │
@@ -401,7 +401,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ## 核心“弯弯绕绕”与历史避坑铁律 (33 Critical Invariants & Gotchas)
 
-这 33 条铁律是整个项目 27,729 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 33 条铁律是整个项目 27,784 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -418,14 +418,14 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：当用户在 JAVDB 列表页滑动浏览时，被动采集器会快速爬取页面数据写入 DB。写入前必须提取 `chosenCustomMeta` 并予以保全，严禁被网页原生旧数据洗掉。
 * **参见决策**：[ADR-0007: 被动采集熔断与元数据自愈](./docs/adr/0007-passive-collection-and-custom-metadata-healing.md)
 
-### 4. IndexedDB 批量写回必须以 50 条为一批进行切片事务
-* **铁律**：全量导入或同步数千部影片时，必须调用 `dbPutMovies(list)`（按 50 条一批开启读写事务），严禁在循环内逐条 `await dbPutMovie(m)`。
+### 4. IndexedDB 批量写入与批量删除必须以 50 条为一批进行切片事务
+* **铁律**：全量导入、同步或批量删除（`dbPurgeOrphanMovies`）数千部影片时，必须统一通过 `dbBulkWrite`（即 `dbPutMovies` / `dbBulkPut` / `dbBulkDelete` 按 50 条一批开启读写事务），严禁在循环内逐条 `await dbPutMovie(m)` 或 `await dbDeleteMovie(code)`。
 * **陷阱**：浏览器的 IndexedDB 进程与 JS 主线程跨进程通信开销极高。上万次连续小事务会导致页面 UI 冻结数分钟甚至触发浏览器崩溃；而单一大事务若包含数万条，在移动端或低内存设备极易触发 `QuotaExceededError` 或超时回滚。50 条是兼顾响应度与吞吐的最佳平衡点。
 * **参见决策**：[ADR-0002: 多级存储架构](./docs/adr/0002-multi-tier-storage-indexeddb-memory-mirror.md)
 
 ### 5. DOM MutationObserver 内部严禁无条件写入 DOM
 * **铁律**：任何由 MutationObserver 监听的节点，在对其子节点进行状态更新（如 `textContent`、`className`、`innerHTML`）前，**必须先判断当前值是否已是目标值**，或标记 `hasExternalChange` 守卫。
-* **陷阱**：如行 8120 的 `reviewRefreshObserver`，在修改文本或图标前必须加比对守卫：`if (span && span.textContent !== nextIcon) span.textContent = nextIcon;`。否则观察器因自身修改再次触发，微任务队列死循环，瞬间吃满单核 CPU。
+* **陷阱**：如行 25229 附近的 `reviewRefreshObserver`，在修改文本或图标前必须加比对守卫：`if (span && span.textContent !== nextIcon) span.textContent = nextIcon;`。否则观察器因自身修改再次触发，微任务队列死循环，瞬间吃满单核 CPU。
 * **参见决策**：[ADR-0006: 递归守卫与可重入锁](./docs/adr/0006-reentrant-dialog-and-mutationobserver-recursion-guards.md)
 
 ### 6. 原生 `confirm` 猴子补丁必须具备全局重入锁与 finally 恢复
@@ -456,7 +456,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：片商名（如 `S1 NO.1 STYLE`）内部含有合法空格，日文片商（如 `ケイ・エム・プロデュース`）内部含有中点间隔号（`・`）。若盲目按空格或符号切碎，片商名会被切成碎片导致收藏夹筛选完全匹配落空。
 
 ### 11. 异步榜单切换必须使用请求代数令牌（Sequence Token）
-* **铁律**：在 TOP250 管理器（行 9052）中，所有异步跨域拉取榜单前必须单调递增 `top250LoadSeq`，并在回包到达后校验 `if (mySeq !== top250LoadSeq) return;`。
+* **铁律**：在 TOP250 管理器（行 9666 附近）中，所有异步跨域拉取榜单前必须单调递增 `top250LoadSeq`，并在回包到达后校验 `if (mySeq !== top250LoadSeq) return;`。
 * **陷阱**：用户在总榜、日榜、周榜、月榜之间快速切换时，慢速的日榜回包可能比快速的月榜回包更晚到达。如果不校验代数令牌，界面会被迟到的旧回包覆盖，产生严重竞态乱序 BUG。
 * **参见决策**：[ADR-0011: 异步榜单代数令牌防乱序](./docs/adr/0011-request-sequence-tokens-for-rankings.md)
 
@@ -465,9 +465,9 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：单纯依赖 `y < titleTop - 80` 恢复大图存在致命设计隐患：一旦因折叠态测量导致 `titleTop <= 80px`，滞后死区变成负数，用户滑到最顶部 `y = 0` 时条件永远不成立，英雄区带着数百像素的 `--fusion-shift` 上边距卡死在页面中下部，顶部留出巨大黑色空白；此外在液态玻璃下频繁测量会触发 Layout Thrashing 导致海报残缺。
 * **参见决策**：[ADR-0010: 详情页封面融合模式（Cover Fusion）与四态排版引擎架构](./docs/adr/0010-cover-fusion-and-multi-layout-engine.md)
 
-### 13. 规避 VIP 302 拦截墙时避免循环重定向
-* **铁律**：针对非会员或未登录用户触发 302 重定向到 `/plans/ypay` 时，脚本拦截后使用 `location.replace('/advanced_search?...')` 穿透替换。必须严格判断目标页面的有效性与来源。
-* **陷阱**：严禁出现自身重定向至自身引发浏览器死循环报错（`ERR_TOO_MANY_REDIRECTS`）；替换前必须前置判断当前是否已经在高级搜索页面或已开启绕过限制。
+### 13. 规避 VIP 302 拦截墙时的前置初始化与来源严格判定
+* **铁律**：针对非会员或未登录用户触发 302 重定向到 `/plans/ypay` 时，脚本在文件顶层早期守卫（行 540 附近）拦截并使用 `location.replace('/advanced_search?...')` 穿透替换。该守卫依赖的所有注册表与 `const`/`let` 状态（如 `PLUGIN_REGISTRY`、`isPluginEnabled`）必须声明于守卫之前，防止首次未写入 `localStorage` 时触发 TDZ `ReferenceError`；判定来源页时必须通过 `getReferrerPathname()` / `isReferrerRankingPath()` 用 `new URL(document.referrer, origin).pathname` 前缀锚定 `/rankings/(top|playback)`，严禁使用宽松的 `.includes('top')` / `.includes('playback')`。
+* **陷阱**：单文件顶层守卫在 IIFE 自上而下首次执行时若引用下游才初始化的 `const` 变量会直接崩溃；宽松子串匹配则会导致用户从 `/topics/...` 等含关键词路径跳入 `/plans` 时被误判为榜单页而错跳；此外替换前必须确认目标合理性，杜绝自身重定向死循环（`ERR_TOO_MANY_REDIRECTS`）。
 * **参见决策**：[ADR-0012: JAVDB 服务端 VIP 302 拦截墙规避与多源在线播放矩阵](./docs/adr/0012-vip-wall-bypass-and-multi-source-playback.md)
 
 ### 14. 关注女优同步必须带断崖式下跌熔断（30% 保护）
@@ -475,9 +475,9 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：当 JAVDB 临时改版或用户网络丢包导致仅返回部分数据时，无脑覆写会将用户积累数年的本地收藏演员全部清空。
 * **参见决策**：[ADR-0007: 被动采集熔断与元数据自愈](./docs/adr/0007-passive-collection-and-custom-metadata-healing.md)
 
-### 15. 皮肤开闭与 SPA 路由跳转必须严格清理常驻资源
-* **铁律**：当用户在设置中关闭 Emby 皮肤时，不仅要移除 `#emby-style` 样式表，还必须同步解绑路由拦截器、清理定时守护器（`clearInterval`）、隐藏设置浮层遮罩（`#jhs-settings-mask`），恢复原生 Navbar。
-* **陷阱**：残留的定时器或未清理的全局样式会在用户切回原生 JAVDB 界面后继续运行，导致内存泄漏及原生排版严重错乱。
+### 15. 皮肤开闭、SPA 路由跳转与入口初始化的幂等及资源清理
+* **铁律**：当用户在设置中关闭 Emby 皮肤时，不仅要移除 `#emby-style` 样式表，还必须同步解绑路由拦截器、清理定时守护器（`clearInterval`）、隐藏设置浮层遮罩（`#jhs-settings-mask`），恢复原生 Navbar；全局高频事件（如 `buildSearchModal` 的 `Esc` 监听）须通过 `document.documentElement.dataset` 等全局标记确保仅绑定一次；脚本入口仅允许在 `document.readyState === 'loading'` 分支内部执行轻量预守卫，严禁在分支外提前调用详情页或榜单初始化（`@run-at document-idle` 下须避免与 `init()` 双重执行），且 `FAV.passiveCollect` 须维护同路径在途请求合并与冷却锁。
+* **陷阱**：残留定时器、全局样式或未做全局去重的按键监听会在用户频繁切换原生/Emby 皮肤时不断累积造成内存泄漏；未受 `readyState === 'loading'` 门控的预初始化块则会导致 `document-idle` 下详情页采集、评论加载与原生榜单接管连续重复执行两次。
 * **参见决策**：[ADR-0008: SPA 路由与渲染生命周期](./docs/adr/0008-spa-route-lifecycle-and-native-mask-synchronization.md)
 
 ### 16. 关闭皮肤时必须清除容器 Masonry 类名并对所有布局引擎实施启闭熔断
@@ -520,9 +520,9 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：在用户使用简体中文、日文镜像或第三方代理时，硬编码繁体字匹配会导致详情页海报 Hero 区关键元数据（演员、评分、导演、时长等）大面积出现空白或“未知”，甚至导致详情重构流程中断。
 * **参见决策**：[ADR-0018: 详情页多语言环境元数据健壮性解析与容错架构](./docs/adr/0018-multilingual-detail-metadata-resilient-parsing.md)
 
-### 24. DOM 跨层级插入直接子节点契约与核心网格沙盒隔离
-* **铁律**：所有向原生父容器执行 `parent.insertBefore(newChild, refChild)` 的操作（如 `buildHomeTabs` 与 `ensureFavSurface`），必须通过 `resolveDirectChildAnchor(parent, target)` 递归向上追溯，严格确保传递给 `insertBefore` 的参考节点必然是 `parent` 的**直接子节点**（Direct Child）；必须采用多级回退的 `safeInsertBefore` 处理 DOM 挂载；`restructureGrid` 内部对外部组件（`buildHomeTabs`）的调用必须施加独立的 `try ... catch` 沙盒保护，严禁顶部导航栏的任何异常中断后续卡片的 `attachCard3D` 互动层初始化与 `dfPreview` 封面大图绑定。
-* **陷阱**：JAVDB 官方前端不定期重构（如近期将 `.tabs.main-tabs` 嵌套进 `<div class="main-tabs-wrap">` 容器），若使用深度查找的 `querySelector` 获取深层子节点作为 `parent.insertBefore` 的参照物，会直接触发 W3C 标准的致命异常 `DOMException: The child can not be found in the parent`。由于缺乏沙盒隔离，该异常会使整个主页网格重构彻底腰斩，导致全站卡片悬停封面大图完全瘫痪、常驻导航条消失、左上角导航切换崩溃。
+### 24. DOM 跨层级插入直接子节点契约、核心网格沙盒隔离与 CSS3 选择器兼容
+* **铁律**：所有向原生父容器执行 `parent.insertBefore(newChild, refChild)` 的操作（如 `buildHomeTabs` 与 `ensureFavSurface`），必须通过 `resolveDirectChildAnchor(parent, target)` 递归向上追溯，严格确保传递给 `insertBefore` 的参考节点必然是 `parent` 的**直接子节点**（Direct Child）；必须采用多级回退的 `safeInsertBefore` 处理 DOM 挂载；`restructureGrid` 内部对外部组件（`buildHomeTabs`）的调用必须施加独立的 `try ... catch` 沙盒保护，严禁顶部导航栏的任何异常中断后续卡片的 `attachCard3D` 互动层初始化与 `dfPreview` 封面大图绑定；JS 侧 `querySelector` / `querySelectorAll` 中的 `:not()` 仅允许使用简单选择器，严禁使用 `:not(祖先 后代)` 等 CSS Selectors Level 4 复合排除语法（如 `.movie-list:not(#emby-favorites-panel .movie-list)`），需排除特定父容器时统一采用基础查询 + `.closest(...)` 过滤。
+* **陷阱**：JAVDB 官方前端不定期重构（如近期将 `.tabs.main-tabs` 嵌套进 `<div class="main-tabs-wrap">` 容器），若使用深度查找的 `querySelector` 获取深层子节点作为 `parent.insertBefore` 的参照物，会直接触发 W3C 标准的致命异常 `DOMException: The child can not be found in the parent`。此外，在旧版浏览器内核或兼容环境下，JS 选择器引擎对 CSS4 复合 `:not()` 会直接抛出 `SyntaxError`，导致无限滚动或榜单清洗整段逻辑中断。
 * **参见决策**：[ADR-0019: 嵌套 DOM 跨层级安全插入与网格重构沙盒保护架构](./docs/adr/0019-nested-dom-safe-insertion-and-grid-restructure-sandbox.md)
 
 ### 25. 未登录状态全链路行为拦截与数据库孤儿清洗对称性准则
@@ -567,7 +567,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ### 33. 排行榜路由精确解耦、TOP250 网页登录态优先拉取与高频 DOM/网络无阻塞防抖准则
 * **铁律**：
-  1. **排行榜路由边界隔离**：常规影片排行榜（`/rankings/movies` 日榜/周榜/月榜）必须保留标准 Emby 网格瀑布流渲染，严禁将其纳入 `Top250ViewManager` 视图劫持；仅允许对 `/rankings/top`（TOP250）与 `/rankings/playback`（热播榜）挂载 `Top250ViewManager`，且在访问 `/rankings/movies` 时必须通过 `normalizeRankingHash()` 自动剥离残留的 `#top250` Hash。
+  1. **排行榜路由边界隔离**：常规影片排行榜（`/rankings/movies` 日榜/周榜/月榜）必须保留标准 Emby 网格瀑布流渲染，严禁将其纳入 `Top250ViewManager` 视图劫持；仅允许对 `/rankings/top`（TOP250）与 `/rankings/playback`（热播榜）挂载 `Top250ViewManager`，在访问 `/rankings/movies` 时必须通过 `normalizeRankingHash()` 自动剥离残留的 `#top250` Hash，且任何基于 `document.referrer` 的来源页判断同样必须经 `isReferrerRankingPath()` 对 `pathname` 做前缀锚定（严禁子串 `.includes('top')` / `.includes('playback')` 误匹配）。
   2. **TOP250 网页会话优先与凭据防误删**：`Top250ViewManager` 拉取榜单数据时，必须优先通过当前浏览器的网页登录态（`fetch('/rankings/top?page=1..8', { credentials: 'include' })`）解析 `.movie-list .item` 节点并批量写入 `setCachedMany(entries)` 单事务缓存，仅在网页会话不可用时回退至移动端 API Token；当拉取返回 `OfficialSessionError` 或网络超时等非 JWT 校验错误时，严禁执行 `localStorage.removeItem(APP_AUTH_KEY)` 误删用户已保存的 API Token。
   3. **高频 DOM 观察与网络请求节流**：全局 `MutationObserver` 必须先经 `hasRelevantPageMutation(muts)` 预过滤（忽略纯脚本皮肤节点及无关属性变动）并按页面类型分级防抖（详情页 `90ms` / 列表页 `500ms`），`ensureImageNoReferrer(scope)` 仅允许增量扫描新增子树而非全量 `document`；严禁使用 `querySelectorAll('body *')` 全表扫描公告弹窗，必须使用带节点预算上限（2500 节点）的 `document.createTreeWalker`；网络层通过 `embyNetRun` 实现同 URL 在途 `GET` 请求单飞去重（In-Flight Deduplication）与 429/403 指数退避重试，且严禁设置硬编码的低并发上限（如 3 并发队列锁）阻塞瀑布流多图加载，同时必须完整保留 7 天 IndexedDB L2 高清大图持久化缓存与 `projectjav` 等全量图源。
 * **陷阱**：若用 `/rankings/movies` 宽泛匹配 TOP250 视图，用户点击日榜/周榜/月榜时会被强制劫持到 TOP250 面板导致常规排行榜彻底无法访问；若在网页会话过期时无差别清除 `APP_AUTH_KEY`，会导致用户辛苦获取的移动端 Token 被静默清空；若在 `MutationObserver` 中无过滤地触发全量 DOM 查询，会在瀑布流无限滚动时引发严重的帧率暴跌与主线程卡顿。

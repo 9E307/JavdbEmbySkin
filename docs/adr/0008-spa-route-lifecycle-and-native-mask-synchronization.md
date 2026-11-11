@@ -1,7 +1,7 @@
 # 0008. JAVDB SPA 局部路由生命周期接管与原生浮层同步
 
 ## 状态
-已接受 (Accepted，并在 v7.328 增补原生网格排版熔断修复)
+已接受 (Accepted；v7.328 增补原生网格排版熔断修复，v7.5.0 增补入口双执行拦截与全局按键监听幂等守卫)
 
 ## 上下文
 JAVDB 网站采用部分单页应用（SPA）与 Turbolinks 机制：当用户在分类、搜索、排行榜或分页间跳转时，往往不会重新刷新整个页面，而是通过局部替换 DOM 和更新 `History API` 进行导航。早先版本中，这导致了严重的“事件堆叠（Event Listener Leak）”、“幽灵卡片容器（Ghost DOM Containers）”、“浮动遮罩未销毁阻塞点击”以及切回原生皮肤后排版完全错乱等问题。
@@ -21,6 +21,10 @@ JAVDB 网站采用部分单页应用（SPA）与 Turbolinks 机制：当用户�
    * 在 `removeEmbyDOM()` 中补全对 `.movie-list` 容器的 `.emby-masonry` 与 `.emby-dynamic-focus` 类名清理；
    * 在 `WaterfallEngine.layout`、`schedule`、`ensureLayoutClasses` 与 `restructureGrid` 顶层强制注入 `if (!enabled) return;` 熔断守卫；
    * 彻底切断异步图片加载事件在原生模式下被动重新触发瀑布流计算的链路，根治 CSS Grid 与 translate3d 叠加引发的版面右偏错乱。
+6. **`document-idle` 入口防双执行、被动采集在途去重与全局按键幂等（v7.5.0 增补）**：
+   * 脚本底部仅允许在 `if (document.readyState === 'loading')` 分支内执行轻量防闪烁守卫，严禁在分支外提前调用详情页或榜单初始化，消除 `@run-at document-idle` 下与 `init()` 并行双执行的竞态与双倍 DOM/IndexedDB 写入；
+   * `FAV.passiveCollect` 对同路径增加在途 Promise 合并及成功后 `2500ms` 冷却锁，防止并发或短时间重复采集写库；
+   * `buildSearchModal()` 的全局 `document` `Esc` 监听使用 `document.documentElement.dataset.embyEscCloseBound` 保证单次绑定，并在触发时实时查询当前 `#emby-search-modal` 节点，避免开关皮肤删除重建弹窗后监听器累积泄漏。
 
 ## 原因与权衡
 * **解决局部渲染的“幽灵残影”**：如果不做 SPA 路由接管，用户从“收藏夹”点击某部影片进入详情页，收藏夹的 DOM 会潜伏在后台继续响应键盘快捷键；而当用户点浏览器后退时，详情页的样式又会残留在列表中。
