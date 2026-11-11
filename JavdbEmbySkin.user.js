@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.6.1
+// @version      7.6.2
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -85,7 +85,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.6.1';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.6.2';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabLucky = null, luckyPanel = null;
   var tabGallery = null, galleryPanel = null;
@@ -1248,6 +1248,14 @@ html.emby-skin .emby-hide-announce { display:none !important; }
   display:flex; align-items:flex-start; flex-wrap:wrap;
   padding-top:1.2em; padding-left:0; padding-right:0;
   box-sizing:border-box;
+  transition:background-color .22s ease, box-shadow .22s ease, backdrop-filter .22s ease;
+}
+html.emby-skin:not(.emby-style-glass):not(.emby-style-liquid) #emby-topbar.scrolled {
+  background-color:rgba(16,18,24,.78);
+  background-image:linear-gradient(to bottom, rgba(16,18,24,.96), rgba(16,18,24,.74));
+  backdrop-filter:blur(16px) saturate(1.25);
+  -webkit-backdrop-filter:blur(16px) saturate(1.25);
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
 }
 #emby-topbar::before {
   /* 渐变遮罩横条已取代底部硬白线，这里不再画分隔线 */
@@ -1346,7 +1354,12 @@ html.emby-skin.emby-style-glass #emby-search-modal {
   -webkit-backdrop-filter: blur(14px) saturate(1.8) brightness(1.05) !important;
   background: transparent !important;
 }
-html.emby-skin.emby-style-glass #emby-search-modal .search-panel,
+html.emby-skin.emby-style-glass #emby-search-modal .search-panel {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin-bottom: 0;
+}
 html.emby-skin.emby-style-glass #emby-search-modal .search-bar-wrap {
   background: linear-gradient(135deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,.03) 100%), rgba(20,24,36,.55) !important;
   backdrop-filter: blur(26px) saturate(1.9) brightness(1.06) !important;
@@ -1354,6 +1367,7 @@ html.emby-skin.emby-style-glass #emby-search-modal .search-bar-wrap {
   border: 1px solid rgba(255,255,255,.22) !important;
   box-shadow: 0 16px 45px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.35) !important;
   border-radius: 12px;
+  padding: 14px 16px;
 }
 html.emby-skin.emby-style-glass #emby-drawer {
   backdrop-filter: blur(5px) saturate(1.8) brightness(1.04) !important;
@@ -1465,7 +1479,12 @@ html.emby-skin.emby-style-liquid #emby-search-modal {
   -webkit-backdrop-filter: blur(14px) saturate(1.2) brightness(0.92) !important;
   background: rgba(0,0,0,.32) !important;
 }
-html.emby-skin.emby-style-liquid #emby-search-modal .search-panel,
+html.emby-skin.emby-style-liquid #emby-search-modal .search-panel {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  margin-bottom: 0;
+}
 html.emby-skin.emby-style-liquid #emby-search-modal .search-bar-wrap {
   background:
     linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 60%, transparent 100%),
@@ -1479,6 +1498,7 @@ html.emby-skin.emby-style-liquid #emby-search-modal .search-bar-wrap {
     0 20px 50px rgba(0,0,0,.55) !important;
   overflow: hidden;
   border-radius: 12px;
+  padding: 14px 16px;
 }
 html.emby-skin.emby-style-liquid #emby-drawer-scrim {
   backdrop-filter: none !important;
@@ -2856,11 +2876,12 @@ html.emby-skin.cover-fusion.cover-fusion-collapsed .emby-detail-hero .info {
   z-index:2147482995;
   display:flex; align-items:center; gap:1.1em;
   height:114px; padding:0 1.6em; box-sizing:border-box;
-  /* EMBY经典：适配顶栏效果，渐变倒置（下深上透），与顶部融合不突兀；
-     毛玻璃/液态玻璃由专属规则覆盖其背景） */
-  background-image:linear-gradient(to top, rgba(22,24,29,.92), rgba(22,24,29,0));
-  background-color:unset;
-  backdrop-filter:none;
+  /* EMBY经典：紧凑条需保持清晰磨砂背景与渐变遮罩，防止正文内容透过顶缘与标题文字混叠；
+     毛玻璃/液态玻璃由专属规则覆盖其背景 */
+  background-image:linear-gradient(to bottom, rgba(18,20,26,.86), rgba(18,20,26,.94));
+  background-color:rgba(18,20,26,.78);
+  backdrop-filter:blur(16px) saturate(1.2);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);
   border-bottom:1px solid rgba(255,255,255,.08);
   opacity:0; transform:translateY(-14px); pointer-events:none;
   transition:opacity .28s ease, transform .28s ease;
@@ -3173,16 +3194,19 @@ html.emby-skin.emby-dynamic-focus #emby-top250-panel .movie-list.emby-dynamic-fo
 #emby-df-scrim {
   position:fixed; inset:0; pointer-events:none; z-index:2147482998;
   background:rgba(0,0,0,.55);
-  opacity:0; transition:opacity .28s ease; will-change:opacity;
+  opacity:0; visibility:hidden; transition:opacity .28s ease, visibility 0s linear .28s; will-change:opacity;
 }
-#emby-df-scrim.show { opacity:1; }
+#emby-df-scrim.show { opacity:1; visibility:visible; transition:opacity .28s ease, visibility 0s; }
 #emby-df-preview {
   position:fixed; z-index:2147482999; pointer-events:none;
-  opacity:0; transform:scale(.86);
-  transition:opacity .16s ease, transform .24s cubic-bezier(.2,.8,.2,1);
+  opacity:0; visibility:hidden; transform:scale(.86);
+  transition:opacity .16s ease, transform .24s cubic-bezier(.2,.8,.2,1), visibility 0s linear .16s;
   will-change:opacity,transform;
 }
-#emby-df-preview.show { opacity:1; transform:scale(1); }
+#emby-df-preview.show {
+  opacity:1; visibility:visible; transform:scale(1);
+  transition:opacity .16s ease, transform .24s cubic-bezier(.2,.8,.2,1), visibility 0s;
+}
 /* 气泡内容镜像标准卡片信息区：黑底 + 番号强标题 + 标题 + 评分/日期/磁力标签 + 演员/时长。
  * 每行独立 ellipsis；标签可换行；数据全盘继承卡片 DOM / 收藏夹数据库。 */
 #emby-df-preview .emby-df-preview-info {
@@ -5337,10 +5361,17 @@ html.emby-skin.cover-hybrid .emby-play-menu.pos-bottom {
   -webkit-appearance:none !important; -moz-appearance:none !important; appearance:none !important;
   background-image:none !important;
 }
-#emby-search-modal .search-bar-wrap { max-width:none !important; margin:0 auto; }
-#emby-search-modal .search-panel { box-shadow:0 1em 3em rgba(0,0,0,.5); }
-#emby-search-modal .search-recent-keywords { color:#ddd; }
-#emby-search-modal .search-recent-keywords a { color:var(--e-accent,#00a4dc); }
+#emby-search-modal .search-bar-wrap {
+  max-width:none !important; margin:0 auto;
+  background:rgba(24,26,33,.92) !important;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px; padding:14px 16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.6);
+}
+#emby-search-modal .search-panel { background:transparent !important; box-shadow:none !important; margin-bottom:0; }
+#emby-search-modal .search-recent-keywords { color:#cbd5e1; margin-top:10px; }
+#emby-search-modal .search-recent-keywords a { color:#e2e8f0; }
+#emby-search-modal .search-recent-keywords a:hover { color:var(--e-accent,#00a4dc); text-decoration:underline; }
 
 /* ====== 关闭态：所有注入结构不可见 ====== */
 html:not(.emby-skin) #emby-topbar,
@@ -8007,8 +8038,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     document.body.appendChild(backTop);
     window.__embyBackTop = backTop;
     function updateBackTop(st) {
-      const show = st > 240;
-      backTop.classList.toggle('show', show);
+      const y = st || 0;
+      backTop.classList.toggle('show', y > 240);
+      const tb = document.getElementById('emby-topbar');
+      if (tb) tb.classList.toggle('scrolled', y > 12);
     }
     window.__embyUpdateBackTop = updateBackTop;
     backTop.addEventListener('click', function () {
@@ -12272,7 +12305,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '</div>' +
           '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;">' +
             '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:4px;">' +
-              '<span class="material-symbols-outlined" style="font-size:13px;color:#10b981;">观影标记</span>' +
+              '<span class="material-symbols-outlined" style="font-size:14px;color:#10b981;">bookmark_added</span> 观影标记' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 8px;background:rgba(16,185,129,.08);border-radius:6px;border:1px solid rgba(16,185,129,.18);">' +
@@ -12324,26 +12357,26 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
         // 2. 评分阶梯分布 & 荣誉与年代
         html += '<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:12px;">' +
-          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;">' +
+          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;min-width:0;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
               '<span style="font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:#f59e0b;font-size:18px;">star</span> 评分阶梯分布</span>' +
-              '<span style="font-size:12px;color:#f59e0b;font-weight:700;">均分 ' + data.avgScore + '</span>' +
+              '<span style="font-size:12px;color:#f59e0b;font-weight:700;white-space:nowrap;">均分 ' + data.avgScore + '</span>' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">' +
-              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;color:#94a3b8;">4.5+ 神作</span><div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.god, totalScored) + '%;height:100%;background:#f59e0b;border-radius:4px;"></div></div><span style="width:48px;text-align:right;color:#cbd5e1;">' + sc.god + ' (' + pct(sc.god, totalScored) + '%)</span></div>' +
-              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;color:#94a3b8;">4.0~4.4 优秀</span><div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.great, totalScored) + '%;height:100%;background:#10b981;border-radius:4px;"></div></div><span style="width:48px;text-align:right;color:#cbd5e1;">' + sc.great + ' (' + pct(sc.great, totalScored) + '%)</span></div>' +
-              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;color:#94a3b8;">3.5~3.9 良好</span><div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.good, totalScored) + '%;height:100%;background:#00a4dc;border-radius:4px;"></div></div><span style="width:48px;text-align:right;color:#cbd5e1;">' + sc.good + ' (' + pct(sc.good, totalScored) + '%)</span></div>' +
-              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;color:#94a3b8;">&lt;3.5 普通</span><div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.normal, totalScored) + '%;height:100%;background:#64748b;border-radius:4px;"></div></div><span style="width:48px;text-align:right;color:#cbd5e1;">' + sc.normal + ' (' + pct(sc.normal, totalScored) + '%)</span></div>' +
+              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;flex-shrink:0;color:#94a3b8;">4.5+ 神作</span><div style="flex:1;min-width:0;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.god, totalScored) + '%;height:100%;background:#f59e0b;border-radius:4px;"></div></div><span style="min-width:74px;flex-shrink:0;white-space:nowrap;text-align:right;color:#cbd5e1;">' + sc.god + ' (' + pct(sc.god, totalScored) + '%)</span></div>' +
+              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;flex-shrink:0;color:#94a3b8;">4.0~4.4 优秀</span><div style="flex:1;min-width:0;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.great, totalScored) + '%;height:100%;background:#10b981;border-radius:4px;"></div></div><span style="min-width:74px;flex-shrink:0;white-space:nowrap;text-align:right;color:#cbd5e1;">' + sc.great + ' (' + pct(sc.great, totalScored) + '%)</span></div>' +
+              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;flex-shrink:0;color:#94a3b8;">3.5~3.9 良好</span><div style="flex:1;min-width:0;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.good, totalScored) + '%;height:100%;background:#00a4dc;border-radius:4px;"></div></div><span style="min-width:74px;flex-shrink:0;white-space:nowrap;text-align:right;color:#cbd5e1;">' + sc.good + ' (' + pct(sc.good, totalScored) + '%)</span></div>' +
+              '<div style="display:flex;align-items:center;gap:8px;"><span style="width:72px;flex-shrink:0;color:#94a3b8;">&lt;3.5 普通</span><div style="flex:1;min-width:0;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;"><div style="width:' + pct(sc.normal, totalScored) + '%;height:100%;background:#64748b;border-radius:4px;"></div></div><span style="min-width:74px;flex-shrink:0;white-space:nowrap;text-align:right;color:#cbd5e1;">' + sc.normal + ' (' + pct(sc.normal, totalScored) + '%)</span></div>' +
             '</div>' +
           '</div>' +
 
-          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;">' +
+          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;min-width:0;">' +
             '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">' +
               '<span class="material-symbols-outlined" style="color:#fed368;font-size:18px;">workspace_premium</span> 榜单荣誉与年代' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(254,211,104,.08);border:1px solid rgba(254,211,104,.2);border-radius:8px;padding:10px;margin-bottom:10px;">' +
-              '<div><div style="font-size:13px;font-weight:700;color:#fed368;">TOP250 金标影片</div><div style="font-size:11px;color:#94a3b8;">收藏库中入选 JAVDB TOP250</div></div>' +
-              '<div style="font-size:20px;font-weight:800;color:#fed368;">' + data.top250AwardsCount + ' 部</div>' +
+              '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#fed368;">TOP250 金标影片</div><div style="font-size:11px;color:#94a3b8;">收藏库中入选 JAVDB TOP250</div></div>' +
+              '<div style="font-size:20px;font-weight:800;color:#fed368;white-space:nowrap;flex-shrink:0;margin-left:8px;">' + data.top250AwardsCount + ' 部</div>' +
             '</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
               data.yearDistribution.map(function (y) {
@@ -12356,7 +12389,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         // 3. TOP 排行榜三列网格 (1列: 收藏女优TOP10; 2列中列: 常浏览女优TOP5+导演TOP5; 3列: 片商TOP5+系列TOP5)
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
           // 1列：收藏女优 TOP 10（纯正排除男优，宝石红高亮）
-          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;">' +
+          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;min-width:0;">' +
             '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:6px;">' +
               '<span class="material-symbols-outlined" style="color:#cf3d35;font-size:18px;">favorite</span> 收藏女优 TOP 10' +
             '</div>' +
@@ -12373,7 +12406,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '</div>' +
 
           // 2列（中列）：常浏览女优 TOP 5 置于上方，收藏导演 TOP 5 置于下方
-          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;">' +
+          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0;">' +
             '<div>' +
               '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' +
                 '<span class="material-symbols-outlined" style="color:#ec4899;font-size:18px;">visibility</span> 常浏览女优 TOP 5' +
@@ -12407,7 +12440,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '</div>' +
 
           // 3列（右列）：片商 TOP 5 & 系列 TOP 5
-          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;">' +
+          '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0;">' +
             '<div>' +
               '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' +
                 '<span class="material-symbols-outlined" style="color:#00a4dc;font-size:18px;">domain</span> 收藏片商 TOP 5' +
@@ -12442,7 +12475,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         '</div>';
 
         // 4. 存储与系统状态栏
-        html += '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:#94a3b8;">' +
+        html += '<div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:11.5px;color:#94a3b8;">' +
           '<span>IndexedDB: javdb_emby_db (正常就绪) | 皮肤版本: v' + data.system.version + '</span>' +
           '<span>移动端授权: ' + data.system.tokenPreview + '</span>' +
         '</div>';
@@ -17216,6 +17249,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
    * 搜索弹窗：点击搜索框 → 屏幕正中，内容模糊为背景，仅突出搜索框
    * 搜索框直接克隆原版（verbatim），不改动结构
    * ===================================================================== */
+  function dedupeClonedIds(container, suffix) {
+    if (!container) return;
+    const tag = suffix || '--emby-modal';
+    container.querySelectorAll('[id]').forEach(function (el) {
+      if (el.id && !el.id.endsWith(tag)) el.id = el.id + tag;
+    });
+    container.querySelectorAll('label[for]').forEach(function (lbl) {
+      const f = lbl.getAttribute('for');
+      if (f && !f.endsWith(tag)) lbl.setAttribute('for', f + tag);
+    });
+  }
+
   function buildSearchModal() {
     if (document.getElementById('emby-search-modal')) return;
     const m = document.createElement('div');
@@ -17226,9 +17271,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     document.body.appendChild(m);
 
     const inner = m.querySelector('.emby-search-inner');
-    // 克隆原版搜索框（含 search-type 下拉、输入框、進階、以圖搜、檢索），verbatim
+    // 克隆原版搜索框（含 search-type 下拉、输入框、進階、以圖搜、檢索），并对克隆节点 id 去重避免表单重复 ID
     const src = document.querySelector('#search-bar-container .search-bar-wrap');
-    if (src) inner.appendChild(src.cloneNode(true));
+    if (src) {
+      inner.appendChild(src.cloneNode(true));
+      dedupeClonedIds(inner, '--emby-modal');
+    }
     wireSearchClone(inner);
     sanitizeSearchInputs(m);
 
@@ -17282,6 +17330,16 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     inp.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
     });
+    // 克隆后已去重 ID，显式接回以图搜按钮与文件表单提交流程
+    const imgBtn = inner.querySelector('.search-image button');
+    const imgFile = inner.querySelector('.search-image input[type="file"]');
+    const imgForm = inner.querySelector('.search-image form');
+    if (imgBtn && imgFile) {
+      imgBtn.addEventListener('click', function () { imgFile.click(); });
+      imgFile.addEventListener('change', function () {
+        if (imgFile.files && imgFile.files.length && imgForm) imgForm.submit();
+      });
+    }
   }
 
   function openSearchModal() {
@@ -17291,7 +17349,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const inner = m.querySelector('.emby-search-inner');
     if (!inner.firstChild) {
       const src = document.querySelector('#search-bar-container .search-bar-wrap');
-      if (src) { inner.appendChild(src.cloneNode(true)); wireSearchClone(inner); }
+      if (src) {
+        inner.appendChild(src.cloneNode(true));
+        dedupeClonedIds(inner, '--emby-modal');
+        wireSearchClone(inner);
+      }
     }
     m.classList.add('open');
     sanitizeSearchInputs(m);
@@ -18112,7 +18174,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     startDfVideoPreview(p, item);
   }
 
-  function dfPopupHide() {
+  function dfPopupHide(clearSlots) {
     stopDfVideoPreview();
     const p = document.getElementById('emby-df-preview');
     const scrim = document.getElementById('emby-df-scrim');
@@ -18121,7 +18183,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     dfPopup.hidden = true;
     restoreCardTitles(dfPopup.item);
     dfPopup.item = null;
-    if (p) p.classList.remove('show');
+    if (p) {
+      p.classList.remove('show');
+      if (clearSlots) {
+        const titleSlot = p.querySelector('.dfp-title');
+        const metaSlot = p.querySelector('.dfp-meta');
+        const extraSlot = p.querySelector('.dfp-extra');
+        if (titleSlot) titleSlot.textContent = '';
+        if (metaSlot) metaSlot.textContent = '';
+        if (extraSlot) extraSlot.textContent = '';
+      }
+    }
     if (scrim) scrim.classList.remove('show');
   }
 
@@ -25851,6 +25923,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
     rawTitle = rawTitle.replace(/每[週周]推[薦荐]/g, '每周推荐').replace(/推[薦荐]/g, '推荐').replace(/週/g, '周');
     subText = subText.replace(/週/g, '周');
+    metaText = metaText.replace(/更新[於于]/g, '更新于').replace(/週/g, '周');
     const itemCount = recCont ? recCont.querySelectorAll('.item').length : 0;
     return { title: rawTitle, sub: subText, meta: metaText, cookieKey: cookieKey, count: itemCount };
   }
@@ -28385,6 +28458,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
 #javdb-emby-toggle:hover .tip { opacity:1; }
+html.emby-skin.emby-drawer-open #javdb-emby-toggle {
+  opacity:0 !important; pointer-events:none !important; transform:scale(.85);
+}
 `;
 
 // openToggleContextMenu 已按要求移除（保留左下角切换球与版本提示）
@@ -28628,6 +28704,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
    * ===================================================================== */
   function switchTab(tab) {
     if (tab === 'lucky' && !isLuckyTabEnabled()) tab = 'home';
+    // 视图切换前收起悬停大图与遮罩并清空陈旧气泡文案，避免跨页签残留 DOM 与可访问性文本
+    try { dfPopupHide(true); } catch (e) {}
     // 去手氣不錯/收藏夹/画廊/TOP250前确保面板/标签栏存在（应对 buildChrome 因 SPA 重入 guard 未创建的情况）
     if (tab === 'lucky' || tab === 'favorites' || tab === 'gallery' || tab === 'top250') {
       ensureFavSurface();
