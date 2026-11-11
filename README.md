@@ -13,7 +13,7 @@
 [![Platform](https://img.shields.io/badge/platform-Tampermonkey%20%7C%20ScriptCat%20%7C%20Violentmonkey-orange.svg?style=flat-square)](https://www.tampermonkey.net/)
 [![Style](https://img.shields.io/badge/theme-Emby%20%7C%20Glass%20%7C%20Liquid-purple.svg?style=flat-square)](https://github.com/)
 [![License](https://img.shields.io/badge/license-BSD-green.svg?style=flat-square)](https://opensource.org/licenses/BSD-3-Clause)
-[![Changelog](https://img.shields.io/badge/changelog-v7.6.0-blue.svg?style=flat-square)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/changelog-v7.6.1-blue.svg?style=flat-square)](CHANGELOG.md)
 
 **`JavdbEmbySkin` 是一个运行在浏览器里的Javdb前端重构脚本。将 JAVDB 原来的老式网页界面替换成一套美观优雅的界面现代化样式结构与高级数据收藏管理脚本——风格参考了大家熟悉的影音服务器 Emby。**
 
@@ -43,7 +43,7 @@
 | 维度 | 亮点特性 | 给您带来的体验 |
 | :--- | :--- | :--- |
 | **顶级颜值** | **精细调节的质感主题**（Emby经典 / 毛玻璃 / 液态玻璃） | 像在电视或高端平板上看流媒体一样高级，还支持Steam 风格样式的 3D 卡牌倾斜悬浮与光影掠影 |
-| **灵感发现** | **「每週推薦」精选横栏** + **「手氣不錯」全屏随机抽片** | 首页周更推荐智能降噪为单行可折叠横栏，不再遮挡新片流；内置「手氣不錯」无刷新抽卡发现好片 |
+| **灵感发现** | **「每周推荐」精选横栏** + **「手气不错」全屏随机抽片** | 首页周更推荐智能降噪为单行可折叠横栏，不再遮挡新片流；内置「手气不错」无刷新抽卡发现好片 |
 | **本地媒体库** | **独立本地数据库**，支持想看/已看状态与随手记 | 个人评分（1~5星）与官方评分彻底分离，既能显示官方评分，也能显示自己的个人打分，还能给每部电影显示自己的备注 |
 | **播放联动** | **官方播放 + 外部多源在线播放**自动嗅探 | 会员直接内嵌看，非会员一键调起各大主流播放站点，支持自定义添加任意网站 |
 | **高清画廊** | **全屏剧照瀑布流**，多图床高清无损嗅探 | 独立【预览画廊】标签页，喜欢的截图可以一件收藏，像看写真相册一样直接浏览喜欢的剧照大图且不用下载也不用专门打开对应番号网址 |

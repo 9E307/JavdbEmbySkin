@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.6.0
+// @version      7.6.1
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -85,7 +85,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.6.0';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.6.1';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabLucky = null, luckyPanel = null;
   var tabGallery = null, galleryPanel = null;
@@ -556,14 +556,22 @@
   // 从详情页 h2 标题提取实体名候选：演员/导演等详情页常把多个写法（中/日/别名）放在同行或分行，
   // 采集入库时通常只保留当前一个名字；若不拆分直接当整体匹配会全员落空。
   // 按空白/逗号/换行/中点拆分 token，过滤维度标签与「N 部影片」等噪声，返回候选名数组。
-  var ENTITY_NAME_NOISE = /部影片|影片|作品|部作品|出演|関連|相关|排行|人気|^\d+$/;
-  var ENTITY_DIM_LABELS = ['导演','片商','系列','演员','導演','製片商','演員','製片'];
+  var ENTITY_NAME_NOISE = /部影片|影片|作品|部作品|出演|関連|相关|排行|人気|^\d+$|\b\d+\s*(?:videos?|movies?|works?|films?|items?)\b|^\s*(?:videos?|movies?|works?|items?)\s*$/i;
+  var ENTITY_DIM_LABELS = [
+    '导演', '片商', '系列', '演员', '導演', '製片商', '製作商', '制作商', '發行商', '发行商', '演員', '製片',
+    'director', 'maker', 'studio', 'publisher', 'series', 'actor', 'actress', 'actors', 'actresses', 'code', 'video code',
+    '監督', 'メーカー', 'シリーズ', '出演', '女優'
+  ];
+  function isEntityDimLabel(line) {
+    var clean = String(line || '').replace(/[:：\s]+$/g, '').trim().toLowerCase();
+    return !!clean && ENTITY_DIM_LABELS.indexOf(clean) !== -1;
+  }
   function extractEntityNames(titleEl) {
     if (!titleEl) return [];
     var lines = (titleEl.textContent || '').split(/[\n\r]+/).map(function (s) { return s.trim(); }).filter(Boolean);
     var names = [];
     lines.forEach(function (line) {
-      if (ENTITY_DIM_LABELS.indexOf(line) !== -1) return;          // 跳过维度标签行
+      if (isEntityDimLabel(line)) return;          // 跳过维度标签行
       if (ENTITY_NAME_NOISE.test(line)) return;                    // 跳过「3 部影片」等噪声行
       line.split(/[\s,，、・]+/).forEach(function (tok) {
         tok = tok.trim();
@@ -572,7 +580,7 @@
     });
     return names;
   }
-  // 整名版行级解析：与 extractEntityNames 同样跳过维度标签行（「導演/片商/系列」等）与噪声行，
+  // 整名版行级解析：与 extractEntityNames 同样跳过维度标签行（「導演/片商/系列/Director/Maker」等）与噪声行，
   // 但每行作为整名保留、不做行内符号拆分——用于导演/片商/系列：
   // 名称含空格/顿号/逗号时整名匹配，不被误拆成多个筛选条件（按需求只对演员应用符号拆分）。
   function extractEntityNamesWhole(titleEl) {
@@ -580,7 +588,7 @@
     var lines = (titleEl.textContent || '').split(/[\n\r]+/).map(function (s) { return s.trim(); }).filter(Boolean);
     var names = [];
     lines.forEach(function (line) {
-      if (ENTITY_DIM_LABELS.indexOf(line) !== -1) return;          // 跳过维度标签行（关键：页面 h2 首行是「導演」等标签）
+      if (isEntityDimLabel(line)) return;          // 跳过维度标签行（关键：页面 h2 首行是「導演」等标签）
       if (ENTITY_NAME_NOISE.test(line)) return;
       var t = line.replace(/[\s·]*[\(（]\d+[\)）]\s*$/, '').replace(/\s+/g, ' ').trim();
       if (t && names.indexOf(t) === -1) names.push(t);
@@ -603,13 +611,13 @@
   function extractMakerNames(titleEl) {
     var names = [];
     function push(s) {
-      s = String(s || '').replace(/^(片商|系列|導演|导演|演員|演员|番號|番号)[:：]?\s+/, '')
+      s = String(s || '').replace(/^(?:片商|系列|導演|导演|演員|演员|番號|番号|製片商|製作商|制作商|發行商|发行商|director|maker|studio|publisher|series|actor|actress|code|id)[:：]?\s+/i, '')
         .replace(/[\s·]*[\(（]\d+[\)）]\s*$/, '').replace(/\s+/g, ' ').trim();
       if (s && names.indexOf(s) === -1) names.push(s);
     }
     var lines = ((titleEl && titleEl.textContent) || '').split(/[\n\r]+/).map(function (s) { return s.trim(); }).filter(Boolean);
     lines.forEach(function (line) {
-      if (ENTITY_DIM_LABELS.indexOf(line) !== -1) return;
+      if (isEntityDimLabel(line)) return;
       if (ENTITY_NAME_NOISE.test(line)) return;
       push(line);                            // ① 整行
       line.split(/[，,、]+/).forEach(push);  // ② 逗号/顿号分段（保留空格与・）
@@ -1060,6 +1068,72 @@
     for (let i = 0; i < s; i++) html += '<i class="icon-star" style="color:#f59e0b;margin-right:1px;"></i>';
     for (let i = s; i < 5; i++) html += '<i class="icon-star gray" style="color:#64748b;margin-right:1px;"></i>';
     return html;
+  }
+
+  /* ====== 多语言 DOM 解析统一助手（兼容 繁中 / 简中 / English / 日本語，ADR-0018/0032） ====== */
+  var DETAIL_FIELD_RES = {
+    code: /^(?:番號|番号|番号组|code|id|number|品番)$/i,
+    date: /^(?:日期|發行日期|发行日期|發售日|发售日|released?\s*date|date|発売日|公開日)$/i,
+    duration: /^(?:時長|时长|片長|片长|duration|length|runtime|時間|収録時間)$/i,
+    director: /^(?:導演|导演|director|監督)$/i,
+    maker: /^(?:片商|賣家|卖家|製片商|製作商|制作商|發行商|发行商|maker|studio|publisher|label|メーカー|スタジオ)$/i,
+    series: /^(?:系列|series|シリーズ)$/i,
+    rating: /^(?:評分|评分|rating|score|評価)$/i,
+    categories: /(?:類別|类别|標籤|标签|類型|类型|tags?|genres?|categor(?:y|ies)|ジャンル|タグ)/i,
+    actors: /(?:演員|演员|女優|女优|actors?|actress(?:es)?|cast|出演)/i
+  };
+  var DETAIL_ALSO_STARRED_RE = /還出演過|还出演过|also\s*(?:starred|appeared)|starred\s*in|other\s*works|他の出演/i;
+  var DETAIL_YOU_MIGHT_LIKE_RE = /你可能也喜歡|你可能也喜欢|you\s*(?:may|might)\s*also\s*like|similar\s*videos|related\s*videos|おすすめ/i;
+
+  function parseJavdbRatingText(rawText) {
+    const v = String(rawText || '').replace(/\s+/g, ' ').trim();
+    let score = 0;
+    const sm = v.match(/(\d+(?:\.\d+)?)\s*(?:分|点|\/\s*5(?:\.0)?\b|pts?\b|stars?\b)/i) ||
+      v.match(/^\s*([0-5](?:\.\d+)?)(?=\s*(?:[,(]|by\b|from\b|$))/i) ||
+      v.match(/\b([0-5]\.\d+)\b/);
+    if (sm) {
+      const n = parseFloat(sm[1]);
+      if (Number.isFinite(n) && n >= 0 && n <= 5) score = n;
+    }
+    let count = 0;
+    const cm = v.match(/(?:由|共)\s*([\d,]+)\s*(?:人|位|件|次|条|條)?/) ||
+      v.match(/(?:by|from)\s*([\d,]+)\s*(?:users?|people|members?|ratings?|reviews?|votes?)?/i) ||
+      v.match(/([\d,]+)\s*(?:人(?:評[價价]|评[价價])?|users?|ratings?|reviews?|votes?|people|件)/i) ||
+      v.match(/\(\s*([\d,]+)\s*\)/);
+    if (cm) {
+      const c = parseInt(cm[1].replace(/,/g, ''), 10);
+      if (Number.isFinite(c) && c >= 0) count = c;
+    }
+    return { score: score, count: count, hasScore: !!sm, hasCount: !!cm, text: v };
+  }
+
+  function detectReviewTitleStatus(rawText) {
+    const norm = String(rawText || '').replace(/\s+/g, ' ').trim();
+    if (!norm) return null;
+    if (/我想看|want\s*to\s*watch|wish\s*list|観たい/i.test(norm)) return 'wishlist';
+    if (/我看\s*[過过]|\bwatched\b|already\s*watched|marked\s*as\s*watched|観た/i.test(norm)) return 'watched';
+    return null;
+  }
+
+  function classifyReviewActionEl(el) {
+    if (!el) return null;
+    const rawTxt = String(el.textContent || '').replace(/^[^\u4e00-\u9fff\w]+/, '').replace(/[\s\n]+/g, ' ').trim();
+    if (rawTxt) {
+      if (/^(?:想\s*看|願\s*望|愿望)$|取消\s*想\s*看|已\s*想\s*看|want\s*(?:to\s*)?watch|wish\s*list|remove.*want|観たい/i.test(rawTxt)) return 'wishlist';
+      if (/^(?:看\s*[過过]|已\s*看\s*[過过])$|取消\s*看\s*[過过]|已經?\s*看\s*[過过]|\bwatched\b|mark(?:ed)?\s*(?:as\s*)?watched|観た/i.test(rawTxt)) return 'watched';
+      if (/存入\s*清[單单]|加入\s*清[單单]|收藏到\s*清[單单]|收藏|(?:save|add)\s*to\s*(?:my\s*)?lists?|^(?:清[單单]|lists?)$/i.test(rawTxt)) return 'list';
+    }
+    const attrBlob = [
+      el.getAttribute('data-action') || '',
+      el.getAttribute('data-target') || '',
+      el.getAttribute('href') || '',
+      el.id || '',
+      el.className || ''
+    ].join(' ').toLowerCase();
+    if (/want_to_watch|wish|願望|想\s*看/.test(attrBlob)) return 'wishlist';
+    if (/\bwatched\b|review-watched|modal-watched|watch|看\s*[過过]/.test(attrBlob) && !/want/.test(attrBlob)) return 'watched';
+    if (/save[-_]?list|favorite_lists|modal-save-list|\blist\b|清[單单]|收藏/.test(attrBlob)) return 'list';
+    return null;
   }
 
   /* =======================================================================
@@ -2210,15 +2284,16 @@ html.emby-skin #recommend-container.emby-rec-rail::-webkit-scrollbar-thumb {
 html.emby-skin .emby-row::-webkit-scrollbar-thumb:hover,
 html.emby-skin #recommend-container.emby-rec-rail::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.22); }
 
-/* ====== 主页「每週推薦」改造（v7.6.0 方案 D） ======
+/* ====== 主页「每周推荐」改造（v7.6.0 方案 D） ======
  * 支持单行精选横栏 / 默认收起胶囊提醒 / 彻底隐藏，与主新片网格彻底解耦；
- * 高特异性覆盖原生 style="display:none" 与 .movie-list { display:grid !important; } 冲突。 */
+ * 高特异性覆盖原生 style="display:none" 与 .movie-list { display:grid !important; } 冲突；
+ * 切换到全屏发现页 / 收藏夹 / 画廊 / TOP250（html.emby-fav-view）时强制让位，杜绝背景透底。 */
 html.emby-skin h1[data-controller="recommend"].emby-rec-native-hidden,
 html.emby-skin #recommend-container.emby-rec-collapsed,
 html.emby-skin #recommend-container.emby-rec-hidden,
 html.emby-skin #emby-rec-bar.emby-rec-hidden { display:none !important; }
 html:not(.emby-skin) #emby-rec-bar { display:none !important; }
-html.emby-skin #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) {
+html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) {
   display:flex !important; flex-wrap:nowrap !important; grid-template-columns:none !important;
   gap:.85em !important; overflow-x:auto !important; overflow-y:hidden !important;
   padding:.45em 1.6em 1.15em !important; max-width:1600px !important; margin:0 auto .5em !important;
@@ -2288,7 +2363,7 @@ html.emby-skin.emby-style-liquid #emby-rec-bar::before {
 }
 @media (max-width:700px) {
   html.emby-skin #emby-rec-bar { width:calc(100% - 1.6em); padding:.5em .75em; }
-  html.emby-skin #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) { padding:.4em .8em 1em !important; }
+  html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) { padding:.4em .8em 1em !important; }
 }
 
 /* 原版预览（Fancybox 原生播放/看图控件，移动保留 data-fancybox，可看原站预告片/样图，不再自写灯箱） */
@@ -2564,6 +2639,19 @@ html.emby-skin nav.app-desktop-banner,
 html.emby-skin nav.app-mobile-banner,
 html.emby-skin .app-desktop-banner,
 html.emby-skin .app-mobile-banner,
+html.emby-skin nav[class*="app-banner"],
+html.emby-skin div[class*="app-banner"],
+html.emby-skin section[class*="app-banner"],
+html.emby-skin aside[class*="app-banner"],
+html.emby-skin [id*="app-banner"],
+html.emby-skin [class*="app-promo"],
+html.emby-skin [class*="app-download"],
+html.emby-skin [class*="download-app"],
+html.emby-skin [data-controller*="app-banner"],
+html.emby-skin [data-controller*="app-promo"],
+html.emby-skin [data-controller*="app-download"],
+html.emby-skin [data-controller="app-bar"],
+html.emby-skin .emby-hide-ad,
 html.emby-skin .moj-content,
 html.emby-skin .moj-container,
 html.emby-skin .moj-banner,
@@ -3776,6 +3864,8 @@ html.emby-skin.emby-fav-view .main-tabs-wrap,
 html.emby-skin.emby-fav-view h1[data-controller="recommend"],
 html.emby-skin.emby-fav-view #emby-rec-bar,
 html.emby-skin.emby-fav-view #recommend-container,
+html.emby-skin.emby-fav-view #recommend-container.emby-rec-rail,
+html.emby-skin.emby-fav-view #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden),
 html.emby-skin.emby-fav-view .tabs:not(#emby-favorites-panel *):not(#emby-top250-panel *):not(#emby-lucky-panel *),
 html.emby-skin.emby-fav-view .toolbar:not(#emby-favorites-panel *):not(#emby-top250-panel *):not(#emby-lucky-panel *),
 html.emby-skin.emby-fav-view .movie-list,
@@ -7203,7 +7293,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   // 后期新增按钮只需在此数组加一项，两处 UI 自动同步出现。
   const HOME_TAB_DEFS = [
     { key: 'home', label: '主页', icon: 'home_max_dots' },
-    { key: 'lucky', label: '手氣不錯', icon: 'casino' },
+    { key: 'lucky', label: '手气不错', icon: 'casino' },
     { key: 'favorites', label: '收藏夹', icon: 'diagnosis' },
     { key: 'gallery', label: '预览画廊', icon: 'local_see' },
     { key: 'top250', label: 'TOP250', icon: 'social_leaderboard' }
@@ -7518,7 +7608,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
 
     let html = '<div class="nav site-nav">';
-    html += '<a class="nav-item emby-drawer-lucky-link" href="/lucky"><span class="material-symbols-outlined mi">casino</span><span>手氣不錯</span></a>';
+    html += '<a class="nav-item emby-drawer-lucky-link" href="/lucky"><span class="material-symbols-outlined mi">casino</span><span>手气不错</span></a>';
     html += renderGroupHtml(tagsGroup, 'tags');
     html += renderGroupHtml(rankGroup, 'rankings');
     html += renderGroupHtml(actorGroup, 'actors');
@@ -7598,7 +7688,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
      * 等用户专属词条。遍历 navbar-end 直接子元素中的所有 .has-dropdown / .is-hoverable，
      * 命中第一个即采用。 */
     let userDropdownEl = null;
-    const userMenuKeywords = [/登出/, /個人信息/, /个人信息/, /收藏的/, /想看/, /看過/, /我的清單/, /通知中心/, /支付記錄/, /登入/, /登录/, /註冊/, /注册/];
+    const userMenuKeywords = [
+      /登出/, /退出/, /sign\s*out/i, /log\s*out/i, /logout/i,
+      /個人信息/, /个人信息/, /profile/i,
+      /收藏/, /想看/, /看[過过]/, /我的清[單单]/,
+      /want\s*(?:to\s*)?watch/i, /\bwatched\b/i, /my\s*lists?/i,
+      /通知中心/, /notifications?/i, /支付[記记][錄录]/, /billing|payment/i,
+      /登入/, /登录/, /註[冊册]|注[冊册]/, /sign\s*in|log\s*in|sign\s*up|register/i
+    ];
     // 关键：只查 .navbar-end 的直接子元素，避免匹配到嵌套的 .navbar-dropdown 子 div
     end.querySelectorAll(':scope > .navbar-item.has-dropdown, :scope > .navbar-item.is-hoverable').forEach(function (ddHost) {
       if (userDropdownEl) return; // 已找到
@@ -7671,7 +7768,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         const methodAttr = e.dataMethod ? ' data-method="' + escapeAttr(e.dataMethod) + '"' : '';
         const confirmAttr = e.dataConfirm ? ' data-confirm="' + escapeAttr(e.dataConfirm) + '"' : '';
         const relAttr = e.rel ? ' rel="' + escapeAttr(e.rel) + '"' : '';
-        const isLogout = /登出|logout|sign\.out/i.test(e.text) || /logout/.test(e.href);
+        const isLogout = /登出|退出|logout|sign[\s.-]*out/i.test(e.text) || /logout/.test(e.href);
         const logoutClass = isLogout ? ' emby-logout-action' : '';
         html += '<' + tag + hrefAttr + methodAttr + confirmAttr + relAttr + ' class="acct-item' + logoutClass + '" data-acct="1">' +
                 '<span class="material-symbols-outlined mi">' + e.icon + '</span>' +
@@ -7749,7 +7846,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       logoutBtn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        const confirmMsg = logoutBtn.getAttribute('data-confirm') || '確定要退出嗎?';
+        const confirmMsg = logoutBtn.getAttribute('data-confirm') || '确定要退出吗?';
         if (!confirm(confirmMsg)) return;
 
         // 清理本地前端临时缓存的用户认证凭据
@@ -9008,7 +9105,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             } else if (det.rating.text) {
               rating = '<span class="ecb-score">' + escapeHtml(det.rating.text) + '</span>';
             }
-            if (det.rating.count) rating += '<span class="ecb-count"> · 由' + escapeHtml(String(det.rating.count)) + '人評價</span>';
+            if (det.rating.count) rating += '<span class="ecb-count"> · 由' + escapeHtml(String(det.rating.count)) + '人评价</span>';
           }
         }
       } catch (e) { log('紧凑条元数据解析失败: ' + e.message); }
@@ -10224,16 +10321,16 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         const rankText = (item.querySelector('.top250-rank-badge, .rank, .tag.is-dark') || {}).textContent || '';
         const rankMatch = rankText.match(/\d+/);
         const scoreText = (item.querySelector('.score .value, .score') || {}).textContent || '';
-        const scoreMatch = scoreText.match(/[0-5](?:\.\d+)?/);
+        const parsedScore = parseJavdbRatingText(scoreText);
         const date = ((item.querySelector('.meta, .time') || {}).textContent || '').trim();
-        const hasCnsub = /中字|字幕/.test(item.textContent || '');
+        const hasCnsub = /中字|字幕|ch(?:inese)?\s*sub|cnsub/i.test(item.textContent || '');
         const rank = rankMatch ? parseInt(rankMatch[0], 10) : offset + i + 1;
         return {
           id: match[1], code: String(code).trim(), number: String(code).trim(),
           title: title || titleText, origin_title: title || titleText,
           detailHref: '/v/' + match[1], coverThumb: cover, coverLarge: cover,
           thumb_url: cover, cover_url: cover, date: date, release_date: date,
-          score: scoreMatch ? parseFloat(scoreMatch[0]) : 0,
+          score: parsedScore.hasScore ? parsedScore.score : 0,
           has_cnsub: hasCnsub, magnets_count: 0,
           _topRank: rank,
           awards: [{ name: getCurrentBoardAwardName(state), rank: rank }]
@@ -11723,8 +11820,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   })();
 
   /* =======================================================================
-   * 手氣不錯全屏发现视图管理器 (LuckyViewManager - v7.6.0)
-   * 适配 JAVDB 新增 /lucky 路由：支持主页标签栏内嵌全屏卡片墙 + 原位 AJAX「換一批」，
+   * 手气不错全屏发现视图管理器 (LuckyViewManager - v7.6.0+)
+   * 适配 JAVDB 新增 /lucky 路由：支持主页标签栏内嵌全屏卡片墙 + 原位 AJAX「换一批」，
    * 复用站内卡片结构、3D 倾斜高光、状态快捷标记及三种布局模式。
    * ===================================================================== */
   const LuckyViewManager = (function () {
@@ -11769,8 +11866,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       listEl.innerHTML =
         '<div class="lucky-status-box">' +
           '<span class="material-symbols-outlined" style="font-size:36px;opacity:.45;display:block;margin-bottom:8px;">' + (isError ? 'wifi_off' : 'casino') + '</span>' +
-          '<div>' + escapeHtml(msg || '正在抽取隨機影片…') + '</div>' +
-          (isError ? '<div style="margin-top:14px;"><button type="button" id="lucky-retry-btn" class="lucky-shuffle-btn"><span class="material-symbols-outlined" style="font-size:16px;">refresh</span> 重試一次</button></div>' : '') +
+          '<div>' + escapeHtml(msg || '正在抽取随机影片…') + '</div>' +
+          (isError ? '<div style="margin-top:14px;"><button type="button" id="lucky-retry-btn" class="lucky-shuffle-btn"><span class="material-symbols-outlined" style="font-size:16px;">refresh</span> 重试一次</button></div>' : '') +
         '</div>';
       const retryBtn = listEl.querySelector('#lucky-retry-btn');
       if (retryBtn) retryBtn.addEventListener('click', function () { loadData(true); });
@@ -11785,7 +11882,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const listEl = currentPanel.querySelector('#lucky-movie-list');
       const countEl = currentPanel.querySelector('#lucky-count-badge');
       if (listEl && !listEl.querySelector('.item')) {
-        renderStatusBox('正在為您隨機挑選驚喜影片…', false);
+        renderStatusBox('正在为您随机挑选惊喜影片…', false);
       }
 
       try {
@@ -11801,7 +11898,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         );
         const items = remoteList ? Array.from(remoteList.querySelectorAll('.item')) : [];
         if (!items.length) {
-          renderStatusBox('未能從 /lucky 獲取影片數據，請確認網絡或登錄狀態後重試', true);
+          renderStatusBox('未能从 /lucky 获取影片数据，请确认网络或登录状态后重试', true);
           return;
         }
 
@@ -11847,13 +11944,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           } else if (layout === 'dynamic-focus') {
             try { ensureDynamicFocusGrid(listEl); } catch (e) {}
           }
-          if (countEl) countEl.textContent = '已載入 ' + items.length + ' 部';
+          if (countEl) countEl.textContent = '已载入 ' + items.length + ' 部';
           applyLuckyRandomBg(currentPanel);
         }
       } catch (err) {
         if (seq !== fetchSeq) return;
-        log('手氣不錯拉取失敗: ' + (err && err.message ? err.message : err));
-        renderStatusBox('抽取失敗：' + ((err && err.message) || '請稍後重試'), true);
+        log('手气不错拉取失败: ' + (err && err.message ? err.message : err));
+        renderStatusBox('抽取失败：' + ((err && err.message) || '请稍后重试'), true);
       } finally {
         if (seq === fetchSeq) {
           isLoading = false;
@@ -11890,17 +11987,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<div class="lucky-title-group">' +
               '<span class="material-symbols-outlined lucky-title-icon">casino</span>' +
               '<div>' +
-                '<div class="lucky-title">手氣不錯 · 隨機靈感發現</div>' +
-                '<div class="lucky-sub">直接拉取 JAVDB 官方 /lucky 隨機推薦池，原位點擊「換一批」無需整頁重載</div>' +
+                '<div class="lucky-title">手气不错 · 随机灵感发现</div>' +
+                '<div class="lucky-sub">直接拉取 JAVDB 官方 /lucky 随机推荐池，原位点击「换一批」无需整页重载</div>' +
               '</div>' +
             '</div>' +
             '<div class="lucky-actions">' +
-              '<span id="lucky-count-badge" class="lucky-count-badge">準備就緒</span>' +
-              '<a href="/lucky" class="lucky-external-link" title="在原生頁面打開 /lucky">' +
-                '<span class="material-symbols-outlined" style="font-size:15px;">open_in_new</span> 原頁打開' +
+              '<span id="lucky-count-badge" class="lucky-count-badge">准备就绪</span>' +
+              '<a href="/lucky" class="lucky-external-link" title="在原生页面打开 /lucky">' +
+                '<span class="material-symbols-outlined" style="font-size:15px;">open_in_new</span> 原页打开' +
               '</a>' +
               '<button type="button" id="lucky-shuffle-btn" class="lucky-shuffle-btn">' +
-                '<span class="material-symbols-outlined" style="font-size:17px;">shuffle</span> 換一批' +
+                '<span class="material-symbols-outlined" style="font-size:17px;">shuffle</span> 换一批' +
               '</button>' +
             '</div>' +
           '</div>' +
@@ -12938,8 +13035,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const STORAGE_KEY = 'javdb_fav_actresses';
     const LAST_SYNC_KEY = 'javdb_fav_actresses_sync_time';
     const IGNORE_STRINGS = new Set([
-      '刪除', '取消收藏', '收藏', '全部', '演員', '女優', '有碼', '無碼', '歐美', '男優',
-      'censored', 'uncensored', 'western', 'rankings', 'actors', 'tags', 'makers', 'series',
+      '刪除', '删除', '取消收藏', '收藏', '全部', '演員', '演员', '女優', '女优', '有碼', '有码', '無碼', '无码', '歐美', '欧美', '男優', '男优',
+      'censored', 'uncensored', 'western', 'rankings', 'actors', 'actress', 'actresses', 'tags', 'makers', 'series', 'all', 'delete', 'remove', 'follow', 'following', 'unfollow',
+      'Censored', 'Uncensored', 'Western', 'Rankings', 'Actors', 'Actress', 'Actresses', 'Tags', 'Makers', 'Series', 'All', 'Delete', 'Remove', 'Follow', 'Following', 'Unfollow',
       'undefined', 'null'
     ]);
     let memFavs = null; // Set of starIds & normalized names
@@ -12957,7 +13055,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             if (item.starId) str = String(item.starId).trim();
             else if (item.name) str = String(item.name).trim();
           }
-          if (str && !IGNORE_STRINGS.has(str) && str.length >= 2) {
+          if (str && !IGNORE_STRINGS.has(str.toLowerCase()) && str.length >= 2) {
             memFavs.add(str);
           } else if (str) {
             cleaned = true;
@@ -13196,7 +13294,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (/cf-challenge|Checking your browser|Just a moment|__cf_chl/i.test(head)) {
         throw new Error('遭遇 Cloudflare 人机验证，请在新标签页打开 JAVDB 完成人机验证');
       }
-      if (/<title[^>]*>\s*(登入|Sign in)|\/login|\/sign_in/i.test(head) && /password|密碼/i.test(text)) {
+      if (/<title[^>]*>\s*(?:登入|登录|Sign\s*in)|\/login|\/sign_in/i.test(head) && /password|密碼|密码/i.test(text)) {
         throw new Error('未检测到 JAVDB 登录状态，请先在当前浏览器登录 JAVDB 账号后再同步');
       }
       return text;
@@ -14688,7 +14786,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '</div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
-            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">首页推荐区<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">适配 JAVDB 首页「每週推薦」：单行精选横栏 / 默认收起胶囊提醒 / 彻底隐藏</span></span></div>' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">首页推荐区<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">适配 JAVDB 首页「每周推荐」：单行精选横栏 / 默认收起胶囊提醒 / 彻底隐藏</span></span></div>' +
             '<div class="jhs-qs-control">' +
               '<select id="qs-home-rec-mode" class="jhs-qs-select">' +
                 '<option value="rail">单行精选横栏</option>' +
@@ -14698,7 +14796,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '</div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
-            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">「手氣不錯」标签<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在首页导航栏与顶栏显示随机发现全屏入口；关闭后仍可在侧边抽屉打开 /lucky</span></span></div>' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">「手气不错」标签<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在首页导航栏与顶栏显示随机发现全屏入口；关闭后仍可在侧边抽屉打开 /lucky</span></span></div>' +
             '<div class="jhs-qs-control"><input type="checkbox" id="qs-lucky-tab" class="mini-switch"></div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
@@ -14949,11 +15047,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               '<div style="width:160px;"><select id="full-trophy-style" class="jhs-input-text"><option value="card">金标荣誉卡</option><option value="bar">简约金标条</option><option value="hud">HUD徽章</option><option value="off">关闭展示</option></select></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
-              '<div class="jhs-item-info"><div class="jhs-item-name">首页「每週推薦」展示</div><div class="jhs-item-desc">适配官方首页推荐区块：单行横栏、默认收起胶囊或彻底隐藏</div></div>' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">首页「每周推荐」展示</div><div class="jhs-item-desc">适配官方首页推荐区块：单行横栏、默认收起胶囊或彻底隐藏</div></div>' +
               '<div style="width:160px;"><select id="full-home-rec-mode" class="jhs-input-text"><option value="rail">单行精选横栏</option><option value="pill">默认收起胶囊</option><option value="hide">彻底隐藏</option></select></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
-              '<div class="jhs-item-info"><div class="jhs-item-name">主页显示「手氣不錯」标签</div><div class="jhs-item-desc">在首页标签栏与顶栏快捷区提供内嵌随机推荐面板；关闭后仍可由侧边抽屉打开 /lucky</div></div>' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">主页显示「手气不错」标签</div><div class="jhs-item-desc">在首页标签栏与顶栏快捷区提供内嵌随机推荐面板；关闭后仍可由侧边抽屉打开 /lucky</div></div>' +
               '<div><input type="checkbox" id="full-lucky-tab" class="mini-switch"></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
@@ -17292,6 +17390,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     hideJavdbAds._lastScan = now;
     const adSelectors = [
       'nav.app-desktop-banner', 'nav.app-mobile-banner', '.app-desktop-banner', '.app-mobile-banner',
+      'nav[class*="app-banner"]', 'div[class*="app-banner"]', 'section[class*="app-banner"]', 'aside[class*="app-banner"]',
+      '[id*="app-banner"]', '[class*="app-promo"]', '[class*="app-download"]', '[class*="download-app"]',
+      '[data-controller*="app-banner"]', '[data-controller*="app-promo"]', '[data-controller*="app-download"]', '[data-controller="app-bar"]',
       '.moj-content', '.moj-container', '.moj-banner', '.moj-wrap', '[class*="moj-"]',
       '.sda-content', '.sda-container', '.sda-banner', '.sda-wrap', '[class*="sda-"]', '[class*="-sda"]',
       '#magnets-content .sda-content', '#magnets .sda-content', '.magnet-links .sda-content',
@@ -17300,9 +17401,48 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       '.top-ads', '.ad-banner', '.ads-banner', '.ads-section', '.banner-ads', '[data-ad]',
       '[class*="ad-banner"]', '[class*="ads-container"]'
     ];
+    const PROTECT_AD_ANCESTOR_SEL = '#emby-topbar, #emby-drawer, #emby-favorites-panel, #emby-lucky-panel, #emby-gallery-panel, #emby-top250-panel, #emby-detail-root, #emby-settings-panel, #javdb-emby-toggle, #footer, .movie-list, .video-detail';
+    const PROTECT_AD_DESCENDANT_SEL = 'main, #recommend-container, .movie-list, .video-detail, #emby-topbar, #emby-drawer, #emby-favorites-panel, #emby-lucky-panel, #emby-gallery-panel, #emby-top250-panel, #emby-detail-root, #javdb-emby-toggle';
+    function hideAdContainerEl(el) {
+      if (!el || el.nodeType !== 1 || el === document.body || el === document.documentElement) return;
+      if ((el.id && (el.id.startsWith('emby-') || el.id === 'javdb-emby-toggle')) || el.closest(PROTECT_AD_ANCESTOR_SEL)) return;
+      el.classList.add('emby-hide-ad');
+      el.style.setProperty('display', 'none', 'important');
+    }
     try {
       document.querySelectorAll(adSelectors.join(', ')).forEach(function (el) {
-        el.style.setProperty('display', 'none', 'important');
+        if (el.querySelector && el.querySelector(PROTECT_AD_DESCENDANT_SEL)) return;
+        hideAdContainerEl(el);
+      });
+    } catch (e) {}
+
+    // 识别并隐藏新版固定底部 / 横栏官方 App 推广条（兼容繁中 / 简中 / English / jav.app 链接及动态类名）
+    try {
+      document.querySelectorAll('nav, section, aside, div, footer').forEach(function (el) {
+        if (el.classList.contains('emby-hide-ad')) return;
+        if (el.id && (el.id.startsWith('emby-') || el.id === 'javdb-emby-toggle' || el.id === 'footer')) return;
+        if (el.closest(PROTECT_AD_ANCESTOR_SEL)) return;
+        if (el.querySelector && el.querySelector(PROTECT_AD_DESCENDANT_SEL)) return;
+        const txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!txt || txt.length > 260) return;
+        const hasOfficialApp = /(?:官方\s*App|Official\s*App)/i.test(txt);
+        const hasDownloadCta = /(?:下載\s*App|下载\s*App|Download\s*App|Get\s*App|立即下載|立即下载)/i.test(txt);
+        const hasPromoDesc = /(?:標籤追蹤|标签追踪|磁鏈搜尋|磁链搜寻|磁链搜索|線上播放更順暢|线上播放更顺畅|Tag\s*tracking|magnet\s*search|JAV\.APP)/i.test(txt);
+        const hasAppLink = !!(el.querySelector && el.querySelector('a[href*="jav.app" i], a[href*="/app_download" i], a[href*="/download_app" i], img[src*="jav.app" i]'));
+        if ((hasOfficialApp && (hasDownloadCta || hasPromoDesc || hasAppLink)) || (hasAppLink && hasDownloadCta)) {
+          let target = el;
+          const baseLen = txt.length;
+          while (target.parentElement && target.parentElement !== document.body && target.parentElement !== document.documentElement) {
+            const p = target.parentElement;
+            if (p.id && (p.id.startsWith('emby-') || p.id === 'javdb-emby-toggle' || p.id === 'footer')) break;
+            if (p.matches(PROTECT_AD_ANCESTOR_SEL) || p.matches('main, header, .section, .container')) break;
+            if (p.querySelector && p.querySelector(PROTECT_AD_DESCENDANT_SEL)) break;
+            const pLen = (p.textContent || '').replace(/\s+/g, ' ').trim().length;
+            if (pLen > 280 || pLen > baseLen + 60) break;
+            target = p;
+          }
+          hideAdContainerEl(target);
+        }
       });
     } catch (e) {}
 
@@ -17310,23 +17450,23 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     try {
       document.querySelectorAll('img[src*="/ads/"], img[src*="jdbstatic.com/ads/"]').forEach(function (img) {
         const p = img.closest('.sda-content, [class*="sda-"], .moj-content, [class*="moj-"], a') || img;
-        p.style.setProperty('display', 'none', 'important');
+        hideAdContainerEl(p);
         if (p.parentElement && (p.parentElement.classList.contains('sda-content') || p.parentElement.id === 'magnets-content')) {
           const wrap = p.closest('.sda-content, [class*="sda-"]');
-          if (wrap) wrap.style.setProperty('display', 'none', 'important');
+          if (wrap) hideAdContainerEl(wrap);
         }
       });
     } catch (e) {}
 
-    // 根据「純推廣 / 纯推广 / 廣告 / 推广 / 赞助商」文本特征精准识别并隐藏广告容器（收窄选择器范围避免全页重扫描）
+    // 根据「純推廣 / 纯推广 / 廣告 / 广告 / 推广 / 赞助商 / Sponsored / Ad」文本特征精准识别并隐藏广告容器（收窄选择器范围避免全页重扫描）
     try {
-      const PROMO_RE = /^(?:純推廣|纯推广|廣告|推广|赞助商)$/;
+      const PROMO_RE = /^(?:純推廣|纯推广|廣告|广告|推广|贊助商|赞助商|Sponsored|Ad)$/i;
       document.querySelectorAll('.tag, .badge, [data-ad], [class*="moj-"], [class*="sda-"]').forEach(function (el) {
         const t = (el.textContent || '').trim();
         if (PROMO_RE.test(t)) {
           const card = el.closest('.moj-content, [class*="moj-"], .sda-content, [class*="sda-"], .item, .box, .notification, .message, .panel, .columns, div') || el;
-          if (card && !card.classList.contains('video-detail') && !card.classList.contains('emby-detail-root') && !card.id.startsWith('emby-')) {
-            card.style.setProperty('display', 'none', 'important');
+          if (card && !card.classList.contains('video-detail') && !card.classList.contains('emby-detail-root') && !(card.id && card.id.startsWith('emby-'))) {
+            hideAdContainerEl(card);
           }
         }
       });
@@ -18796,8 +18936,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (/cf-challenge|Checking your browser|Just a moment|__cf_chl/i.test(head)) {
             throw new Error('RATELIMIT:cf');
           }
-          // 登录页检测（会话过期/未登录时 javdb 跳转登录页）
-          if (/<title[^>]*>\s*(登入|Sign in)|\/login|\/sign_in/i.test(head) && /password|密碼/i.test(html)) {
+          // 登录页检测（会话过期/未登录时 javdb 跳转登录页，兼容繁/简/英）
+          if (/<title[^>]*>\s*(?:登入|登录|Sign\s*in)|\/login|\/sign_in/i.test(head) && /password|密碼|密码/i.test(html)) {
             throw new Error('LOGIN_REQUIRED');
           }
           const parsedDoc = new DOMParser().parseFromString(html, 'text/html');
@@ -18907,7 +19047,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (cm2) count = parseInt(cm2[0], 10) || 0;
           // ② javdb 索引页「XXX 部影片」静态文本（精确匹配"部影片"，避免误取点击次数等数字）
           if (!count) {
-            const cm3 = (card.textContent || '').match(/(\d+)\s*部影片/);
+            const cm3 = (card.textContent || '').match(/(\d+)\s*(?:部影片|部作品|(?:videos?|movies?|works?|films?)\b)/i);
             if (cm3) count = parseInt(cm3[1], 10) || 0;
           }
         } catch (e) {}
@@ -18957,10 +19097,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         const scoreEl = it.querySelector ? it.querySelector('.score .value, .score') : null;
         let score = null, scoreCount = null;
         if (scoreEl) {
-          const sm = (scoreEl.textContent || '').match(/([\d.]+)\s*分/);
-          if (sm) score = parseFloat(sm[1]);
-          const cm2 = (scoreEl.textContent || '').match(/由\s*([\d,]+)\s*人/);
-          if (cm2) scoreCount = parseInt(cm2[1].replace(/,/g, ''), 10);
+          const parsedScore = parseJavdbRatingText(scoreEl.textContent || '');
+          if (parsedScore.hasScore) score = parsedScore.score;
+          if (parsedScore.hasCount) scoreCount = parsedScore.count;
         }
         if (!code) {
           // 退路：从详情链接反推番号。注意 javdb 详情 URL 是编码 ID（如 /v/r37kRv），
@@ -19009,26 +19148,27 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     function parseDetail(root) {
       const fb = root.querySelector('.panel-block.first-block');
       const code = fb ? ((fb.querySelector('.value') || {}).textContent || '').trim().replace(/\s+/g, '') : '';
-      const dateB = favBlockVal(root, /^日期$/);
+      const dateB = favBlockVal(root, DETAIL_FIELD_RES.date);
       const date = dateB ? ((dateB.querySelector('.value') || {}).textContent || '').trim() : '';
-      const durB = favBlockVal(root, /^時長|时长$/);
+      const durB = favBlockVal(root, DETAIL_FIELD_RES.duration);
       const duration = durB ? ((durB.querySelector('.value') || {}).textContent || '').trim() : null;
-      const director = favLinkOf(favBlockVal(root, /^導演|导演$/));
-      const maker = favLinkOf(favBlockVal(root, /^片商|賣家|卖家$/));
-      const series = favLinkOf(favBlockVal(root, /^系列$/));
-      const ratingB = favBlockVal(root, /^評分|评分$/);
+      const director = favLinkOf(favBlockVal(root, DETAIL_FIELD_RES.director));
+      const maker = favLinkOf(favBlockVal(root, DETAIL_FIELD_RES.maker));
+      const series = favLinkOf(favBlockVal(root, DETAIL_FIELD_RES.series));
+      const ratingB = favBlockVal(root, DETAIL_FIELD_RES.rating);
       let rating = null;
       if (ratingB) {
-        const v = ((ratingB.querySelector('.value') || {}).textContent || '').trim();
-        const sm = v.match(/([\d.]+)\s*分/);
-        const cm = v.match(/由(\d+)人/);
-        rating = { score: sm ? parseFloat(sm[1]) : 0, count: cm ? parseInt(cm[1], 10) : 0, text: v };
+        const parsedRating = parseJavdbRatingText((ratingB.querySelector('.value') || {}).textContent || '');
+        rating = { score: parsedRating.score, count: parsedRating.count, text: parsedRating.text };
       }
-      const catB = favBlockVal(root, /類別|类别|標籤|标签/);
+      const catB = favBlockVal(root, DETAIL_FIELD_RES.categories);
       const categories = catB ? Array.from((catB.querySelector('.value') || catB).querySelectorAll('a[href]'))
         .map(function (a) { return { text: a.textContent.trim(), href: a.getAttribute('href') || '#' }; }) : [];
       const actorEls = Array.from(root.querySelectorAll('.panel-block'))
-        .filter(function (b) { const s = (b.querySelector('strong') || {}).textContent || ''; return s.indexOf('演員') !== -1 || s.indexOf('演员') !== -1; })
+        .filter(function (b) {
+          const s = (b.querySelector('strong') || {}).textContent || '';
+          return DETAIL_FIELD_RES.actors.test(s) || !!b.querySelector('a[href^="/actors/"]');
+        })
         .reduce(function (acc, b) { return acc.concat(Array.from(b.querySelectorAll('a[href^="/actors/"]'))); }, []);
       const actors = actorEls.map(function (a) {
         return { name: a.textContent.trim(), href: a.getAttribute('href') || '#', avatar: favActorAvatar(a.getAttribute('href') || '') };
@@ -19569,7 +19709,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               const metas = doc.querySelectorAll('.section-meta');
               let txt = '';
               metas.forEach(function (m) { txt += (m.textContent || '') + ' '; });
-              gender = /男優/.test(txt) ? 'M' : 'F';
+              gender = (/男優|男优|\bactor\b|\bmale\b/i.test(txt) && !/\bactress\b|女優|女优/i.test(txt)) ? 'M' : 'F';
             } catch (err) {
               if (String(err.message).indexOf('RATELIMIT') === 0) {
                 report('pause', '疑似触发风控，已自动暂停。稍后点击「继续」重试。');
@@ -19795,25 +19935,25 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       await dbPutMovie(v);
     }
 
-    // 从详情页 DOM 识别当前 JAVDB 标记状态（兼容 .review-title 与 原生操作按钮各种状态）
+    // 从详情页 DOM 识别当前 JAVDB 标记状态（兼容 .review-title 与 原生操作按钮各种状态，支持繁中/简中/英/日）
     function detectPageReviewStatus(root) {
       if (!root) return null;
       // 1. 原生已标记标题栏文本识别（.review-title，最常见）
       const t = root.querySelector('.review-title');
       if (t) {
-        const s = (t.textContent || '').replace(/\s+/g, '');
-        if (/我想看這部影片/.test(s)) return 'wishlist';
-        if (/我看過這部影片/.test(s)) return 'watched';
+        const titleStatus = detectReviewTitleStatus(t.textContent || '');
+        if (titleStatus) return titleStatus;
       }
-      // 2. 原生按钮激活态/取消标记态文本识别（兼容移动端/折叠版/不同版本的 JAVDB 按钮形态）
+      // 2. 原生按钮激活态/取消标记态文本识别（兼容移动端/折叠版/不同语言与版本的 JAVDB 按钮形态）
       const btns = root.querySelectorAll('a.button, button, a[data-action], button[data-action]');
       for (let i = 0; i < btns.length; i++) {
         const btn = btns[i];
-        const text = (btn.textContent || '').replace(/\s+/g, '');
+        const text = (btn.textContent || '').replace(/\s+/g, ' ').trim();
         const cls = (btn.className || '') + ' ' + (btn.getAttribute('data-active') || '');
         const isActive = /(^|\s)(is-active|active|on)(\s|$)/.test(cls);
-        if (/取消想看|已想看/.test(text) || (isActive && /想看|wish/i.test(text + cls))) return 'wishlist';
-        if (/取消看過|已看過/.test(text) || (isActive && /看過|watched/i.test(text + cls))) return 'watched';
+        const kind = classifyReviewActionEl(btn);
+        if (/取消\s*想\s*看|已\s*想\s*看|(?:remove|cancel).*want|in\s*wish\s*list/i.test(text) || (isActive && kind === 'wishlist')) return 'wishlist';
+        if (/取消\s*看\s*[過过]|已\s*看\s*[過过]|(?:remove|cancel).*watched|marked\s*as\s*watched/i.test(text) || (isActive && kind === 'watched')) return 'watched';
       }
       return null;
     }
@@ -23132,7 +23272,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (type === 'actors') {
         if (Array.isArray(name)) name = name.join(' ');
         cands = String(name).split(/[\s,，、・\n\r]+/).map(function (s) { return s.trim(); })
-          .filter(function (t) { return t && !/部影片|影片|作品|部作品|^\d+$/.test(t); });
+          .filter(function (t) { return t && !ENTITY_NAME_NOISE.test(t); });
         if (!cands.length) cands = [String(name).trim()];
       } else if (type === 'makers') {
         cands = (Array.isArray(name) ? name : [String(name)]).map(function (s) { return String(s || '').trim(); }).filter(Boolean);
@@ -25682,14 +25822,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   }
 
   /* =======================================================================
-   * 主页「每週推薦」改造与状态持久化 (v7.6.0 方案 D)
+   * 主页「每周推荐」改造与状态持久化 (v7.6.0 方案 D)
    * - 将原生 h1[data-controller="recommend"] + #recommend-container 与主新片信息流解耦
    * - 支持三种模式：rail(单行精选横栏) / pill(默认收起胶囊) / hide(彻底隐藏)
    * - 折叠态持久化至 SET_KEYS.homeRecCollapsed，跨周刊 cookie-key 更新仍记住用户选择
    * ===================================================================== */
   function extractRecommendMeta(recH1, recCont) {
-    let rawTitle = '每週推薦';
-    let subText = '週一/四更新';
+    let rawTitle = '每周推荐';
+    let subText = '周一/四更新';
     let metaText = '';
     let cookieKey = '';
     if (recH1) {
@@ -25709,6 +25849,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         rawTitle = headTxt;
       }
     }
+    rawTitle = rawTitle.replace(/每[週周]推[薦荐]/g, '每周推荐').replace(/推[薦荐]/g, '推荐').replace(/週/g, '周');
+    subText = subText.replace(/週/g, '周');
     const itemCount = recCont ? recCont.querySelectorAll('.item').length : 0;
     return { title: rawTitle, sub: subText, meta: metaText, cookieKey: cookieKey, count: itemCount };
   }
@@ -25750,15 +25892,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '<span class="emby-rec-new-badge">NEW · 本期上新</span>' +
         '</div>' +
         '<div class="emby-rec-actions">' +
-          '<button type="button" class="emby-rec-arrow-btn" data-dir="-1" title="向左滾動" aria-label="向左滾動">' +
+          '<button type="button" class="emby-rec-arrow-btn" data-dir="-1" title="向左滚动" aria-label="向左滚动">' +
             '<span class="material-symbols-outlined" style="font-size:18px;">chevron_left</span>' +
           '</button>' +
-          '<button type="button" class="emby-rec-arrow-btn" data-dir="1" title="向右滾動" aria-label="向右滾動">' +
+          '<button type="button" class="emby-rec-arrow-btn" data-dir="1" title="向右滚动" aria-label="向右滚动">' +
             '<span class="material-symbols-outlined" style="font-size:18px;">chevron_right</span>' +
           '</button>' +
           '<button type="button" class="emby-rec-toggle-btn">' +
             '<span class="material-symbols-outlined emby-rec-toggle-icon" style="font-size:16px;">unfold_less</span>' +
-            '<span class="emby-rec-toggle-txt">收起橫欄</span>' +
+            '<span class="emby-rec-toggle-txt">收起横栏</span>' +
           '</button>' +
         '</div>';
       safeInsertBefore(recCont.parentNode, bar, recCont);
@@ -25820,7 +25962,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       } else {
         bar.classList.remove('emby-rec-hidden');
         bar.classList.toggle('collapsed', collapsed);
-        if (toggleTxt) toggleTxt.textContent = collapsed ? '展開推薦' : '收起推薦';
+        if (toggleTxt) toggleTxt.textContent = collapsed ? '展开推荐' : '收起推荐';
         if (toggleIcon) toggleIcon.textContent = collapsed ? 'expand_more' : 'expand_less';
         if (typeof LiquidGlass !== 'undefined' && document.documentElement.classList.contains('emby-style-liquid')) {
           try { LiquidGlass.ensureApplied(bar); } catch (e) {}
@@ -26011,12 +26153,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     // —— 已标记态：javdb 会把操作行换成 .review-title 标签 + 「修改/刪除」——
     // 「我想看這部影片 / 我看過這部影片」不是按钮，纯按钮扫描抽不到，
     // 若不识别会导致标记后圆按钮消失、无法再取消。
-    var titleTag = root.querySelector('.review-title a, .review-title span');
+    var titleTag = root.querySelector('.review-title a, .review-title span') || root.querySelector('.review-title');
     if (titleTag) {
-      var tt = (titleTag.textContent || '').replace(/\s+/g, '');
-      var activeType = null;
-      if (/我想看這部影片/.test(tt)) activeType = 'wishlist';
-      else if (/我看過這部影片/.test(tt)) activeType = 'watched';
+      var activeType = detectReviewTitleStatus(titleTag.textContent || '');
       if (activeType) {
         found[activeType] = {
           text: (titleTag.textContent || '').trim().replace(/\s+/g, ' '),
@@ -26039,27 +26178,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     allClickables.forEach(function (el) {
       var text = cleanText(el.textContent || '');
       if (!text) return;
-      var type = null;
-      // 优先按文本匹配（含已标记 / 取消态变体，避免标记后图标消失）
-      if (/^想\s*看$|^願望$|取消\s*想\s*看|已\s*想\s*看/.test(text)) type = 'wishlist';
-      else if (/^看\s*過$|^已\s*看\s*過$|取消\s*看\s*過/.test(text)) type = 'watched';
-      else if (/存入清單|加入清單|收藏|清單/.test(text)) type = 'list';
-      // 其次按 data-action / class 推断（javdb 重渲染后文本可能变化，属性更稳定）
-      if (!type) {
-        var da = (el.getAttribute('data-action') || '').toLowerCase();
-        var cls = (el.className || '').toLowerCase();
-        if (/wish|願望|想\s*看/.test(da + cls)) type = 'wishlist';
-        else if (/watch|看\s*過/.test(da + cls)) type = 'watched';
-        else if (/list|清單|收藏/.test(da + cls)) type = 'list';
-      }
+      var type = classifyReviewActionEl(el);
       if (!type) return; // 不是目标按钮，跳过
       if (!found[type]) {
+        var activeByClass = /(^|\s)(is-active|active|on)(\s|$)/.test((el.className || '') + ' ' + (el.getAttribute('data-active') || ''));
+        var activeByText = /取消\s*想\s*看|已\s*想\s*看|取消\s*看\s*[過过]|已\s*看\s*[過过]|(?:remove|cancel).*(?:want|watched)|in\s*wish\s*list|marked\s*as\s*watched/i.test(text);
         found[type] = {
           text: text,
           href: el.getAttribute('href') || (el.tagName === 'A' ? '#' : ''),
           className: el.className || '',
           // 注意：必须用词边界，否则 "button" 本身含 "on" 会被误判为已激活
-          isActive: /(^|\s)(is-active|active|on)(\s|$)/.test((el.className || '') + ' ' + (el.getAttribute('data-active') || '')),
+          isActive: activeByClass || activeByText,
           type: type,
           nativeEl: el
         };
@@ -26092,29 +26221,27 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function extractDetailData(root) {
     const fb = root.querySelector('.panel-block.first-block');
     const code = fb ? ((fb.querySelector('.value') || {}).textContent || '').trim().replace(/\s+/g, '') : '';
-    const dateB = detailBlockVal(root, /^日期|date|発売日$/i);
+    const dateB = detailBlockVal(root, DETAIL_FIELD_RES.date);
     const date = dateB ? ((dateB.querySelector('.value') || {}).textContent || '').trim() : '';
-    const durB = detailBlockVal(root, /^時長|时长|duration|時間$/i);
+    const durB = detailBlockVal(root, DETAIL_FIELD_RES.duration);
     const duration = durB ? ((durB.querySelector('.value') || {}).textContent || '').trim() : '';
-    const director = linkOf(detailBlockVal(root, /^導演|导演|director|監督$/i));
-    const maker = linkOf(detailBlockVal(root, /^片商|賣家|卖家|maker|studio|メーカー$/i));
-    const series = linkOf(detailBlockVal(root, /^系列|series|シリーズ$/i));
-    const ratingB = detailBlockVal(root, /^評分|评分|rating|評価$/i);
+    const director = linkOf(detailBlockVal(root, DETAIL_FIELD_RES.director));
+    const maker = linkOf(detailBlockVal(root, DETAIL_FIELD_RES.maker));
+    const series = linkOf(detailBlockVal(root, DETAIL_FIELD_RES.series));
+    const ratingB = detailBlockVal(root, DETAIL_FIELD_RES.rating);
     let rating = null;
     if (ratingB) {
-      const v = ((ratingB.querySelector('.value') || {}).textContent || '').trim();
-      const sm = v.match(/([\d.]+)\s*分/);
-      const cm = v.match(/由(\d+)人/);
-      rating = { score: sm ? parseFloat(sm[1]) : 0, count: cm ? parseInt(cm[1], 10) : 0, text: v };
+      const parsedRating = parseJavdbRatingText((ratingB.querySelector('.value') || {}).textContent || '');
+      rating = { score: parsedRating.score, count: parsedRating.count, text: parsedRating.text };
     }
-    const catB = detailBlockVal(root, /類別|类别|標籤|标签|tags?|genres?|ジャンル/i);
+    const catB = detailBlockVal(root, DETAIL_FIELD_RES.categories);
     const categories = catB ? Array.from((catB.querySelector('.value') || catB).querySelectorAll('a[href]'))
       .map(function (a) { return { text: a.textContent.trim(), href: a.getAttribute('href') || '#' }; }) : [];
     const reviewBtns = extractReviewButtons(root);
     const actorEls = Array.from(root.querySelectorAll('.panel-block'))
       .filter(function (b) {
         const s = (b.querySelector('strong') || {}).textContent || '';
-        return /演員|演员|actor|出演/i.test(s) || !!b.querySelector('a[href^="/actors/"]');
+        return DETAIL_FIELD_RES.actors.test(s) || !!b.querySelector('a[href^="/actors/"]');
       })
       .reduce(function (acc, b) { return acc.concat(Array.from(b.querySelectorAll('a[href^="/actors/"]'))); }, []);
     const actors = actorEls.map(function (a) {
@@ -27372,8 +27499,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         }
       }
     });
-    hideSection('還出演過');
-    hideSection('你可能也喜歡');
+    hideSection(DETAIL_ALSO_STARRED_RE);
+    hideSection(DETAIL_YOU_MIGHT_LIKE_RE);
     // 原生浮层守卫类在重建时清零：避免上一页残留的 modal/dropdown is-active
     // 把 EMBY 固定层（含左下角切换开关）永久隐藏 —— 这是「开关消失」BUG 的根因之一
     document.documentElement.classList.remove('emby-native-overlay-open');
@@ -27459,8 +27586,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function updateRelatedSections(root) {
     const dr = document.getElementById('emby-detail-root');
     if (!dr) return;
-    const alsoStarred = extractSection(/還出演過|还出演过/);
-    const youMightLike = extractSection(/你可能也喜歡|你可能也喜欢/);
+    const alsoStarred = extractSection(DETAIL_ALSO_STARRED_RE);
+    const youMightLike = extractSection(DETAIL_YOU_MIGHT_LIKE_RE);
     if (alsoStarred.length && !dr.querySelector('[data-related="還出演過"]')) {
       dr.appendChild(buildRow('TA(們)還出演過', alsoStarred, '還出演過'));
     }
@@ -27469,19 +27596,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
   }
 
-  // 提取可点击的元数据标签：番號 / 導演 / 片商 / 系列 / 類別(=標籤)
+  // 提取可点击的元数据标签：番號 / 導演 / 片商 / 系列 / 類別(=標籤)（兼容 繁/简/英/日）
   // 真实 javdb DOM 标签对照：
-  //   導演 → /directors/{id}    片商 → /makers/{id}    系列 → /series/{id}
-  //   類別 → /tags?...（真实站点用「類別」，旧版用「標籤」，两者都兼容）
-  //   番號 → 在 .panel-block.first-block 内，可能含 /video_codes/{prefix} 链接
+  //   導演/Director → /directors/{id}    片商/Maker/Studio → /makers/{id}    系列/Series → /series/{id}
+  //   類別/Tags/Genres → /tags?...       番號/ID → .panel-block.first-block
   function extractMetaLinks(root) {
-    const CLICK = {
-      '番號': 1, '番号': 1,
-      '導演': 1, '导演': 1,
-      '片商': 1, '賣家': 1, '卖家': 1,
-      '系列': 1,
-      '類別': 1, '类别': 1, '標籤': 1, '标签': 1
-    };
     const out = [];
     // 番號（first-block，优先取其内部链接，否则回退到番號搜索）
     const fb = root.querySelector('.panel-block.first-block');
@@ -27498,11 +27617,16 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     Array.from(root.querySelectorAll('.panel-block')).forEach(function (b) {
       const strong = b.querySelector('strong');
       if (!strong) return;
-      const label = strong.textContent.trim().replace(/[:：]/g, '');
-      if (!CLICK[label] || label === '番號' || label === '番号') return;
+      const label = strong.textContent.trim().replace(/[:：\s]/g, '');
+      if (DETAIL_FIELD_RES.code.test(label)) return;
+      const isClickable = DETAIL_FIELD_RES.director.test(label) ||
+        DETAIL_FIELD_RES.maker.test(label) ||
+        DETAIL_FIELD_RES.series.test(label) ||
+        DETAIL_FIELD_RES.categories.test(label);
+      if (!isClickable) return;
       const valEl = b.querySelector('.value');
       if (!valEl) return;
-      if (/類別|类别|標籤|标签/.test(label)) {
+      if (DETAIL_FIELD_RES.categories.test(label)) {
         // 類別含多个 <a> 标签 → 逐个生成 chip
         Array.from(valEl.querySelectorAll('a[href]')).forEach(function (a) {
           out.push({ label: label, text: a.textContent.trim(), href: a.getAttribute('href') || '#' });
@@ -28550,7 +28674,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (!luckyPanel.dataset.luckyMounted) {
           luckyPanel.dataset.luckyMounted = '1';
           try { LuckyViewManager.mount(luckyPanel); }
-          catch (err) { log('手氣不錯挂载失败: ' + err.message); }
+          catch (err) { log('手气不错挂载失败: ' + err.message); }
         } else {
           try { LuckyViewManager.applyLuckyRandomBg(luckyPanel); } catch (e) {}
         }
@@ -28784,7 +28908,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 增量过滤：皮肤自身注入/面板渲染引起的突变直接跳过调度；
       // 只在 javdb 原生核心区域发生结构变化时才进入防抖重构。
       if (!enabled) return;
-      if (allInsideSkinChrome(muts) || !hasRelevantPageMutation(muts)) return;
+      if (allInsideSkinChrome(muts)) return;
+      // 原生广告 / 固定底部 App 推广条可能延迟注入（独立于 .movie-list/.video-detail），节流拦截
+      try { hideJavdbAds(); } catch (e) {}
+      if (!hasRelevantPageMutation(muts)) return;
       if (timer) clearTimeout(timer);
       const delay = isDetailPage() ? 90 : 500;
       timer = setTimeout(function () {
