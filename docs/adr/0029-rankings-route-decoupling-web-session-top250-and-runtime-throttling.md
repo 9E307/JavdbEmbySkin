@@ -1,7 +1,7 @@
 # 0029. 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构 (Rankings Route Decoupling, Web-Session Priority TOP250 & Runtime Throttling Architecture)
 
 ## 状态
-已接受 (Accepted)
+已接受 (Accepted；v7.5.1 增补紧凑条小封面 `scale(2)` 坐标比例校正)
 
 ## 上下文与问题陈述 (Context & Problem Statement)
 
@@ -95,7 +95,7 @@ flowchart TD
 
 1. **单帧节流与零重排 3D 倾斜**：
    * 为 `bindNoteTips` 的 `mouseover` 事件及全局滚动监听 `window.__embyScrollHandler` 加上 `requestAnimationFrame` 单帧锁（配 800ms 超时自愈守卫）；
-   * 在 `attachCompactPoster3D` 中，改为在 `mouseenter` 阶段一次性读取并缓存 `poster.getBoundingClientRect()`，使整个 `mousemove` 倾斜动画期间实现 **0 次同步布局读取**；
+   * 在 `attachCompactPoster3D` 中，改为在 `mouseenter` 阶段一次性读取 `poster.getBoundingClientRect()` 与不受 CSS transform 影响的布局尺寸（`offsetWidth`/`offsetHeight`），按悬停 `scale(2)` 放大后的实际视觉区域（×2）计算并缓存命中盒，使整个 `mousemove` 倾斜动画期间保持 **0 次同步布局读取** 且流光/倾角随放大海报精准居中（v7.5.1 修正 `transform-origin: left top` 缩放导致的 2 倍坐标系偏移）；
    * 在 `WaterfallEngine.register` 的图片 `load` 事件中增加 `70ms` 聚合定时器（`reg.imgTimer`），将多图同时加载完成时的连续重排合并为单次布局计算；
    * 新增 `@media (prefers-reduced-motion: reduce)` 样式支持，尊重系统级无障碍动画减弱偏好。
 2. **非阻塞字体加载与 IndexedDB 单例复用**：

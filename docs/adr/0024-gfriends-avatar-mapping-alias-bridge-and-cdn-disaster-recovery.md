@@ -1,7 +1,7 @@
 # 0024. GFRIENDS 高清头像映射、别名桥接与四级 CDN 容灾架构
 
 ## 状态
-已接受 (Accepted)
+已接受 (Accepted；v7.5.1 移除已删库 `lesspem/JAV_info` 依赖，升级为 `ActressService.getAliases()` 种子组 + MediaWiki 运行期跨语言别名学习映射)
 
 ## 上下文与痛点分析 (Context & Problem Space)
 
@@ -60,9 +60,9 @@ flowchart TD
     G -- 否 --> H["平滑回退官方原生头像 fallbackOfficialUrl"]
 ```
 
-在阶段 3 中，系统复用并桥接了由 `ActressService`（自建 JAV_info 知识库）维护的海量别名映射字典（包含数千条经过维基百科与行业年鉴清洗的别名对）：
-* 例：用户浏览包含繁体字「三上悠亚」的作品，桥接层自动查出主名「三上悠亜」，进而成功命中 Gfriends 高清头像；
-* 例：艺名由「安齋らら」变更为「RION」或「宇都宮しおん」，桥接层均能将其映射至统一的标准实体标识。
+在阶段 3 中，系统通过 `ActressService.getAliases(name)` 复用内置高频艺名/简繁种子分组及运行期从 `ja/zh` 维基百科 `redirects`/`langlinks` 自动学习并持久化至 `localStorage['jhs_actress_aliases_v1']` 的双向别名图谱（彻底摆脱已删库的第三方 `JAV_info` 静态索引依赖）：
+* 例：用户浏览包含简体/繁体变体「三上悠亚 / 三上悠亞」或改名后艺名「新有菜」的作品，桥接层同步返回「三上悠亜」「橋本ありな」等关联别名候选，逐一试探进而命中 Gfriends 高清头像；
+* 例：艺名由「安齋らら」变更为「RION」或「宇都宮しをん」，桥接层均能实现多向互通匹配（详见 [ADR-0030](./0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)）。
 
 ### 4. DOM 级零闪烁安全渲染与自愈降级
 在 HTML 渲染阶段，所有头像图片元素均注入专属双向降级保护指令：

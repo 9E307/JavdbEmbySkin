@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（27,784 行，v7.5.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（28,225 行，v7.5.1）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -173,7 +173,7 @@ _Avoid_: DefaultIcon, EmptyAvatar, Placeholder
 _Avoid_: ActressTooltip, CastModal, ActorPopover
 
 **Actress Career Status (现役/退役活跃探针)**:
-通过 JAV_info 爬虫与维基百科异步回退机制探测女优的演艺生涯状态（现役 / 退役 / 移籍）。
+通过 `ja/zh` 维基百科直连、MediaWiki 重定向与 `langlinks` 跨语言别名桥接解析 Infobox 生平参数（含三围、罩杯、身高体重与现役/退役状态）。
 _Avoid_: CareerState, IsRetired, ActiveDetector
 
 **Co-actress Stack & Collapse Badge (共演女优堆叠与折叠展开徽章)**:
@@ -294,7 +294,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 27,784 Lines)
+## 架构子系统全景地图 (Architecture Map Across 28,225 Lines)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -305,7 +305,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ JavdbEmbySkin 核心运行时 (Monolithic Sandbox, Host Guard: javdb*.com / jdforrepam.com)      │
 │                                                                                             │
-│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 552 & Lines 25317 - 27784)                    │
+│ 1. 路由拦截、生命周期与安全守卫层 (Lines 32 - 552 & Lines 25750 - 28225)                    │
 │    • 严格域名守卫与鉴权路由避让 (/login, /user_sessions 等 100% 保持原生 Rails POST)        │
 │    • SPA 路由接管: Turbolinks / PJAX 跨页监听、无感局部刷新与全局生命周期重置               │
 │    • 元素级 Referrer 免溯源策略 (图片 no-referrer 隔离，主动豁免验证码防 403 阻断)          │
@@ -357,8 +357,8 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 │    • 凭据防嗅探体系 (sanitizeSearchInputs): type=search, role=searchbox, 11项属性与聚焦冲刷 │
 │                                                                                             │
 │ 7. 外部服务、女优智能画像与云端网关 (Lines 12575 - 16117 & Lines 22983 - 23666)             │
-│    • GfriendsAvatarService: 全量索引树 (TTL 7天) + 883条 aliases 桥接 + 四级 CDN 容灾降级   │
-│    • ActressService: JAV_info 现役/退役活跃探针与维基百科异步回退，生成女优生平卡片         │
+│    • GfriendsAvatarService: 全量索引树 (TTL 7天) + MediaWiki 别名桥接 + 四级 CDN 容灾降级     │
+│    • ActressService: ja/zh 维基百科直连与跨语言别名自学习，生成女优生平三围与状态卡片       │
 │    • PlaySitesService: 123AV / njav / MissAV 等 10+ 外部在线源与动态模板参数变量替换        │
 │    • PreviewSys: 多站嗅探 + L1/L2 7天两级缓存 + 在途去重 (pending) + AbortSignal 超时取消   │
 │    • CloudSync: WebDAV / GitHub / Gitee 双向同步，字段丰富度胜者算法 (fieldRichness) 合并   │
@@ -401,7 +401,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ## 核心“弯弯绕绕”与历史避坑铁律 (33 Critical Invariants & Gotchas)
 
-这 33 条铁律是整个项目 27,784 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 33 条铁律是整个项目 28,225 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -608,5 +608,6 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 27. [ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
 28. [ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
 29. [ADR-0029: 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构](./docs/adr/0029-rankings-route-decoupling-web-session-top250-and-runtime-throttling.md)
+30. [ADR-0030: 公开清单 40/页稳定路由切换、无依赖双语维基女优解析与看过评分分桶同步架构](./docs/adr/0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)
 
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.5.0
+// @version      7.5.1
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -85,7 +85,7 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.5.0';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.5.1';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
@@ -8794,27 +8794,45 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (!poster || poster.dataset.cpTilt) return;
     poster.dataset.cpTilt = '1';
     poster.style.transformOrigin = 'left top';
+    const HOVER_SCALE = 2;
+    const clamp01 = function (v) { return v < 0 ? 0 : (v > 1 ? 1 : v); };
     let raf = null;
-    let cachedRect = null; // mouseenter 测量一次，mousemove 复用，避免逐帧触发同步布局
-    poster.addEventListener('mouseenter', function () {
-      try { cachedRect = poster.getBoundingClientRect(); } catch (e) { cachedRect = null; }
-    });
-    poster.addEventListener('mousemove', function (e) {
-      const r = cachedRect || poster.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width;   // 0~1
-      const py = (e.clientY - r.top) / r.height;   // 0~1
+    let cachedMetrics = null; // 悬停期间固定缩放后的命中区域，避免 mousemove 逐帧读布局且与 scale(2) 坐标系一致
+    const measureHoverMetrics = function () {
+      try {
+        const r = poster.getBoundingClientRect();
+        const layoutW = poster.offsetWidth;
+        const layoutH = poster.offsetHeight;
+        const alreadyScaled = !layoutW && /scale\(\s*2(?:\.0+)?\s*\)/.test(poster.style.transform || '');
+        const w = (layoutW || r.width) * (alreadyScaled ? 1 : HOVER_SCALE);
+        const h = (layoutH || r.height) * (alreadyScaled ? 1 : HOVER_SCALE);
+        if (!w || !h) return null;
+        return { left: r.left, top: r.top, width: w, height: h };
+      } catch (e) { return null; }
+    };
+    const updateTiltFromEvent = function (e) {
+      const m = cachedMetrics || (cachedMetrics = measureHoverMetrics());
+      if (!m || !Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
+      const px = clamp01((e.clientX - m.left) / m.width);   // 0~1 (相对 scale(2) 后海报盒)
+      const py = clamp01((e.clientY - m.top) / m.height);   // 0~1
       const ry = (px - 0.5) * (TILT_MAX * 2);
       const rx = (0.5 - py) * (TILT_MAX * 2);
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(function () {
-        poster.style.transform = 'perspective(700px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg) scale(2)';
+        poster.style.transform = 'perspective(700px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg) scale(' + HOVER_SCALE + ')';
         poster.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
         poster.style.setProperty('--my', (py * 100).toFixed(1) + '%');
       });
+    };
+    window.addEventListener('resize', function () { cachedMetrics = null; }, { passive: true });
+    poster.addEventListener('mouseenter', function (e) {
+      cachedMetrics = measureHoverMetrics();
+      updateTiltFromEvent(e);
     });
+    poster.addEventListener('mousemove', updateTiltFromEvent);
     poster.addEventListener('mouseleave', function () {
       if (raf) cancelAnimationFrame(raf);
-      cachedRect = null;
+      cachedMetrics = null;
       poster.style.transform = '';
     });
   }
@@ -11915,16 +11933,48 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   }
 
   /* =======================================================================
-   * 女优信息与现役/退役检测服务 (jsDelivr CDN 自建库 + 维基百科回退 + 7天缓存)
+   * 女优信息与现役/退役检测服务 (ja/zh 维基百科直连 + MediaWiki 重定向/跨语言别名桥接 + 7天缓存)
    * ===================================================================== */
   const ActressService = {
-    repoBase: 'https://cdn.jsdelivr.net/gh/lesspem/JAV_info@main/dist/',
-    repoBaseFallback: 'https://raw.githubusercontent.com/lesspem/JAV_info/main/dist/',
-    _idxMem: null,
-    _shardMem: {},
-    _cacheKey: 'jhs_actress_info_v2',
+    _cacheKey: 'jhs_actress_info_v3',
+    _aliasCacheKey: 'jhs_actress_aliases_v1',
+    _aliasMem: null,
+    _inflight: Object.create(null),
+    _legacyCleaned: false,
+
+    // 常见简繁/艺名种子分组（运行期由 MediaWiki redirects + langlinks 自动持续扩充）
+    _seedAliasGroups: [
+      ['三上悠亜', '三上悠亚', '三上悠亞', '鬼頭桃菜'],
+      ['河北彩伽', '河北彩花'],
+      ['新ありな', '新有菜', '橋本ありな', '橋本有菜', '桥本有菜'],
+      ['楓カレン', '楓可憐', '枫可怜', '田中レモン', '田中檸檬', '田中柠檬'],
+      ['安齋らら', '安齋拉拉', '安斋拉拉', 'RION', '宇都宮しをん'],
+      ['涼森れむ', '涼森玲夢', '凉森玲梦'],
+      ['桃乃木かな', '桃乃木香奈'],
+      ['明日花キララ', '明日花綺羅', '明日花绮罗'],
+      ['相沢みなみ', '相澤南', '相泽南'],
+      ['桜空もも', '櫻空桃', '樱空桃'],
+      ['明里つむぎ', '明里紬'],
+      ['架乃ゆら', '架乃由羅', '架乃由罗'],
+      ['小宵こなん', '小宵虎南'],
+      ['葵つかさ', '葵司'],
+      ['深田えいみ', '深田詠美', '深田咏美'],
+      ['高橋しょう子', '高橋聖子', '高桥圣子'],
+      ['天使もえ', '天使萌'],
+      ['七ツ森りり', '七森莉莉'],
+      ['本郷愛', '本鄉愛', '本乡爱', '二階堂夢', '二阶堂梦'],
+      ['山手梨愛', '山手梨爱'],
+      ['凪ひかる', '凪光', '有栖花あか', '有栖花緋']
+    ],
 
     getLocalCache: function () {
+      if (!this._legacyCleaned) {
+        this._legacyCleaned = true;
+        try {
+          localStorage.removeItem('jhs_actress_info_v2');
+          localStorage.removeItem('jhs_repo_index_cache');
+        } catch (e) {}
+      }
       try { return JSON.parse(localStorage.getItem(this._cacheKey) || '{}'); } catch (e) { return {}; }
     },
     saveLocalCache: function (cache) {
@@ -11939,121 +11989,395 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       } catch (e) {}
     },
 
-    getRepoIndex: async function () {
-      if (this._idxMem) return this._idxMem;
-      const ck = 'jhs_repo_index_cache';
-      try {
-        const raw = localStorage.getItem(ck);
-        if (raw) {
-          const o = JSON.parse(raw);
-          if (o && o.t && Date.now() - o.t < 6048e5 && o.d) {
-            this._idxMem = o.d;
-            return o.d;
-          }
-        }
-      } catch (e) {}
-
-      let txt = '';
-      for (const base of [this.repoBase, this.repoBaseFallback]) {
-        try { txt = await gmHttp.get(base + 'index.json'); if (txt) break; } catch (e) {}
-      }
-      if (!txt) return null;
-      try {
-        const d = JSON.parse(txt);
-        this._idxMem = d;
-        try { localStorage.setItem(ck, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {}
-        return d;
-      } catch (e) { return null; }
+    _cleanActorName: function (n) {
+      return String(n || '').replace(/[\s\u2640\u2642]+/g, '').trim();
     },
 
-    lookupRepo: async function (name) {
-      if (!name) return null;
-      const idx = await this.getRepoIndex();
-      if (!idx) return null;
-      const actors = idx.actors || {};
-      const aliases = idx.aliases || {};
+    _splitNameCandidates: function (rawName) {
+      const text = String(rawName || '').trim();
+      if (!text) return [];
+      const seen = new Set();
+      const out = [];
+      const push = function (v) {
+        const s = String(v || '').replace(/[\u2640\u2642]/g, '').trim();
+        if (s && !seen.has(s)) { seen.add(s); out.push(s); }
+      };
+      // 优先保留括弧前主艺名，再拆分别名片段
+      const beforeParen = text.split(/[（(]/)[0].trim();
+      if (beforeParen && !/[,，\/|]/.test(beforeParen)) push(beforeParen);
+      text.split(/[,，\/|()（）]+/).forEach(push);
+      push(text);
+      return out;
+    },
 
-      // 原生别名拆分匹配，无需任何手工繁简字表
-      const names = String(name).split(/[,，\/]/).map(s => s.trim()).filter(Boolean);
-      if (!names.includes(name.trim())) names.unshift(name.trim());
-
-      let key = null;
-      for (const n of names) {
-        if (actors.hasOwnProperty(n)) { key = n; break; }
-        if (aliases.hasOwnProperty(n)) { key = aliases[n]; break; }
-      }
-      if (!key) return null;
-      const sid = String(actors[key]).padStart(2, '0');
-      let shard = this._shardMem[sid];
-      if (!shard) {
-        let txt = '';
-        for (const base of [this.repoBase, this.repoBaseFallback]) {
-          try { txt = await gmHttp.get(base + 'shard-' + sid + '.json'); if (txt) break; } catch (e) {}
+    _ensureAliasMap: function () {
+      if (this._aliasMem) return this._aliasMem;
+      const map = Object.create(null);
+      const addGroup = function (group) {
+        const cleanGroup = [];
+        const seen = new Set();
+        for (let i = 0; i < group.length; i++) {
+          const item = String(group[i] || '').replace(/[\u2640\u2642]/g, '').trim();
+          if (item && !seen.has(item)) { seen.add(item); cleanGroup.push(item); }
         }
-        if (!txt) return null;
-        try { shard = JSON.parse(txt); this._shardMem[sid] = shard; } catch (e) { return null; }
+        if (cleanGroup.length < 2) return;
+        for (let i = 0; i < cleanGroup.length; i++) {
+          const k = cleanGroup[i];
+          const set = new Set(map[k] || []);
+          for (let j = 0; j < cleanGroup.length; j++) {
+            if (cleanGroup[j] !== k) set.add(cleanGroup[j]);
+          }
+          map[k] = Array.from(set);
+        }
+      };
+      this._seedAliasGroups.forEach(addGroup);
+      try {
+        const stored = JSON.parse(localStorage.getItem(this._aliasCacheKey) || '{}');
+        if (stored && typeof stored === 'object') {
+          Object.keys(stored).forEach(function (k) {
+            if (Array.isArray(stored[k])) addGroup([k].concat(stored[k]));
+          });
+        }
+      } catch (e) {}
+      this._aliasMem = map;
+      return map;
+    },
+
+    recordAliasGroup: function (names) {
+      if (!Array.isArray(names) || names.length < 2) return;
+      const map = this._ensureAliasMap();
+      const unique = [];
+      const seen = new Set();
+      for (let i = 0; i < names.length; i++) {
+        const v = String(names[i] || '').replace(/[\u2640\u2642]/g, '').trim();
+        if (v && !seen.has(v)) { seen.add(v); unique.push(v); }
       }
-      const rec = shard[key];
-      if (!rec) return null;
-      const b = (rec.birth || '').trim();
-      let birthday = '', age = '';
-      const m = /^(\d{4})-(\d{2}|\?\?)-(\d{2}|\?\?)$/.exec(b);
-      if (m) {
-        birthday = b.replace(/-/g, '.');
-        const y = parseInt(m[1], 10);
-        if (!isNaN(y)) age = (new Date().getFullYear() - y) + '岁';
+      if (unique.length < 2) return;
+      let changed = false;
+      for (let i = 0; i < unique.length; i++) {
+        const k = unique[i];
+        const prev = map[k] || [];
+        const nextSet = new Set(prev);
+        for (let j = 0; j < unique.length; j++) {
+          if (unique[j] !== k) nextSet.add(unique[j]);
+        }
+        if (nextSet.size !== prev.length) {
+          map[k] = Array.from(nextSet);
+          changed = true;
+        }
       }
+      if (changed) {
+        try {
+          const obj = {};
+          const keys = Object.keys(map).slice(-600);
+          keys.forEach(function (k) { obj[k] = map[k]; });
+          localStorage.setItem(this._aliasCacheKey, JSON.stringify(obj));
+        } catch (e) {}
+      }
+    },
+
+    getAliases: function (name) {
+      const map = this._ensureAliasMap();
+      const candidates = this._splitNameCandidates(name);
+      const out = [];
+      const seen = new Set();
+      const add = function (v) {
+        if (v && !seen.has(v)) { seen.add(v); out.push(v); }
+      };
+      for (let i = 0; i < candidates.length; i++) {
+        const c = candidates[i];
+        const compact = this._cleanActorName(c);
+        const list1 = map[c];
+        const list2 = compact && compact !== c ? map[compact] : null;
+        if (Array.isArray(list1)) list1.forEach(add);
+        if (Array.isArray(list2)) list2.forEach(add);
+      }
+      return out;
+    },
+
+    _cleanWikiCellText: function (el) {
+      if (!el) return '';
+      try {
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('sup, style, script, .reference, .noprint, [style*="display:none"], [style*="display: none"]').forEach(function (n) {
+          n.remove();
+        });
+        clone.querySelectorAll('br').forEach(function (br) {
+          br.replaceWith(' ');
+        });
+        return (clone.textContent || '').replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+      } catch (e) {
+        return (el.textContent || '').replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+      }
+    },
+
+    parseWikiInfobox: function (doc, wikiUrl) {
+      if (!doc || typeof doc.querySelectorAll !== 'function') return null;
+      const rows = doc.querySelectorAll('table.infobox tr, .infobox tr');
+      let birthday = '', age = '', height = '', heightFromMetric = false;
+      let weight = '', threeSizeText = '', threeSizeFromMetric = false;
+      let braSize = '', activeRaw = '', retireRaw = '';
+
+      for (let i = 0; i < rows.length; i++) {
+        const tr = rows[i];
+        const th = tr.querySelector('th');
+        const td = tr.querySelector('td');
+        if (!th || !td) continue;
+        const label = this._cleanWikiCellText(th).replace(/\s+/g, '');
+        if (!label) continue;
+        const val = this._cleanWikiCellText(td);
+        if (!val) continue;
+
+        if (/^(生年月日|出生(?:日期|年月)?|誕生日|生日)$/.test(label)) {
+          const cleanDate = val.replace(/^\(?\d{4}-\d{2}-\d{2}\)?\s*/, '').trim();
+          const dm = cleanDate.match(/(\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日|\d{4}[./-]\d{1,2}[./-]\d{1,2})/);
+          if (dm && !birthday) {
+            birthday = dm[1].replace(/\s+/g, '');
+          } else if (!birthday) {
+            birthday = cleanDate.replace(/[（(]\s*\d{1,3}\s*[歳岁歲]\s*[）)]/g, '').trim();
+          }
+          if (!age) {
+            const am = cleanDate.match(/[（(]\s*(\d{1,3})\s*[歳岁歲]/);
+            if (am) age = am[1] + '岁';
+          }
+          continue;
+        }
+
+        if (/^(現年齢|現年齡|年齢|年齡|年紀|年纪)$/.test(label)) {
+          const am = val.match(/(\d{1,3})\s*[歳岁歲]?/);
+          if (am) {
+            const n = parseInt(am[1], 10);
+            if (n >= 15 && n <= 99) age = n + '岁';
+          }
+          continue;
+        }
+
+        if (/身長|身高/.test(label)) {
+          const hasImperial = /\b(?:ft|in|inch|inches|lb|lbs)\b|英寸|英尺|磅/i.test(val);
+          const hm = val.match(/(\d{2,3}(?:\.\d+)?)\s*(?:cm|厘米|公分)/i);
+          if (hm && (!height || !heightFromMetric)) {
+            height = hm[1] + 'cm';
+            heightFromMetric = true;
+          } else if (!height && !hasImperial) {
+            const rawNum = val.match(/\b(1[3-9]\d|20\d)\b/);
+            if (rawNum) height = rawNum[1] + 'cm';
+          }
+          const wm = val.match(/(\d{2,3}(?:\.\d+)?)\s*(?:kg|公斤)/i);
+          if (wm && !weight) weight = wm[1] + 'kg';
+          continue;
+        }
+
+        if (/体重|體重/.test(label)) {
+          const wm = val.match(/(\d{2,3}(?:\.\d+)?)\s*(?:kg|公斤)/i);
+          if (wm && !weight) weight = wm[1] + 'kg';
+          continue;
+        }
+
+        if (/スリーサイズ|三围|三圍|体型/.test(label)) {
+          const hasMetricUnit = /cm|厘米|公分/i.test(val);
+          const hasImperial = /\b(?:in|inch|inches)\b|英寸/i.test(val);
+          if (hasImperial && !hasMetricUnit) continue;
+          const m3 = val.match(/(\d{2,3})\s*[-–—~～\/]\s*(\d{2,3})\s*[-–—~～\/]\s*(\d{2,3})/) ||
+                     val.match(/B\s*(\d{2,3})[^0-9]{1,8}W\s*(\d{2,3})[^0-9]{1,8}H\s*(\d{2,3})/i);
+          if (m3 && (!threeSizeText || (hasMetricUnit && !threeSizeFromMetric))) {
+            const b = parseInt(m3[1], 10), w = parseInt(m3[2], 10), h = parseInt(m3[3], 10);
+            // 仅采信厘米级三围（英寸行约 20-45，公制胸/臀通常 >= 50）
+            if (b >= 50 && h >= 50) {
+              threeSizeText = b + '-' + w + '-' + h;
+              threeSizeFromMetric = hasMetricUnit;
+            }
+          }
+          continue;
+        }
+
+        if (/ブラサイズ|罩杯|カップ/.test(label)) {
+          const normalized = val.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (c) {
+            return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+          }).trim();
+          const cm = normalized.match(/\b([A-Za-z](?:\s*-\s*\d{2,3})?)\b/);
+          if (cm && !braSize) {
+            braSize = cm[1].replace(/\s+/g, '').toUpperCase() + '罩杯';
+          }
+          continue;
+        }
+
+        if (/^(活動期間|活動時期|活躍年代|活跃年代|デビュー|出道)/.test(label)) {
+          if (!activeRaw) activeRaw = val;
+          continue;
+        }
+
+        if (/活動内容|活動領域|職業|职业/.test(label)) {
+          if (!activeRaw && /\d{4}/.test(val)) activeRaw = val;
+          continue;
+        }
+
+        if (/^(引退|退役|引退日)$/.test(label)) {
+          if (!retireRaw) retireRaw = val;
+        }
+      }
+
+      // 若页面未单列現年齢，则按公历出生年月日兜底计算当前年龄
+      if (!age && birthday) {
+        const bm = birthday.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+        if (bm) {
+          const by = parseInt(bm[1], 10), bmo = parseInt(bm[2], 10), bd = parseInt(bm[3], 10);
+          if (by > 1940 && by < new Date().getFullYear()) {
+            const now = new Date();
+            let calcAge = now.getFullYear() - by;
+            if ((now.getMonth() + 1) < bmo || ((now.getMonth() + 1) === bmo && now.getDate() < bd)) calcAge--;
+            if (calcAge >= 15 && calcAge <= 99) age = calcAge + '岁';
+          }
+        }
+      }
+
+      if (!birthday && !age && !height && !threeSizeText && !braSize && !activeRaw && !retireRaw) {
+        return null;
+      }
+
+      const contentEl = doc.querySelector('#mw-content-text');
+      const bodyText = contentEl ? contentEl.textContent : '';
+      const bodyRetired = /元AV女優|元セクシー女優|AV引退|AV女優を引退|完全引退|前AV女[優优]|已引退|正式引退/.test(bodyText);
       return {
         birthday: birthday,
         age: age,
-        height: rec.height ? rec.height + 'cm' : '',
-        weight: rec.weight ? rec.weight + 'kg' : '',
-        threeSizeText: rec.bust && rec.waist && rec.hip ? (rec.bust + '-' + rec.waist + '-' + rec.hip) : '',
-        braSize: rec.cup ? (rec.cup + '罩杯') : '',
-        activeRaw: rec.active || '',
-        retireRaw: rec.retire || '',
-        bodyRetired: false,
-        primaryKey: key,
-        url: 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(key)
+        height: height,
+        weight: weight,
+        threeSizeText: threeSizeText,
+        braSize: braSize,
+        activeRaw: activeRaw,
+        retireRaw: retireRaw,
+        bodyRetired: bodyRetired,
+        url: wikiUrl
       };
+    },
+
+    _fetchWikiDoc: async function (lang, title) {
+      if (!title) return null;
+      const url = 'https://' + lang + '.wikipedia.org/wiki/' + encodeURIComponent(title);
+      try {
+        const html = await gmHttp.get(url);
+        if (!html) return null;
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        if (doc.querySelector('#noarticletext')) return null;
+        return { doc: doc, url: url };
+      } catch (e) { return null; }
+    },
+
+    _fetchJson: async function (url) {
+      try {
+        const txt = await gmHttp.get(url);
+        return txt ? JSON.parse(txt) : null;
+      } catch (e) { return null; }
+    },
+
+    _resolveZhAndJaTitle: async function (candidates) {
+      const titles = candidates.slice(0, 5).filter(Boolean);
+      if (!titles.length) return { jaTitle: '', zhTitle: '' };
+      const apiUrl = 'https://zh.wikipedia.org/w/api.php?action=query&titles=' +
+        encodeURIComponent(titles.join('|')) +
+        '&redirects=1&converttitles=1&prop=langlinks&lllang=ja&format=json&origin=*';
+      const data = await this._fetchJson(apiUrl);
+      if (!data || !data.query || !data.query.pages) return { jaTitle: '', zhTitle: '' };
+      const pages = Object.values(data.query.pages);
+      let jaTitle = '', zhTitle = '';
+      for (let i = 0; i < pages.length; i++) {
+        const p = pages[i];
+        if (!p || p.missing !== undefined) continue;
+        if (!zhTitle && p.title) zhTitle = p.title;
+        if (!jaTitle && Array.isArray(p.langlinks) && p.langlinks.length) {
+          const ll = p.langlinks[0];
+          const t = ll['*'] || ll.title || '';
+          if (t) jaTitle = t;
+        }
+      }
+      return { jaTitle: jaTitle, zhTitle: zhTitle };
+    },
+
+    _searchWikiTitle: async function (lang, query) {
+      if (!query) return '';
+      const apiUrl = 'https://' + lang + '.wikipedia.org/w/api.php?action=opensearch&search=' +
+        encodeURIComponent(query) + '&limit=3&namespace=0&format=json&origin=*';
+      const data = await this._fetchJson(apiUrl);
+      return (Array.isArray(data) && Array.isArray(data[1]) && data[1][0]) ? data[1][0] : '';
     },
 
     lookupWiki: async function (name) {
       if (!name) return null;
-      let targetName = name;
-      if (targetName === '三上悠亞') targetName = '三上悠亜';
-      const wikiUrl = 'https://ja.wikipedia.org/wiki/' + encodeURIComponent(targetName);
-      try {
-        const html = await gmHttp.get(wikiUrl);
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const pick = function (sel, fn) {
-          try {
-            const el = doc.querySelector(sel);
-            return el ? fn(el).trim() : '';
-          } catch (e) { return ''; }
-        };
-        const birthday = pick('a[title="誕生日"]', el => el.closest('tr') ? el.closest('tr').querySelector('td').textContent : '');
-        const ageRaw = pick('th', el => el.textContent.includes('現年齢') ? el.parentNode.querySelector('td').textContent : '');
-        const age = ageRaw && !isNaN(parseInt(ageRaw, 10)) ? (parseInt(ageRaw, 10) + '岁') : '';
-        const heightRaw = pick('tr:has(a[title="身長"]) td', el => el.textContent);
-        const height = heightRaw ? (heightRaw.split(' ')[0] + 'cm') : '';
-        const activeRaw = pick('th', el => el.textContent.includes('活動期間') ? el.parentNode.querySelector('td').textContent : '');
-        const retireRaw = pick('th', el => (el.textContent.includes('引退') || el.textContent.includes('退役')) ? el.parentNode.querySelector('td').textContent : '');
-        const bodyText = doc.querySelector('#mw-content-text') ? doc.querySelector('#mw-content-text').textContent : '';
-        const bodyRetired = /元AV女優|元セクシー女優|AV引退|AV女優を引退|完全引退/.test(bodyText);
-        return {
-          birthday: birthday,
-          age: age,
-          height: height,
-          weight: '',
-          threeSizeText: '',
-          braSize: '',
-          activeRaw: activeRaw,
-          retireRaw: retireRaw,
-          bodyRetired: bodyRetired,
-          url: wikiUrl
-        };
-      } catch (e) { return null; }
+      const baseCands = this._splitNameCandidates(name);
+      const aliasCands = this.getAliases(name);
+      const allCands = [];
+      const seen = new Set();
+      baseCands.concat(aliasCands).forEach(function (c) {
+        if (c && !seen.has(c)) { seen.add(c); allCands.push(c); }
+      });
+
+      // 日语维基优先尝试含假名候选，减少无谓 404
+      const jaFirst = allCands.slice().sort(function (a, b) {
+        const aKana = /[\u3040-\u30ff]/.test(a) ? 0 : 1;
+        const bKana = /[\u3040-\u30ff]/.test(b) ? 0 : 1;
+        return aKana - bKana;
+      });
+
+      const triedJa = new Set();
+      const tryJaPage = async (title) => {
+        if (!title || triedJa.has(title)) return null;
+        triedJa.add(title);
+        const res = await this._fetchWikiDoc('ja', title);
+        if (!res) return null;
+        const parsed = this.parseWikiInfobox(res.doc, res.url);
+        if (parsed) {
+          const heading = res.doc.querySelector('#firstHeading');
+          const resolvedTitle = heading ? heading.textContent.trim() : title;
+          this.recordAliasGroup(baseCands.concat([title, resolvedTitle]));
+        }
+        return parsed;
+      };
+
+      // 1. 直查日文维基（最多尝试 2 个高概率候选，避免连串 404）
+      for (let i = 0; i < jaFirst.length && i < 2; i++) {
+        const hit = await tryJaPage(jaFirst[i]);
+        if (hit) return hit;
+      }
+
+      // 2. 通过中文维基 MediaWiki API (redirects + converttitles + langlinks=ja) 桥接标准日文词条
+      const bridged = await this._resolveZhAndJaTitle(allCands);
+      if (bridged.jaTitle) {
+        const hit = await tryJaPage(bridged.jaTitle);
+        if (hit) {
+          this.recordAliasGroup(allCands.concat([bridged.zhTitle, bridged.jaTitle]));
+          return hit;
+        }
+      }
+
+      // 3. 回退中文维基条目 Infobox（部分女优仅维护了中文词条）
+      const zhTarget = bridged.zhTitle || await this._searchWikiTitle('zh', baseCands[0] || name);
+      if (zhTarget) {
+        const zhRes = await this._fetchWikiDoc('zh', zhTarget);
+        if (zhRes) {
+          const parsedZh = this.parseWikiInfobox(zhRes.doc, zhRes.url);
+          if (parsedZh) {
+            this.recordAliasGroup(baseCands.concat([zhTarget]));
+            return parsedZh;
+          }
+        }
+      }
+
+      // 4. 最后尝试日文 opensearch 并校验正文含演艺/女优关键词防误匹配
+      const jaSearch = await this._searchWikiTitle('ja', baseCands[0] || name);
+      if (jaSearch && !triedJa.has(jaSearch)) {
+        const res = await this._fetchWikiDoc('ja', jaSearch);
+        if (res) {
+          const bodyText = res.doc.querySelector('#mw-content-text') ? res.doc.querySelector('#mw-content-text').textContent : '';
+          if (/AV|女優|女优|セクシー|グラビア|モデル|アイドル/.test(bodyText)) {
+            const parsed = this.parseWikiInfobox(res.doc, res.url);
+            if (parsed) {
+              this.recordAliasGroup(baseCands.concat([jaSearch]));
+              return parsed;
+            }
+          }
+        }
+      }
+      return null;
     },
 
     computeStatus: function (data) {
@@ -12081,17 +12405,36 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (!name) return null;
       const cache = this.getLocalCache();
       const cached = cache[name];
-      if (cached && cached._ts && (Date.now() - cached._ts < 7 * 86400000)) return cached;
-      let data = await this.lookupRepo(name);
-      if (!data) data = await this.lookupWiki(name);
-      if (data) {
-        data.status = this.computeStatus(data);
-        data._ts = Date.now();
-        cache[name] = data;
-        this.saveLocalCache(cache);
-        return data;
+      if (cached && cached._ts) {
+        const ageMs = Date.now() - cached._ts;
+        if (cached._miss) {
+          if (ageMs < 86400000) return null; // 24h 负缓存，避免重复请求未建档女优
+        } else if (ageMs < 7 * 86400000) {
+          return cached;
+        }
       }
-      return cached || null;
+
+      if (this._inflight[name]) return this._inflight[name];
+      const self = this;
+      this._inflight[name] = (async function () {
+        try {
+          const data = await self.lookupWiki(name);
+          const freshCache = self.getLocalCache();
+          if (data) {
+            data.status = self.computeStatus(data);
+            data._ts = Date.now();
+            freshCache[name] = data;
+            self.saveLocalCache(freshCache);
+            return data;
+          }
+          freshCache[name] = { _miss: true, _ts: Date.now() };
+          self.saveLocalCache(freshCache);
+          return (cached && !cached._miss) ? cached : null;
+        } finally {
+          delete self._inflight[name];
+        }
+      })();
+      return this._inflight[name];
     }
   };
 
@@ -12155,14 +12498,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const clean = val.replace(/[\s\u2640\u2642]/g, '');
       if (clean && s.has(clean)) return true;
 
-      // 智能别名联动（例如 田中レモン ↔ 楓カレン / 河北彩花 ↔ 河北彩伽）
-      if (typeof ActressService !== 'undefined' && ActressService._idxMem) {
-        const idx = ActressService._idxMem;
-        if (idx && idx.aliases) {
-          const primary1 = idx.aliases[val];
-          if (primary1 && (s.has(primary1) || s.has(primary1.replace(/[\s\u2640\u2642]/g, '')))) return true;
-          const primary2 = clean ? idx.aliases[clean] : '';
-          if (primary2 && (s.has(primary2) || s.has(primary2.replace(/[\s\u2640\u2642]/g, '')))) return true;
+      // 智能别名联动（基于 ActressService 种子映射 + MediaWiki 运行期桥接结果）
+      if (typeof ActressService !== 'undefined' && typeof ActressService.getAliases === 'function') {
+        const candidates = ActressService.getAliases(val).concat(clean ? ActressService.getAliases(clean) : []);
+        for (let i = 0; i < candidates.length; i++) {
+          const alias = candidates[i];
+          const cleanAlias = alias.replace(/[\s\u2640\u2642]/g, '');
+          if (s.has(alias) || (cleanAlias && s.has(cleanAlias))) return true;
         }
       }
       return false;
@@ -12436,26 +12778,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
       // 智能别名扩充：将已收录女优的所有已知别名（如 楓カレン ↔ 田中レモン）自动联动
       try {
-        if (typeof ActressService !== 'undefined' && ActressService.getRepoIndex) {
-          const idx = await ActressService.getRepoIndex();
-          if (idx && idx.aliases) {
-            const s = getFavSet();
-            const currentList = Array.from(s);
-            // 1. 如果已收藏主名，将其别名加入
-            for (const alias in idx.aliases) {
-              const primary = idx.aliases[alias];
-              if (s.has(primary) && !s.has(alias)) {
-                s.add(alias);
-              }
+        if (typeof ActressService !== 'undefined' && typeof ActressService.getAliases === 'function') {
+          const s = getFavSet();
+          const currentList = Array.from(s);
+          currentList.forEach(function (name) {
+            const aliases = ActressService.getAliases(name);
+            for (let i = 0; i < aliases.length; i++) {
+              if (!s.has(aliases[i])) s.add(aliases[i]);
             }
-            // 2. 如果已收藏别名，将其主名加入
-            currentList.forEach(name => {
-              if (idx.aliases[name]) {
-                const primary = idx.aliases[name];
-                if (!s.has(primary)) s.add(primary);
-              }
-            });
-          }
+          });
         }
       } catch (e) {}
 
@@ -12713,11 +13044,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       }
 
       // 3. 复用 ActressService 别名映射库进行简繁体与艺名转换（如 三上悠亚 -> 三上悠亜 / 安齋拉拉 -> 安齋らら）
-      if (!relPath && typeof ActressService !== 'undefined' && ActressService._idxMem && ActressService._idxMem.aliases) {
-        const aliasTarget = ActressService._idxMem.aliases[cleanName] || ActressService._idxMem.aliases[name.trim()];
-        if (aliasTarget) {
+      if (!relPath && typeof ActressService !== 'undefined' && typeof ActressService.getAliases === 'function') {
+        const aliases = ActressService.getAliases(name.trim());
+        for (let i = 0; i < aliases.length; i++) {
+          const aliasTarget = aliases[i];
           const cleanAlias = aliasTarget.replace(/[\s\u2640\u2642]/g, '').trim();
-          relPath = indexMap.get(cleanAlias) || indexMap.get(aliasTarget);
+          relPath = (cleanAlias && indexMap.get(cleanAlias)) || indexMap.get(aliasTarget);
+          if (relPath) break;
         }
       }
 
@@ -17902,7 +18235,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (/<title[^>]*>\s*(登入|Sign in)|\/login|\/sign_in/i.test(head) && /password|密碼/i.test(html)) {
             throw new Error('LOGIN_REQUIRED');
           }
-          return new DOMParser().parseFromString(html, 'text/html');
+          const parsedDoc = new DOMParser().parseFromString(html, 'text/html');
+          // 记录重定向后的最终 URL，用于识别私人清单访问 /lists/{id} 被 302 跳转回首页的场景
+          try { Object.defineProperty(parsedDoc, '_finalUrl', { value: resp.url || '', configurable: true }); }
+          catch (_) { parsedDoc._finalUrl = resp.url || ''; }
+          return parsedDoc;
         })();
         return await Promise.race([run, guard]);
       } finally {
@@ -17990,15 +18327,21 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 链接文本不带数量时，javdb 常把数量放在链接所在卡片/行的 .count/.video-count/.badge 里
       //（如 <div class="list"><a>名字</a><span class="count">5</span></div>），或直接写在列表项
       // 的静态文本里（真实索引页：<a>名字</a> … "501 部影片, 被點擊了 1017 次"）。逐层补抓：
-      if (!count) {
+      let isPrivate = false;
+      let card = null;
+      try { card = a.closest('.list, .box, .column, .panel-block, .list-item, li, tr, .video-list, .item'); } catch (e) {}
+      if (card) {
+        const cardText = card.textContent || '';
+        isPrivate = /只[對对]自己可[見见]|僅自己可[見见]|仅自己可见|only visible to you/i.test(cardText);
+      }
+      if (!count && card) {
         try {
-          const card = a.closest('.list, .box, .column, .panel-block, .list-item, li, tr, .video-list, .item');
           // ① 结构化数量元素
-          const ce = card && card.querySelector('.count, .video-count, .badge, .item-count');
+          const ce = card.querySelector('.count, .video-count, .badge, .item-count');
           const cm2 = ce && (ce.textContent || '').match(/\d+/);
           if (cm2) count = parseInt(cm2[0], 10) || 0;
           // ② javdb 索引页「XXX 部影片」静态文本（精确匹配"部影片"，避免误取点击次数等数字）
-          if (!count && card) {
+          if (!count) {
             const cm3 = (card.textContent || '').match(/(\d+)\s*部影片/);
             if (cm3) count = parseInt(cm3[1], 10) || 0;
           }
@@ -18007,7 +18350,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 保留链接真实地址（去掉已有 page 参数）作为翻页基址——
       // 「我的清单」与「收藏的清单(他人分享)」的详情 URL 结构不同，绝不能自行拼接
       const base = href.replace(/([?&])page=\d+&?/, '$1').replace(/[?&]$/, '');
-      return { id: m[1], name: name, count: count, base: base };
+      return { id: m[1], name: name, count: count, base: base, isPrivate: isPrivate };
     }
     // 清单分页 URL：基于抓取时保存的真实 href 翻页
     function listPageUrl(listOrId, page) {
@@ -18214,38 +18557,82 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           const old = allLists.filter(function (l) { return l.type === 'favorited'; });
           for (let k = 0; k < old.length; k++) await dbDeleteList(old[k].id || old[k].name);
         } catch (e) { log('清理旧收藏清单缓存失败: ' + e.message); }
-        // 估算总页数（仅按选中清单）
-        queue.total = syncLists.reduce(function (s, l) { return s + Math.max(1, Math.ceil((l.count || 16) / 16)); }, 0);
+        // 估算总页数（仅按选中清单：公开 /lists/{id} 每页 40 部，私人 /users/list_detail 每页 12 部）
+        queue.total = syncLists.reduce(function (s, l) {
+          const perPage = l.isPrivate ? 12 : 40;
+          return s + Math.max(1, Math.ceil((l.count || perPage) / perPage));
+        }, 0);
         const freshMovies = {};   // code -> movie 记录（含 listIds）
         const failedLists = [];
         const failedListIds = [];
+        const truncatedLists = [];
+        const truncatedListIds = [];
         const MAX_LIST_PAGES = 300;
+        function isSameListFinalUrl(finalUrl, listId) {
+          if (!finalUrl) return true; // 测试桩未设置 resp.url 时放行
+          try {
+            const pathname = new URL(finalUrl, typeof location !== 'undefined' ? location.origin : 'https://javdb.com').pathname;
+            return pathname.indexOf('/lists/' + listId) !== -1;
+          } catch (e) {
+            return String(finalUrl).indexOf('/lists/' + listId) !== -1;
+          }
+        }
+        async function fetchListDocWithRetry(targetUrl, labelText, retryOnError) {
+          let pg = null, tries = 0;
+          const maxTries = retryOnError ? 3 : 1;
+          while (tries < maxTries && !pg) {
+            try {
+              pg = await throttledFetch(targetUrl);
+            } catch (err) {
+              if (queue.abort || String(err.message) === 'ABORT') throw new Error('ABORT');
+              if (String(err.message) === 'LOGIN_REQUIRED') throw err;
+              if (String(err.message).indexOf('RATELIMIT') === 0) {
+                report('pause', '疑似触发风控，已自动暂停。稍后点击「继续」重试。');
+                queue.paused = true; await waitIfPaused();
+                if (queue.abort) throw new Error('ABORT');
+                continue; // 风控恢复后重试，不计入 tries
+              }
+              tries++;
+              log('清单页抓取失败(' + labelText + ' 第' + tries + '次): ' + err.message);
+              if (retryOnError && tries < maxTries) await sleep(3000 * tries);
+            }
+          }
+          return pg;
+        }
         for (let li = 0; li < syncLists.length; li++) {
           const list = syncLists[li];
-          let itemCount = 0;
-          let page = 1, hasNext = true, listFailed = false;
-          while (hasNext && page <= MAX_LIST_PAGES) {
+          let activeBase = list.base || ('/users/list_detail?id=' + encodeURIComponent(list.id));
+          let preFetchedP1 = null;
+          // 公开清单优先探测 /lists/{id}（40部/页，服务端稳定排序无边界重复）；
+          // 私人清单（只对自己可见）访问 /lists/{id} 会 302 跳回首页，校验 _finalUrl 后无感回退 /users/list_detail
+          if (!list.isPrivate && activeBase.indexOf('/users/list_detail') !== -1) {
             await waitIfPaused();
             if (queue.abort) throw new Error('ABORT');
             await sleep(queue.delay());
-            let pg = null, tries = 0;
-            // 单页最多重试 3 次（网络抖动等瞬时错误），风控则暂停等待用户继续
-            while (tries < 3 && !pg) {
-              try {
-                pg = await throttledFetch(listPageUrl(list, page));
-              } catch (err) {
-                // 用户已取消：无论超时/普通错误都立即中止（取消必须"点了就有反应"）
-                if (queue.abort || String(err.message) === 'ABORT') throw new Error('ABORT');
-                if (String(err.message).indexOf('RATELIMIT') === 0) {
-                  report('pause', '疑似触发风控，已自动暂停。稍后点击「继续」重试。');
-                  queue.paused = true; await waitIfPaused();
-                  if (queue.abort) throw new Error('ABORT');
-                  continue; // 风控恢复后重试，不计入 tries
-                }
-                tries++;
-                log('清单页抓取失败(' + list.name + ' p' + page + ' 第' + tries + '次): ' + err.message);
-                if (tries < 3) await sleep(3000 * tries);
+            const publicBase = '/lists/' + encodeURIComponent(list.id);
+            const probeDoc = await fetchListDocWithRetry(listPageUrl({ id: list.id, base: publicBase }, 1), list.name + ' public-probe', false);
+            if (probeDoc && isSameListFinalUrl(probeDoc._finalUrl, list.id)) {
+              const probeParsed = parseListPage(probeDoc);
+              if (probeParsed.items.length > 0 || !list.count) {
+                activeBase = publicBase;
+                preFetchedP1 = probeDoc;
               }
+            }
+          }
+          const fetchList = { id: list.id, base: activeBase };
+          const seenInList = Object.create(null);
+          let itemCount = 0, dupInList = 0;
+          let page = 1, hasNext = true, listFailed = false;
+          while (hasNext && page <= MAX_LIST_PAGES) {
+            let pg = null;
+            if (page === 1 && preFetchedP1) {
+              pg = preFetchedP1;
+              preFetchedP1 = null;
+            } else {
+              await waitIfPaused();
+              if (queue.abort) throw new Error('ABORT');
+              await sleep(queue.delay());
+              pg = await fetchListDocWithRetry(listPageUrl(fetchList, page), list.name + ' p' + page, true);
             }
             if (!pg) {
               // 三次仍失败：该清单标记失败，保留本地旧数据，继续下一个清单
@@ -18260,11 +18647,16 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               if (!it.code) return;
               if (!freshMovies[it.code]) freshMovies[it.code] = newMovieRecord(it);
               if (freshMovies[it.code].listIds.indexOf(list.id) === -1) freshMovies[it.code].listIds.push(list.id);
-              itemCount++;
+              if (!seenInList[it.code]) {
+                seenInList[it.code] = 1;
+                itemCount++;
+              } else {
+                dupInList++;
+              }
             });
             hasNext = parsed.hasNext && parsed.items.length > 0;
             queue.done++;
-            // 动态修正总页数：索引页链接文本常不带数量(count=0)导致预估过低，
+            // 动态修正总页数：索引页链接文本常不带数量(count=0)或回退至 12部/页，
             // 只要还有下一页就保证分母 ≥ 已完成+1，避免出现 122/10 这类倒挂。
             if (hasNext && queue.total < queue.done + 1) queue.total = queue.done + 1;
             if (!hasNext && li === syncLists.length - 1) queue.total = queue.done;
@@ -18274,14 +18666,22 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (hasNext && page > MAX_LIST_PAGES) {
             log('清单「' + list.name + '」已达到最大同步页数上限 (' + MAX_LIST_PAGES + ' 页)，提前停止翻页以防异常死循环');
           }
+          // 私人清单仅能走 /users/list_detail（12部/页）：若站端分页并列排序产生跨页重复且导致去重总数低于站端总数，
+          // 说明少量影片被顶出分页视图，启用防误删保护，避免已同步条目被错误脱钩或删除
+          if (!listFailed && dupInList > 0 && (list.count > 0 ? itemCount < list.count : activeBase.indexOf('/users/list_detail') !== -1)) {
+            truncatedLists.push(list.name + '(' + itemCount + (list.count > 0 ? ('/' + list.count) : '') + ')');
+            truncatedListIds.push(list.id);
+            log('清单「' + list.name + '」分页存在 ' + dupInList + ' 条重复' + (list.count > 0 ? ('并导致缺口(' + itemCount + '/' + list.count + ')') : '') + '，已启用本地条目保护');
+          }
           list.scrapedCount = listFailed ? 0 : itemCount;
           list.lastSynced = Date.now();
         }
         // diff：仅对「选中清单」范围内的记录仲裁——
         //   已存在 → 合并 listIds（保留未选清单的旧归属）+ 更新列表页字段，保留详情字段
-        //   本地有、本次未抓到 → 只在记录与选中清单有交集时处理：失败清单保留归属 / 仅标记保留 /
+        //   本地有、本次未抓到 → 只在记录与选中清单有交集时处理：失败/分页缺失清单保留归属 / 仅标记保留 /
         //   并发写入保留 / 其余从选中部分移除——若移出后仍有未选清单归属则保留更新，否则删除。
         //   完全不属于选中清单的记录（未选清单的归属）→ 本次同步绝不触碰。
+        const protectedListIds = failedListIds.concat(truncatedListIds);
         const localMovies = await dbAllMovies();
         const localMap = {};
         localMovies.forEach(function (m) { localMap[m.code] = m; });
@@ -18296,15 +18696,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           const mIds = m.listIds || [];
           if (!freshMovies[m.code]) {
             if (!inSyncScope(mIds)) return; // 不属于本次同步范围 → 保留不动
-            let belongsToFailed = false;
-            if (mIds.length && failedListIds.length) {
+            let belongsToProtected = false;
+            if (mIds.length && protectedListIds.length) {
               for (let i = 0; i < mIds.length; i++) {
-                if (failedListIds.indexOf(mIds[i]) !== -1) { belongsToFailed = true; break; }
+                if (protectedListIds.indexOf(mIds[i]) !== -1) { belongsToProtected = true; break; }
               }
             }
-            if (belongsToFailed) {
-              // 保留失败清单归属 + 未选清单归属（只移除「已成功抓取却没出现的选中清单」归属）
-              m.listIds = mIds.filter(function (lid) { return failedListIds.indexOf(lid) !== -1 || (!selectedAll && !selectedSet[lid]); });
+            if (belongsToProtected) {
+              // 保留失败/受保护清单归属 + 未选清单归属（只移除「完整无缺却没出现的选中清单」归属）
+              m.listIds = mIds.filter(function (lid) { return protectedListIds.indexOf(lid) !== -1 || (!selectedAll && !selectedSet[lid]); });
               toPut.push(m);
             } else if ((m.listSyncedAt || 0) > syncStartAt || (m.reviewSyncedAt || 0) > syncStartAt || (m.updatedAt || 0) > syncStartAt) {
               // 同步抓取期间被并发写入（其他标签页/本页拦截器操作）的记录：快照可能滞后，跳过删除，下次同步再仲裁
@@ -18374,6 +18774,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         await dbSetMeta('lastFullSync', Date.now());
         let doneMsg = '同步完成：' + syncLists.length + ' 个清单，' + freshCodes.length + ' 部作品';
         if (failedLists.length) doneMsg += '（' + failedLists.length + ' 个清单抓取失败已跳过：' + failedLists.join('、') + '，可稍后重新同步）';
+        if (truncatedLists.length) doneMsg += '（以下私人清单服务端分页有重复偏移，已保留本地旧条目：' + truncatedLists.join('、') + '）';
         if (keptMarked || keptConcurrent) doneMsg += '（保留 ' + keptMarked + ' 条仅标记记录、' + keptConcurrent + ' 条同步期间变更记录）';
         report(failedLists.length ? 'error' : 'done', doneMsg);
       } catch (err) {
@@ -18639,11 +19040,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
      * 卡片结构与清单页同款（复用 parseListPage），分页参数 cp=N。
      * 两页通常几秒抓完，代替“逐个访问详情页”获取标记状态。 */
     function findReviewNextPage(doc, curUrl, base) {
-      // 优先常规 pagination-next；兜底解析同路径 cp=N 链接（单页时 nav 为空 → 无下一页）
+      // 优先常规 pagination-next；兜底解析同路径 cp=N 链接（兼容 ?star=N 等既有查询参数）
       const nx = doc.querySelector('a.pagination-next, .pagination-next');
       if (nx && !nx.classList.contains('is-disabled')) {
         const h = nx.getAttribute('href') || '';
-        if (h) return h.charAt(0) === '/' ? h : ('/' + h);
+        if (h) {
+          if (h.charAt(0) === '?') return base.split('?')[0] + h;
+          if (/^https?:\/\//i.test(h)) return h;
+          return h.charAt(0) === '/' ? h : ('/' + h);
+        }
       }
       const curM = curUrl.match(/cp=(\d+)/);
       const cur = curM ? parseInt(curM[1], 10) : 1;
@@ -18652,10 +19057,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         const m = (a.getAttribute('href') || '').match(/cp=(\d+)/);
         if (m) max = Math.max(max, parseInt(m[1], 10));
       });
-      return max > cur ? (base + '?cp=' + (cur + 1)) : null;
+      return max > cur ? (base + (base.indexOf('?') === -1 ? '?' : '&') + 'cp=' + (cur + 1)) : null;
     }
-    async function fetchReviewVideos(kind) { // kind: 'want' | 'watched'
-      const base = kind === 'want' ? '/users/want_watch_videos' : '/users/watched_videos';
+    async function fetchReviewVideos(kindOrPath) { // 'want' | 'watched' | '/users/watched_videos?star=N'
+      const base = kindOrPath.charAt(0) === '/'
+        ? kindOrPath
+        : (kindOrPath === 'want' ? '/users/want_watch_videos' : '/users/watched_videos');
       const all = []; const seen = {};
       let url = base, guard = 0;
       while (url && guard++ < 50) {
@@ -18666,6 +19073,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         while (tries < 3 && !doc) {
           try { doc = await throttledFetch(url); }
           catch (err) {
+            if (queue.abort || String(err.message) === 'ABORT') throw new Error('ABORT');
             if (String(err.message).indexOf('RATELIMIT') === 0) {
               report('pause', '疑似触发风控，已自动暂停。稍后点击「继续」重试。');
               queue.paused = true; await waitIfPaused();
@@ -18693,13 +19101,39 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         return;
       }
       queue.running = true; queue.paused = false; queue.abort = false;
-      queue.label = '同步标记'; queue.done = 0; queue.total = 3;
+      queue.label = '同步标记'; queue.done = 0; queue.total = 8;
+      const syncStartAt = Date.now();
       try {
         report('run', '获取想看清单…');
         const wants = await fetchReviewVideos('want');
         queue.done = 1; report('run', '获取看過清单…');
         const watcheds = await fetchReviewVideos('watched');
-        queue.done = 2; report('run', '写库…');
+        queue.done = 2;
+        // 批量补全看过影片的个人评分星级（/users/watched_videos?star=5..1）
+        const scoreMap = Object.create(null);
+        let starFetchComplete = true;
+        if (watcheds.length > 0) {
+          for (let star = 5; star >= 1; star--) {
+            await waitIfPaused();
+            if (queue.abort) throw new Error('ABORT');
+            await sleep(queue.delay());
+            report('run', '同步个人评分 (' + star + '星)…');
+            try {
+              const bucket = await fetchReviewVideos('/users/watched_videos?star=' + star);
+              bucket.forEach(function (it) {
+                if (it.code && !scoreMap[it.code]) scoreMap[it.code] = star;
+              });
+            } catch (starErr) {
+              if (String(starErr.message) === 'ABORT' || String(starErr.message) === 'LOGIN_REQUIRED') throw starErr;
+              starFetchComplete = false;
+              log('同步 ' + star + '星评分分桶失败（保留既有本地评分）: ' + starErr.message);
+            }
+            queue.done++;
+          }
+        } else {
+          queue.done = 7;
+        }
+        report('run', '写库…');
         const localMovies = await dbAllMovies();
         const localMap = {}; localMovies.forEach(function (m) { localMap[m.code] = m; });
         const wantSet = {}, watchedSet = {};
@@ -18712,6 +19146,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             v = newMovieRecord(it); // 仅标记作品也入库（与拦截器语义一致），可在收藏夹按想看/看過筛出
             localMap[it.code] = v;
           }
+          const prevReviewAt = v.reviewSyncedAt || 0;
           v.reviewStatus = status;
           v.reviewSyncedAt = Date.now();
           // 顺路刷新列表页可见字段（不覆盖详情字段，与同步清单的合并策略一致）
@@ -18719,8 +19154,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (it.date) v.date = it.date;
           if (it.coverThumb) v.coverThumb = it.coverThumb;
           if (it.detailHref) v.detailHref = it.detailHref;
-          // 若标记从看過变为想看，清除已有的个人评分；若保持看過，严格保留本地原有的 userScore
+          // 同步个人评分：若标记从看過变为想看，清除评分；若为看過，则用 star=5..1 分桶写入，
+          // 仅在全部星级分桶抓取成功且期间未被并发修改时清理已取消的过期评分
           if (status !== 'watched') {
+            delete v.userScore;
+          } else if (scoreMap[it.code]) {
+            v.userScore = scoreMap[it.code];
+          } else if (starFetchComplete && prevReviewAt <= syncStartAt) {
             delete v.userScore;
           }
           toPut.push(v);
@@ -18747,8 +19187,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           window.dispatchEvent(new CustomEvent('emby-fav-changed', { bubbles: true }));
           if (typeof refreshFavStatus === 'function') refreshFavStatus();
         } catch (_) {}
+        const scoredCount = Object.keys(scoreMap).length;
         report('done', '标记同步完成：想看 ' + wants.length + ' 部、看過 ' + watcheds.length +
-          ' 部（取消 ' + (toDelete.length) + ' 条仅标记记录）');
+          ' 部（含评分 ' + scoredCount + ' 部，取消 ' + (toDelete.length) + ' 条仅标记记录）');
       } catch (err) {
         if (String(err.message) === 'ABORT') report('done', '已取消');
         else { log('标记同步失败: ' + err.message); report('error', '标记同步失败：' + friendlyError(err) + '（本地数据未改动）'); }
