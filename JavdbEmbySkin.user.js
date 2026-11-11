@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.5.1
+// @version      7.6.0
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -85,8 +85,9 @@
     } catch (e) {}
   }
   ensureImageNoReferrer();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.5.1';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.6.0';
   var tabHome = null, tabFav = null, favPanel = null;
+  var tabLucky = null, luckyPanel = null;
   var tabGallery = null, galleryPanel = null;
   var tabTop250 = null, top250Panel = null;
   var scoreMemCache = new Map(); // 全局共享评分缓存，供通用评分提取与各榜单/详情联动
@@ -2198,12 +2199,97 @@ html.emby-skin .emby-row .item .box {
 }
 html.emby-skin .emby-row .item .box .cover { background:transparent !important; }
 /* 横向滚动条淡化（webkit）：默认极淡、hover 略显，避免破坏整体观感 */
-html.emby-skin .emby-row::-webkit-scrollbar { height:8px; background:transparent; }
-html.emby-skin .emby-row::-webkit-scrollbar-track { background:transparent; }
-html.emby-skin .emby-row::-webkit-scrollbar-thumb {
+html.emby-skin .emby-row::-webkit-scrollbar,
+html.emby-skin #recommend-container.emby-rec-rail::-webkit-scrollbar { height:8px; background:transparent; }
+html.emby-skin .emby-row::-webkit-scrollbar-track,
+html.emby-skin #recommend-container.emby-rec-rail::-webkit-scrollbar-track { background:transparent; }
+html.emby-skin .emby-row::-webkit-scrollbar-thumb,
+html.emby-skin #recommend-container.emby-rec-rail::-webkit-scrollbar-thumb {
   background:rgba(255,255,255,.12); border-radius:8px;
 }
-html.emby-skin .emby-row::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.22); }
+html.emby-skin .emby-row::-webkit-scrollbar-thumb:hover,
+html.emby-skin #recommend-container.emby-rec-rail::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.22); }
+
+/* ====== 主页「每週推薦」改造（v7.6.0 方案 D） ======
+ * 支持单行精选横栏 / 默认收起胶囊提醒 / 彻底隐藏，与主新片网格彻底解耦；
+ * 高特异性覆盖原生 style="display:none" 与 .movie-list { display:grid !important; } 冲突。 */
+html.emby-skin h1[data-controller="recommend"].emby-rec-native-hidden,
+html.emby-skin #recommend-container.emby-rec-collapsed,
+html.emby-skin #recommend-container.emby-rec-hidden,
+html.emby-skin #emby-rec-bar.emby-rec-hidden { display:none !important; }
+html:not(.emby-skin) #emby-rec-bar { display:none !important; }
+html.emby-skin #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) {
+  display:flex !important; flex-wrap:nowrap !important; grid-template-columns:none !important;
+  gap:.85em !important; overflow-x:auto !important; overflow-y:hidden !important;
+  padding:.45em 1.6em 1.15em !important; max-width:1600px !important; margin:0 auto .5em !important;
+  scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.14) transparent;
+  box-sizing:border-box;
+}
+html.emby-skin #recommend-container.emby-rec-rail > .item {
+  flex:0 0 auto !important; width:clamp(168px, var(--e-rel-w, 204px), 232px) !important; scroll-snap-align:start;
+}
+html.emby-skin #recommend-container.emby-rec-rail > .item .box {
+  height:auto !important; background:var(--e-card) !important;
+}
+html.emby-skin #emby-rec-bar {
+  max-width:calc(1600px - 3.2em); width:calc(100% - 3.2em); margin:.2em auto .55em;
+  padding:.56em 1em; border-radius:12px; box-sizing:border-box; position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); color:var(--e-text);
+  transition:background .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+html.emby-skin #emby-rec-bar.collapsed { margin-bottom:.75em; }
+html.emby-skin #emby-rec-bar .emby-rec-left { display:flex; align-items:center; gap:.55em; flex-wrap:wrap; min-width:0; }
+html.emby-skin #emby-rec-bar .emby-rec-icon { color:var(--e-accent, #00a4dc); font-size:1.25em; }
+html.emby-skin #emby-rec-bar .emby-rec-title { font-weight:700; font-size:.98em; color:#fff; }
+html.emby-skin #emby-rec-bar .emby-rec-sub {
+  font-size:.76em; color:var(--e-text2); background:rgba(255,255,255,.07);
+  padding:.18em .6em; border-radius:999px;
+}
+html.emby-skin #emby-rec-bar .emby-rec-meta { font-size:.8em; color:var(--e-text3); }
+html.emby-skin #emby-rec-bar .emby-rec-count {
+  font-size:.76em; font-weight:600; color:var(--e-accent, #00a4dc);
+  background:var(--e-accent-l, rgba(0,164,220,.14)); padding:.16em .58em; border-radius:999px;
+}
+html.emby-skin #emby-rec-bar .emby-rec-new-badge {
+  display:none; align-items:center; gap:.25em; font-size:.72em; font-weight:800; color:#fff;
+  background:linear-gradient(135deg, #f59e0b, #ef4444); padding:.18em .62em; border-radius:999px;
+  box-shadow:0 2px 8px rgba(239,68,68,.35);
+}
+html.emby-skin #emby-rec-bar .emby-rec-new-badge.show { display:inline-flex; }
+html.emby-skin #emby-rec-bar .emby-rec-actions { display:inline-flex; align-items:center; gap:6px; margin-left:auto; }
+html.emby-skin #emby-rec-bar .emby-rec-arrow-btn,
+html.emby-skin #emby-rec-bar .emby-rec-toggle-btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:.28em;
+  border-radius:999px; border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08); color:var(--e-text); cursor:pointer;
+  transition:background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+}
+html.emby-skin #emby-rec-bar .emby-rec-arrow-btn { width:28px; height:28px; padding:0; font-size:1em; }
+html.emby-skin #emby-rec-bar .emby-rec-toggle-btn { padding:.34em .88em; font-size:.82em; font-weight:600; }
+html.emby-skin #emby-rec-bar .emby-rec-arrow-btn:hover,
+html.emby-skin #emby-rec-bar .emby-rec-toggle-btn:hover {
+  background:rgba(255,255,255,.16); border-color:var(--e-accent, #00a4dc); color:#fff;
+}
+html.emby-skin #emby-rec-bar.collapsed .emby-rec-arrow-btn { display:none; }
+html.emby-skin.emby-style-glass #emby-rec-bar {
+  background:rgba(20,24,36,.46) !important;
+  backdrop-filter:blur(18px) saturate(1.7) !important; -webkit-backdrop-filter:blur(18px) saturate(1.7) !important;
+  border-color:rgba(255,255,255,.18) !important;
+}
+html.emby-skin.emby-style-liquid #emby-rec-bar {
+  background:linear-gradient(135deg, rgba(255,255,255,.15), rgba(255,255,255,.04) 60%, rgba(150,140,255,.1)) !important;
+  border-color:rgba(255,255,255,.26) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.08), 0 6px 20px rgba(0,0,0,.28) !important;
+}
+html.emby-skin.emby-style-liquid #emby-rec-bar::before {
+  content:''; position:absolute; left:8%; right:8%; top:0; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent); opacity:.75; pointer-events:none;
+}
+@media (max-width:700px) {
+  html.emby-skin #emby-rec-bar { width:calc(100% - 1.6em); padding:.5em .75em; }
+  html.emby-skin #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) { padding:.4em .8em 1em !important; }
+}
 
 /* 原版预览（Fancybox 原生播放/看图控件，移动保留 data-fancybox，可看原站预告片/样图，不再自写灯箱） */
 .emby-native-preview { margin-top:2.6em; }
@@ -2977,11 +3063,13 @@ html.emby-skin.emby-dynamic-focus .movie-list.emby-dynamic-focus .item.is-near {
   z-index:3; transform:scale(.88); transition-delay:0s;
 }
 html.emby-skin.emby-dynamic-focus #emby-favorites-panel .movie-list.emby-dynamic-focus,
+html.emby-skin.emby-dynamic-focus #emby-lucky-panel .movie-list.emby-dynamic-focus,
 html.emby-skin.emby-dynamic-focus #emby-top250-panel .movie-list.emby-dynamic-focus {
   display:grid !important; gap:0 !important; padding:0 !important;
   grid-template-columns:repeat(auto-fill,minmax(var(--df-col-w,180px),1fr)) !important;
 }
 html.emby-skin.emby-dynamic-focus #emby-favorites-panel .movie-list.emby-dynamic-focus .item .box .cover img,
+html.emby-skin.emby-dynamic-focus #emby-lucky-panel .movie-list.emby-dynamic-focus .item .box .cover img,
 html.emby-skin.emby-dynamic-focus #emby-top250-panel .movie-list.emby-dynamic-focus .item .box .cover img {
   object-position:right center !important;
 }
@@ -3215,6 +3303,16 @@ html.emby-skin .emby-home-tab[data-tab="favorites"]:not(.active) .material-symbo
 html.emby-skin .emby-home-tab[data-tab="top250"]:not(.active) .material-symbols-outlined {
   color:#fed368;
 }
+/* 手氣不錯 未激活时图标专属标识色 (#38bdf8 天青) & 悬停边框光泽 */
+html.emby-skin .emby-home-tab[data-tab="lucky"]:not(.active) .material-symbols-outlined {
+  color:#38bdf8;
+}
+html.emby-skin .emby-home-tab[data-tab="lucky"]:not(.active):hover {
+  border-color:rgba(56,189,248,.5) !important; color:#38bdf8 !important;
+}
+html.emby-skin .emby-home-tab[data-tab="lucky"]:not(.active):hover .material-symbols-outlined {
+  color:#38bdf8 !important;
+}
 /* 全量加载无需显示分页 */
 .top250-pagination {
   display: none !important;
@@ -3223,8 +3321,9 @@ html.emby-skin .emby-home-tab[data-tab="top250"]:not(.active) .material-symbols-
 html.emby-skin #emby-favorites-panel .top250-rank-badge {
   display: none !important;
 }
-/* 预览画廊与 TOP250 随机封面海报墙背景（与收藏夹同款高斯模糊规范） */
+/* 预览画廊、TOP250 与手氣不錯随机封面海报墙背景（与收藏夹同款高斯模糊规范） */
 html.emby-skin #emby-gallery-panel.show .efav-bg,
+html.emby-skin #emby-lucky-panel.show .efav-bg,
 html.emby-skin #emby-top250-panel.show .efav-bg {
   content:'';
   position:fixed; top:0; left:0; right:0; bottom:0; z-index:0; pointer-events:none;
@@ -3233,6 +3332,7 @@ html.emby-skin #emby-top250-panel.show .efav-bg {
   opacity:.35;
 }
 html.emby-skin #emby-gallery-panel.show > *,
+html.emby-skin #emby-lucky-panel.show > *,
 html.emby-skin #emby-top250-panel.show > * {
   position:relative; z-index:1;
 }
@@ -3319,7 +3419,8 @@ html.emby-skin #emby-gallery-panel::-webkit-scrollbar-thumb:hover { background:r
 
 html.emby-skin #emby-gallery-panel.show { display:block; }
 /* TOP250 & 热播全屏面板样式（第一性原理：自管全屏覆盖层，与收藏夹/画廊保持绝对一致） */
-#emby-top250-panel {
+#emby-top250-panel,
+#emby-lucky-panel {
   position:fixed; top:0; left:0; right:0; bottom:0;
   z-index:2147482997;
   background:var(--e-bg, #14161c);
@@ -3327,10 +3428,75 @@ html.emby-skin #emby-gallery-panel.show { display:block; }
   box-sizing:border-box;
   scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.18) transparent;
 }
-html.emby-skin #emby-top250-panel::-webkit-scrollbar { width:8px; background:transparent; }
-html.emby-skin #emby-top250-panel::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:999px; }
-html.emby-skin #emby-top250-panel.show { display:block; }
-html:not(.emby-skin) #emby-top250-panel { display:none !important; }
+html.emby-skin #emby-top250-panel::-webkit-scrollbar,
+html.emby-skin #emby-lucky-panel::-webkit-scrollbar { width:8px; background:transparent; }
+html.emby-skin #emby-top250-panel::-webkit-scrollbar-thumb,
+html.emby-skin #emby-lucky-panel::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:999px; }
+html.emby-skin #emby-top250-panel.show,
+html.emby-skin #emby-lucky-panel.show { display:block; }
+html:not(.emby-skin) #emby-top250-panel,
+html:not(.emby-skin) #emby-lucky-panel { display:none !important; }
+html.emby-skin.emby-style-glass #emby-lucky-panel,
+html.emby-skin.emby-style-liquid #emby-lucky-panel { background:transparent !important; }
+
+/* 手氣不錯全屏面板 & 原生 /lucky 路由美化 (v7.6.0) */
+.lucky-wrap { width:100%; max-width:1400px; margin:0 auto; box-sizing:border-box; }
+.lucky-header {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  margin-bottom:18px; padding:12px 16px; border-radius:12px; position:relative; overflow:hidden;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08);
+}
+.lucky-title-group { display:flex; align-items:center; gap:10px; }
+.lucky-title-icon { font-size:24px; color:#38bdf8; }
+.lucky-title { font-size:15px; font-weight:700; color:#fff; }
+.lucky-sub { font-size:12px; color:var(--e-text2, #94a3b8); margin-top:2px; }
+.lucky-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
+.lucky-count-badge {
+  font-size:12px; padding:4px 10px; border-radius:999px;
+  background:rgba(56,189,248,.14); color:#38bdf8; border:1px solid rgba(56,189,248,.28); font-weight:600;
+}
+.lucky-shuffle-btn,
+html.emby-skin a.button[data-controller="lucky-shuffle"] {
+  display:inline-flex !important; align-items:center; justify-content:center; gap:6px;
+  background:var(--e-accent, #00a4dc) !important; color:#fff !important;
+  border:1px solid rgba(255,255,255,.22) !important; border-radius:999px !important;
+  padding:8px 18px !important; height:auto !important; font-size:13px !important; font-weight:700 !important;
+  cursor:pointer; box-shadow:0 4px 14px rgba(0,164,220,.32); transition:all .2s ease !important;
+  text-decoration:none !important;
+}
+.lucky-shuffle-btn:hover,
+html.emby-skin a.button[data-controller="lucky-shuffle"]:hover {
+  filter:brightness(1.1); transform:translateY(-1px); color:#fff !important;
+}
+.lucky-shuffle-btn.loading { pointer-events:none; opacity:.75; }
+.lucky-shuffle-btn.loading .material-symbols-outlined { animation:spin 1s linear infinite; }
+.lucky-external-link {
+  display:inline-flex; align-items:center; gap:4px; padding:7px 12px; border-radius:999px;
+  font-size:12px; font-weight:600; color:var(--e-text2, #94a3b8);
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); text-decoration:none;
+  transition:all .2s ease;
+}
+.lucky-external-link:hover { background:rgba(255,255,255,.14); color:#fff; }
+.lucky-status-box { padding:48px 16px; text-align:center; color:var(--e-text2, #94a3b8); font-size:14px; }
+html.emby-skin.emby-style-glass .lucky-header {
+  background:rgba(20,24,36,.46) !important; backdrop-filter:blur(22px) saturate(1.8) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.8) !important; border-color:rgba(255,255,255,.18) !important;
+}
+html.emby-skin.emby-style-liquid .lucky-header {
+  background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 60%, rgba(150,140,255,.1)) !important;
+  border-color:rgba(255,255,255,.24) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45), inset 0 -1px 0 rgba(255,255,255,.08), 0 6px 20px rgba(0,0,0,.25) !important;
+}
+html.emby-skin.emby-style-liquid .lucky-header::before {
+  content:''; position:absolute; left:8%; right:8%; top:0; height:2px; border-radius:2px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent); opacity:.75; pointer-events:none;
+}
+html.emby-skin.emby-style-liquid .lucky-shuffle-btn,
+html.emby-skin.emby-style-liquid a.button[data-controller="lucky-shuffle"] {
+  background:linear-gradient(135deg, color-mix(in srgb, var(--e-accent,#00a4dc) 85%, #fff), color-mix(in srgb, var(--e-accent,#00a4dc) 50%, #1a1a2a)) !important;
+  border-color:rgba(255,255,255,.48) !important;
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6), 0 4px 16px rgba(0,164,220,.4) !important;
+}
 
 /* TOP250 & 热播面板内部 UI 规范 */
 .top250-wrap { width:100%; max-width:1400px; margin:0 auto; box-sizing:border-box; }
@@ -3605,14 +3771,20 @@ html.emby-skin #emby-favorites-panel.show {
  * 只隐藏 javdb 原生内容即可；残留的 main/.container 内容会被下方全屏 .emby-fav-view 面板盖住，不会外露。 */
 html.emby-skin.emby-fav-view nav.navbar,
 html.emby-skin.emby-fav-view nav.sub-header,
-html.emby-skin.emby-fav-view .tabs:not(#emby-favorites-panel *):not(#emby-top250-panel *),
-html.emby-skin.emby-fav-view .toolbar:not(#emby-favorites-panel *):not(#emby-top250-panel *),
+html.emby-skin.emby-fav-view .site-announce,
+html.emby-skin.emby-fav-view .main-tabs-wrap,
+html.emby-skin.emby-fav-view h1[data-controller="recommend"],
+html.emby-skin.emby-fav-view #emby-rec-bar,
+html.emby-skin.emby-fav-view #recommend-container,
+html.emby-skin.emby-fav-view .tabs:not(#emby-favorites-panel *):not(#emby-top250-panel *):not(#emby-lucky-panel *),
+html.emby-skin.emby-fav-view .toolbar:not(#emby-favorites-panel *):not(#emby-top250-panel *):not(#emby-lucky-panel *),
 html.emby-skin.emby-fav-view .movie-list,
 html.emby-skin.emby-fav-view .movie-list.emby-masonry,
 html.emby-skin.emby-fav-view .masonry-list,
 html.emby-skin.emby-fav-view .pagination,
 html.emby-skin.emby-fav-view nav.pagination,
-html.emby-skin.emby-fav-view .section .container > .pagination { display:none !important; }
+html.emby-skin.emby-fav-view .section .container > .pagination,
+html.emby-skin.emby-fav-view .has-text-centered.my-5 { display:none !important; }
 /* 保险：瀑布流(masonry-large) 下 .movie-list.emby-masonry 有 display:flex!important，
  * 需更高特异性才能盖住（同特异性时靠后定义胜，这里显式提特异性双保险） */
 html.emby-skin.emby-fav-view.emby-masonry-large .movie-list.emby-masonry { display:none !important; }
@@ -3633,15 +3805,18 @@ html.emby-skin.emby-fav-view.efav-tabs-hide .emby-home-tabs {
   transform:translateY(-130%); opacity:0; pointer-events:none;
 }
 
-/* ====== 收藏夹与 TOP250 数据功能（v5.00+ / v7.238） ====== */
-/* 收藏夹与 TOP250 封面墙直接复用首页 .movie-list/.item/.box 全套样式（同一套 CSS，效果零差异）。
+/* ====== 收藏夹、TOP250 与手氣不錯数据功能（v5.00+ / v7.238 / v7.6.0） ====== */
+/* 收藏夹、TOP250 与手氣不錯封面墙直接复用首页 .movie-list/.item/.box 全套样式（同一套 CSS，效果零差异）。
  * emby-fav-view 全局隐藏了原生 .movie-list，这里为面板内部开例外： */
 html.emby-skin.emby-fav-view #emby-favorites-panel .movie-list,
+html.emby-skin.emby-fav-view #emby-lucky-panel .movie-list,
 html.emby-skin.emby-fav-view #emby-top250-panel .movie-list { display:grid !important; }
 html.emby-skin.emby-fav-view.emby-masonry-large #emby-favorites-panel .movie-list.emby-masonry,
+html.emby-skin.emby-fav-view.emby-masonry-large #emby-lucky-panel .movie-list.emby-masonry,
 html.emby-skin.emby-fav-view.emby-masonry-large #emby-top250-panel .movie-list.emby-masonry { display:block !important; }
 /* 面板内网格不需要 movie-list 的顶部大留白（面板已有 padding） */
 html.emby-skin #emby-favorites-panel .movie-list,
+html.emby-skin #emby-lucky-panel .movie-list,
 html.emby-skin #emby-top250-panel .movie-list { padding:0 0 3em !important; }
 /* 收藏夹与 TOP250 卡片扩展信息行（演员+时长）：grid/masonry 直接显示；
  * dynamic-focus 布局内隐藏（见上方 .emby-dynamic-focus 隐藏列表），改由大图气泡信息条展示。
@@ -7028,10 +7203,79 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   // 后期新增按钮只需在此数组加一项，两处 UI 自动同步出现。
   const HOME_TAB_DEFS = [
     { key: 'home', label: '主页', icon: 'home_max_dots' },
+    { key: 'lucky', label: '手氣不錯', icon: 'casino' },
     { key: 'favorites', label: '收藏夹', icon: 'diagnosis' },
     { key: 'gallery', label: '预览画廊', icon: 'local_see' },
     { key: 'top250', label: 'TOP250', icon: 'social_leaderboard' }
   ];
+
+  function isLuckyTabEnabled() {
+    try { return localStorage.getItem(SET_KEYS.luckyTab) !== '0'; } catch (e) { return true; }
+  }
+  function getHomeTabDefs() {
+    return isLuckyTabEnabled()
+      ? HOME_TAB_DEFS
+      : HOME_TAB_DEFS.filter(function (d) { return d.key !== 'lucky'; });
+  }
+  function assignHomeTabRef(key, el) {
+    if (key === 'home') tabHome = el;
+    else if (key === 'lucky') tabLucky = el;
+    else if (key === 'favorites') tabFav = el;
+    else if (key === 'gallery') tabGallery = el;
+    else if (key === 'top250') tabTop250 = el;
+  }
+  function createHomeTabButton(def, onBeforeSwitch) {
+    const t = document.createElement('a');
+    t.className = 'emby-home-tab';
+    t.href = '#' + def.key;
+    t.dataset.tab = def.key;
+    t.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
+    t.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof onBeforeSwitch === 'function') onBeforeSwitch(def);
+      switchTab(def.key);
+    });
+    return t;
+  }
+  function populateTabContainer(container, options) {
+    if (!container) return;
+    const opts = options || {};
+    container.innerHTML = '';
+    getHomeTabDefs().forEach(function (def) {
+      const btn = createHomeTabButton(def, opts.onBeforeSwitch);
+      container.appendChild(btn);
+      if (opts.assignRefs) assignHomeTabRef(def.key, btn);
+    });
+  }
+  function refreshHomeTabsAndTopNav() {
+    const defs = getHomeTabDefs();
+    const activeEl = document.querySelector('.emby-home-tab.active[data-tab]');
+    let curTab = activeEl ? activeEl.dataset.tab : 'home';
+    if (curTab === 'lucky' && !isLuckyTabEnabled()) curTab = 'home';
+
+    const topNav = document.querySelector('#emby-topbar .emby-topnav');
+    const logoWrap = document.querySelector('#emby-topbar .logo-nav-wrap');
+    if (topNav) {
+      populateTabContainer(topNav, {
+        onBeforeSwitch: function () { if (logoWrap) logoWrap.classList.remove('show'); }
+      });
+    }
+    const tabsBar = document.querySelector('.emby-home-tabs');
+    if (tabsBar) {
+      populateTabContainer(tabsBar, { assignRefs: true });
+      if (typeof LiquidGlass !== 'undefined' && document.documentElement.classList.contains('emby-style-liquid')) {
+        tabsBar.querySelectorAll('.emby-home-tab').forEach(function (b) { LiquidGlass.ensureApplied(b); });
+      }
+    }
+    if (curTab === 'home' && !isLuckyTabEnabled() && location.hash === '#lucky') {
+      switchTab('home');
+    } else {
+      document.querySelectorAll('.emby-home-tab[data-tab]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.tab === curTab);
+      });
+    }
+  }
 
   // 金标皇冠图标：内联 SVG（Material Symbols outlined crown 标准 path）。
   // 不用 .material-symbols-outlined 字体字形——Google Fonts 偶发加载失败时字形会退化为字面文本 "crown"，
@@ -7274,6 +7518,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
 
     let html = '<div class="nav site-nav">';
+    html += '<a class="nav-item emby-drawer-lucky-link" href="/lucky"><span class="material-symbols-outlined mi">casino</span><span>手氣不錯</span></a>';
     html += renderGroupHtml(tagsGroup, 'tags');
     html += renderGroupHtml(rankGroup, 'rankings');
     html += renderGroupHtml(actorGroup, 'actors');
@@ -7474,21 +7719,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         clearTimeout(navHideTimer);
         navHideTimer = setTimeout(function () { logoWrap.classList.remove('show'); }, 3000);
       });
-      HOME_TAB_DEFS.forEach(function (def) {
-        const a = document.createElement('a');
-        a.className = 'emby-home-tab';
-        a.href = '#' + def.key;
-        a.dataset.tab = def.key;
-        a.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
-        a.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          // 点击切换后立即收回（不留 3 秒延迟）
+      populateTabContainer(topNav, {
+        onBeforeSwitch: function () {
           clearTimeout(navHideTimer);
           logoWrap.classList.remove('show');
-          switchTab(def.key);
-        });
-        topNav.appendChild(a);
+        }
       });
     }
 
@@ -7930,8 +8165,30 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     expandCoact: 'javdbEmbyExpandCoact',
     style: 'javdbEmbyStyle',
     filterCollapsed: 'javdbEmbyFilterCollapsed',
-    favSort: 'javdbEmbyFavSort'
+    favSort: 'javdbEmbyFavSort',
+    homeRecMode: 'javdbEmbyHomeRecMode',
+    homeRecCollapsed: 'javdbEmbyHomeRecCollapsed',
+    luckyTab: 'javdbEmbyLuckyTab'
   };
+  const REC_SEEN_COOKIE_KEY = 'javdbEmbyRecSeenCookie';
+
+  function getHomeRecMode() {
+    try {
+      const v = localStorage.getItem(SET_KEYS.homeRecMode);
+      return (v === 'rail' || v === 'pill' || v === 'hide') ? v : 'rail';
+    } catch (e) { return 'rail'; }
+  }
+  function isRecommendList(el) {
+    if (!el) return false;
+    return el.id === 'recommend-container' || !!(el.closest && el.closest('#recommend-container'));
+  }
+  function isPanelInternalList(el) {
+    if (!el || !el.closest) return false;
+    return !!(el.closest('#emby-favorites-panel') || el.closest('#emby-top250-panel') || el.closest('#emby-gallery-panel') || el.closest('#emby-lucky-panel'));
+  }
+  function isLuckyPage() {
+    return location.pathname === '/lucky' || location.pathname.startsWith('/lucky/');
+  }
 
   // 各封面模式（裁切/融合/混合/全封面）独立尺寸记忆与智能默认值
   function getDetailCoverWForMode(mode) {
@@ -7971,7 +8228,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     document.documentElement.classList.toggle('emby-masonry-large', on);
     document.documentElement.classList.toggle('emby-dynamic-focus', dynamic);
     document.querySelectorAll('.movie-list').forEach(function (l) {
-      if (l.closest('#emby-favorites-panel') || l.closest('#emby-top250-panel')) return; // 面板内布局由面板自管
+      if (isPanelInternalList(l)) return; // 面板内布局由面板自管
+      if (isRecommendList(l)) {
+        l.classList.remove('emby-masonry', 'emby-dynamic-focus');
+        return;
+      }
       l.classList.toggle('emby-masonry', on);
       l.classList.toggle('emby-dynamic-focus', dynamic);
     });
@@ -7980,7 +8241,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (gp && gp.classList.contains('show')) { try { FAVUI.renderGallery(gp); } catch (e) { log('画廊布局同步失败: ' + e.message); } }
     // 重建网格浮层以适配新布局（右半裁切尺寸由 emby-masonry-large CSS 控制）
     restructureGrid();
-    document.querySelectorAll('#emby-favorites-panel .movie-list, #emby-top250-panel .movie-list').forEach(function (l) {
+    document.querySelectorAll('#emby-favorites-panel .movie-list, #emby-lucky-panel .movie-list, #emby-top250-panel .movie-list').forEach(function (l) {
       l.classList.toggle('emby-masonry', on);
       l.classList.toggle('emby-dynamic-focus', dynamic);
     });
@@ -7993,7 +8254,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     // 瀑布流引擎接管：masonry → 注册全部容器并按「最短列」横向重排（替换 CSS columns 的竖向顺序）；
     // 其它布局 → 卸载引擎并还原 inline 定位痕迹
     if (on) {
-      document.querySelectorAll('.movie-list.emby-masonry').forEach(function (l) { WaterfallEngine.register(l); });
+      document.querySelectorAll('.movie-list.emby-masonry').forEach(function (l) {
+        if (!isRecommendList(l)) WaterfallEngine.register(l);
+      });
       WaterfallEngine.refresh();
     } else {
       WaterfallEngine.unregisterAll();
@@ -8017,13 +8280,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       html.classList.toggle('emby-masonry-large', on);
       html.classList.toggle('emby-dynamic-focus', dynamic);
       document.querySelectorAll('.movie-list').forEach(function (l) {
+        if (isRecommendList(l)) {
+          l.classList.remove('emby-masonry', 'emby-dynamic-focus');
+          return;
+        }
         l.classList.toggle('emby-masonry', on);
         l.classList.toggle('emby-dynamic-focus', dynamic);
       });
-      // 瀑布流新节点补注册（幂等；面板内由 FAVUI 自管）
+      // 瀑布流新节点补注册（幂等；面板与推荐横栏内排除）
       if (on) {
         document.querySelectorAll('.movie-list.emby-masonry').forEach(function (l) {
-          if (!l.closest('#emby-favorites-panel')) { try { WaterfallEngine.register(l); } catch (e) {} }
+          if (!isPanelInternalList(l) && !isRecommendList(l)) { try { WaterfallEngine.register(l); } catch (e) {} }
         });
       } else {
         // 非瀑布流：清掉瀑布流引擎残留的 inline 定位（list height / item width+transform）。
@@ -8047,7 +8314,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const TARGETS = [
       '#emby-topbar',
       '#emby-compact-bar',
+      '#emby-rec-bar',
       '.emby-home-tabs .emby-home-tab',
+      '.lucky-shuffle-btn',
+      'a.button[data-controller="lucky-shuffle"]',
       '#emby-backtop',
       '#javdb-emby-toggle',
       '#emby-drawer',
@@ -9071,7 +9341,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     function findMainMovieList() {
       return Array.prototype.find.call(
         document.querySelectorAll('.movie-list'),
-        function (l) { return !l.closest('#emby-favorites-panel') && !l.closest('#emby-top250-panel'); }
+        function (l) { return !isPanelInternalList(l) && !isRecommendList(l); }
       ) || null;
     }
 
@@ -9092,7 +9362,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (reqEpoch !== scrollEpoch || (location.pathname + location.search) !== reqUrl || isDetailPage() || !document.body.contains(listEl)) return;
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        const newItems = doc.querySelectorAll('.movie-list > .item');
+        const fetchedMain = Array.prototype.find.call(
+          doc.querySelectorAll('.movie-list'),
+          function (l) { return !isRecommendList(l); }
+        );
+        const newItems = fetchedMain ? fetchedMain.querySelectorAll('.item') : [];
 
         if (!newItems || !newItems.length) {
           hasMore = false;
@@ -9174,6 +9448,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
       nextUrl = getNextUrlFromDoc(document);
       hasMore = !!nextUrl;
+
+      // /lucky「手氣不錯」等采用「換一批」无分页交互的页面，不注入底部「已经到底了」提示
+      if (isLuckyPage() || document.querySelector('a[data-controller="lucky-shuffle"]')) {
+        const staleLoader = document.getElementById('jhs-infinite-loader');
+        if (staleLoader) staleLoader.remove();
+        hasMore = false;
+        return;
+      }
 
       const loader = createLoader();
       if (listEl.parentNode && loader.parentNode !== listEl.parentNode) {
@@ -11437,6 +11719,211 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       getFilter: getFilter,
       setFilter: setFilter,
       resetFilter: resetFilter
+    };
+  })();
+
+  /* =======================================================================
+   * 手氣不錯全屏发现视图管理器 (LuckyViewManager - v7.6.0)
+   * 适配 JAVDB 新增 /lucky 路由：支持主页标签栏内嵌全屏卡片墙 + 原位 AJAX「換一批」，
+   * 复用站内卡片结构、3D 倾斜高光、状态快捷标记及三种布局模式。
+   * ===================================================================== */
+  const LuckyViewManager = (function () {
+    let cachedCovers = [];
+    let isLoading = false;
+    let fetchSeq = 0;
+    let currentPanel = null;
+
+    function applyLuckyRandomBg(panel) {
+      const targetPanel = panel || currentPanel;
+      if (!targetPanel) return;
+      const on = localStorage.getItem(SET_KEYS.randomBg);
+      let bgEl = targetPanel.querySelector('.efav-bg');
+      if (!bgEl) {
+        bgEl = document.createElement('div');
+        bgEl.className = 'efav-bg';
+        targetPanel.insertBefore(bgEl, targetPanel.firstChild);
+      }
+      if (on === '0') {
+        bgEl.style.backgroundImage = 'none';
+        return;
+      }
+      if (cachedCovers.length) {
+        const src = cachedCovers[Math.floor(Math.random() * cachedCovers.length)];
+        if (src) bgEl.style.backgroundImage = 'url("' + String(src).replace(/"/g, '\\"') + '")';
+      }
+    }
+
+    function setLoadingUi(loading) {
+      if (!currentPanel) return;
+      const btn = currentPanel.querySelector('#lucky-shuffle-btn');
+      if (btn) {
+        btn.classList.toggle('loading', !!loading);
+        btn.disabled = !!loading;
+      }
+    }
+
+    function renderStatusBox(msg, isError) {
+      if (!currentPanel) return;
+      const listEl = currentPanel.querySelector('#lucky-movie-list');
+      if (!listEl) return;
+      listEl.innerHTML =
+        '<div class="lucky-status-box">' +
+          '<span class="material-symbols-outlined" style="font-size:36px;opacity:.45;display:block;margin-bottom:8px;">' + (isError ? 'wifi_off' : 'casino') + '</span>' +
+          '<div>' + escapeHtml(msg || '正在抽取隨機影片…') + '</div>' +
+          (isError ? '<div style="margin-top:14px;"><button type="button" id="lucky-retry-btn" class="lucky-shuffle-btn"><span class="material-symbols-outlined" style="font-size:16px;">refresh</span> 重試一次</button></div>' : '') +
+        '</div>';
+      const retryBtn = listEl.querySelector('#lucky-retry-btn');
+      if (retryBtn) retryBtn.addEventListener('click', function () { loadData(true); });
+    }
+
+    async function loadData(forceShuffle) {
+      if (!currentPanel) return;
+      if (isLoading && !forceShuffle) return;
+      const seq = ++fetchSeq;
+      isLoading = true;
+      setLoadingUi(true);
+      const listEl = currentPanel.querySelector('#lucky-movie-list');
+      const countEl = currentPanel.querySelector('#lucky-count-badge');
+      if (listEl && !listEl.querySelector('.item')) {
+        renderStatusBox('正在為您隨機挑選驚喜影片…', false);
+      }
+
+      try {
+        const url = location.origin + '/lucky?_t=' + Date.now();
+        const html = await gmHttp.get(url);
+        if (seq !== fetchSeq || !currentPanel || !currentPanel.isConnected) return;
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const remoteList = Array.prototype.find.call(
+          doc.querySelectorAll('.movie-list'),
+          function (l) { return !isRecommendList(l); }
+        );
+        const items = remoteList ? Array.from(remoteList.querySelectorAll('.item')) : [];
+        if (!items.length) {
+          renderStatusBox('未能從 /lucky 獲取影片數據，請確認網絡或登錄狀態後重試', true);
+          return;
+        }
+
+        if (listEl) {
+          listEl.innerHTML = '';
+          const frag = document.createDocumentFragment();
+          const covers = [];
+          items.forEach(function (srcItem, idx) {
+            const imported = document.importNode(srcItem, true);
+            delete imported.dataset.gridDone;
+            const img = imported.querySelector('.cover img');
+            if (img) {
+              const rawSrc = img.getAttribute('src') || '';
+              if (rawSrc && typeof Top250ViewManager !== 'undefined' && typeof Top250ViewManager.updateImgServer === 'function') {
+                const updated = Top250ViewManager.updateImgServer(rawSrc);
+                if (updated) img.setAttribute('src', updated);
+              }
+              const finalSrc = img.getAttribute('src') || rawSrc;
+              if (finalSrc) covers.push(finalSrc);
+              img.setAttribute('referrerpolicy', 'no-referrer');
+              img.referrerPolicy = 'no-referrer';
+            }
+            frag.appendChild(imported);
+          });
+          listEl.appendChild(frag);
+          cachedCovers = covers;
+
+          const layout = localStorage.getItem(SET_KEYS.layout) || 'grid';
+          listEl.classList.toggle('emby-masonry', layout === 'masonry');
+          listEl.classList.toggle('emby-dynamic-focus', layout === 'dynamic-focus');
+
+          listEl.querySelectorAll('.item').forEach(function (item, idx) {
+            if (typeof enhanceCardItem === 'function') {
+              enhanceCardItem(item, idx);
+            } else {
+              const box = item.querySelector('.box');
+              if (box && typeof attachCard3D === 'function') attachCard3D(box);
+            }
+          });
+
+          if (layout === 'masonry') {
+            try { WaterfallEngine.register(listEl); WaterfallEngine.refresh(); } catch (e) {}
+          } else if (layout === 'dynamic-focus') {
+            try { ensureDynamicFocusGrid(listEl); } catch (e) {}
+          }
+          if (countEl) countEl.textContent = '已載入 ' + items.length + ' 部';
+          applyLuckyRandomBg(currentPanel);
+        }
+      } catch (err) {
+        if (seq !== fetchSeq) return;
+        log('手氣不錯拉取失敗: ' + (err && err.message ? err.message : err));
+        renderStatusBox('抽取失敗：' + ((err && err.message) || '請稍後重試'), true);
+      } finally {
+        if (seq === fetchSeq) {
+          isLoading = false;
+          setLoadingUi(false);
+        }
+      }
+    }
+
+    function bindEvents(panel) {
+      const btn = panel.querySelector('#lucky-shuffle-btn');
+      if (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          loadData(true);
+        });
+        if (typeof LiquidGlass !== 'undefined' && document.documentElement.classList.contains('emby-style-liquid')) {
+          try { LiquidGlass.ensureApplied(btn); } catch (e) {}
+        }
+      }
+      if (window.__embyLuckyBgHandler) {
+        try { window.removeEventListener('efav-randombg-change', window.__embyLuckyBgHandler); } catch (e) {}
+      }
+      window.__embyLuckyBgHandler = function () { applyLuckyRandomBg(panel); };
+      window.addEventListener('efav-randombg-change', window.__embyLuckyBgHandler);
+    }
+
+    function mount(panel) {
+      if (!panel) return;
+      currentPanel = panel;
+      panel.innerHTML =
+        '<div class="efav-bg"></div>' +
+        '<div class="lucky-wrap">' +
+          '<div class="lucky-header">' +
+            '<div class="lucky-title-group">' +
+              '<span class="material-symbols-outlined lucky-title-icon">casino</span>' +
+              '<div>' +
+                '<div class="lucky-title">手氣不錯 · 隨機靈感發現</div>' +
+                '<div class="lucky-sub">直接拉取 JAVDB 官方 /lucky 隨機推薦池，原位點擊「換一批」無需整頁重載</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="lucky-actions">' +
+              '<span id="lucky-count-badge" class="lucky-count-badge">準備就緒</span>' +
+              '<a href="/lucky" class="lucky-external-link" title="在原生頁面打開 /lucky">' +
+                '<span class="material-symbols-outlined" style="font-size:15px;">open_in_new</span> 原頁打開' +
+              '</a>' +
+              '<button type="button" id="lucky-shuffle-btn" class="lucky-shuffle-btn">' +
+                '<span class="material-symbols-outlined" style="font-size:17px;">shuffle</span> 換一批' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="lucky-movie-list" class="movie-list h cols-4 vcols-8"></div>' +
+        '</div>';
+      bindEvents(panel);
+      applyLuckyRandomBg(panel);
+      loadData(false);
+    }
+
+    function enhanceNativePage() {
+      if (!isLuckyPage()) return;
+      const btn = document.querySelector('a[data-controller="lucky-shuffle"]');
+      if (btn && typeof LiquidGlass !== 'undefined' && document.documentElement.classList.contains('emby-style-liquid')) {
+        try { LiquidGlass.ensureApplied(btn); } catch (e) {}
+      }
+    }
+
+    return {
+      mount: mount,
+      loadData: loadData,
+      applyLuckyRandomBg: applyLuckyRandomBg,
+      enhanceNativePage: enhanceNativePage
     };
   })();
 
@@ -14108,6 +14595,20 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
   let qsHideTimer = null;
 
+  function onHomeRecModeChange(mode) {
+    const valid = (mode === 'rail' || mode === 'pill' || mode === 'hide') ? mode : 'rail';
+    localStorage.setItem(SET_KEYS.homeRecMode, valid);
+    if (valid === 'pill') localStorage.setItem(SET_KEYS.homeRecCollapsed, '1');
+    else if (valid === 'rail') localStorage.setItem(SET_KEYS.homeRecCollapsed, '0');
+    if (typeof applyHomeRecMode === 'function') applyHomeRecMode();
+    syncSettingsControls();
+  }
+  function onLuckyTabChange(checked) {
+    localStorage.setItem(SET_KEYS.luckyTab, checked ? '1' : '0');
+    if (typeof refreshHomeTabsAndTopNav === 'function') refreshHomeTabsAndTopNav();
+    syncSettingsControls();
+  }
+
   function buildQuickSettingsPopover() {
     if (document.getElementById('emby-quick-settings-popover')) return;
 
@@ -14185,6 +14686,20 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
                 '<option value="off">关闭展示</option>' +
               '</select>' +
             '</div>' +
+          '</div>' +
+          '<div class="jhs-qs-row">' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">首页推荐区<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">适配 JAVDB 首页「每週推薦」：单行精选横栏 / 默认收起胶囊提醒 / 彻底隐藏</span></span></div>' +
+            '<div class="jhs-qs-control">' +
+              '<select id="qs-home-rec-mode" class="jhs-qs-select">' +
+                '<option value="rail">单行精选横栏</option>' +
+                '<option value="pill">默认收起胶囊</option>' +
+                '<option value="hide">彻底隐藏</option>' +
+              '</select>' +
+            '</div>' +
+          '</div>' +
+          '<div class="jhs-qs-row">' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">「手氣不錯」标签<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在首页导航栏与顶栏显示随机发现全屏入口；关闭后仍可在侧边抽屉打开 /lucky</span></span></div>' +
+            '<div class="jhs-qs-control"><input type="checkbox" id="qs-lucky-tab" class="mini-switch"></div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
             '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">收藏夹随机背景<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在我的收藏夹界面，随机抽取已收藏作品封面作为全屏沉浸式背景海报</span></span></div>' +
@@ -14286,6 +14801,20 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         localStorage.setItem(SET_KEYS.trophyStyle, ts);
         applySettings();
         syncSettingsControls();
+      });
+    }
+
+    const qHomeRecMode = pop.querySelector('#qs-home-rec-mode');
+    if (qHomeRecMode) {
+      qHomeRecMode.addEventListener('change', function () {
+        onHomeRecModeChange(qHomeRecMode.value);
+      });
+    }
+
+    const qLuckyTab = pop.querySelector('#qs-lucky-tab');
+    if (qLuckyTab) {
+      qLuckyTab.addEventListener('change', function () {
+        onLuckyTabChange(qLuckyTab.checked);
       });
     }
 
@@ -14418,6 +14947,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<div class="jhs-item-row">' +
               '<div class="jhs-item-info"><div class="jhs-item-name">金标荣誉展示</div><div class="jhs-item-desc">TOP250等上榜认证荣誉样式</div></div>' +
               '<div style="width:160px;"><select id="full-trophy-style" class="jhs-input-text"><option value="card">金标荣誉卡</option><option value="bar">简约金标条</option><option value="hud">HUD徽章</option><option value="off">关闭展示</option></select></div>' +
+            '</div>' +
+            '<div class="jhs-item-row">' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">首页「每週推薦」展示</div><div class="jhs-item-desc">适配官方首页推荐区块：单行横栏、默认收起胶囊或彻底隐藏</div></div>' +
+              '<div style="width:160px;"><select id="full-home-rec-mode" class="jhs-input-text"><option value="rail">单行精选横栏</option><option value="pill">默认收起胶囊</option><option value="hide">彻底隐藏</option></select></div>' +
+            '</div>' +
+            '<div class="jhs-item-row">' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">主页显示「手氣不錯」标签</div><div class="jhs-item-desc">在首页标签栏与顶栏快捷区提供内嵌随机推荐面板；关闭后仍可由侧边抽屉打开 /lucky</div></div>' +
+              '<div><input type="checkbox" id="full-lucky-tab" class="mini-switch"></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
               '<div class="jhs-item-info"><div class="jhs-item-name">背景模糊强度 (<span id="full-blur-val">4px</span>)</div><div class="jhs-item-desc">背景大图毛玻璃模糊半径</div></div>' +
@@ -14837,6 +15374,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         localStorage.setItem(SET_KEYS.trophyStyle, fTrophyStyle.value);
         applySettings();
         syncSettingsControls();
+      });
+    }
+    const fHomeRecMode = mask.querySelector('#full-home-rec-mode');
+    if (fHomeRecMode) {
+      fHomeRecMode.addEventListener('change', function () {
+        onHomeRecModeChange(fHomeRecMode.value);
+      });
+    }
+    const fLuckyTab = mask.querySelector('#full-lucky-tab');
+    if (fLuckyTab) {
+      fLuckyTab.addEventListener('change', function () {
+        onLuckyTabChange(fLuckyTab.checked);
       });
     }
     const fBlur = mask.querySelector('#full-blur'), fBlurV = mask.querySelector('#full-blur-val');
@@ -16028,11 +16577,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     localStorage.removeItem(SET_KEYS.dfVideoDelay);
     localStorage.removeItem(SET_KEYS.showNotes);
     localStorage.removeItem(SET_KEYS.expandCoact);
+    localStorage.removeItem(SET_KEYS.homeRecMode);
+    localStorage.removeItem(SET_KEYS.homeRecCollapsed);
+    localStorage.removeItem(SET_KEYS.luckyTab);
+    localStorage.removeItem(REC_SEEN_COOKIE_KEY);
     PLUGIN_REGISTRY.forEach(function (pl) {
       localStorage.removeItem('javdb_plugin_' + pl.id);
     });
     applySettings();
     applyStyleTheme('emby');
+    try { if (typeof refreshHomeTabsAndTopNav === 'function') refreshHomeTabsAndTopNav(); } catch (e) {}
+    try { if (typeof applyHomeRecMode === 'function') applyHomeRecMode(); } catch (e) {}
     try { syncDetailTranslation(); } catch (e) {}
     try { rebuildDetailPlayButton(); } catch (e) {}
     syncSettingsControls();
@@ -16063,6 +16618,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     const layout = localStorage.getItem(SET_KEYS.layout) || 'grid';
     const coverMode = localStorage.getItem(SET_KEYS.coverMode) || 'fusion';
     const trophyStyle = localStorage.getItem(SET_KEYS.trophyStyle) || 'card';
+    const homeRecMode = getHomeRecMode();
+    const luckyTabOn = isLuckyTabEnabled();
 
     if (pop) {
       const ql = pop.querySelector('#qs-layout');
@@ -16071,6 +16628,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (qcm) qcm.value = coverMode;
       const qts = pop.querySelector('#qs-trophy-style');
       if (qts) qts.value = trophyStyle;
+      const qhrm = pop.querySelector('#qs-home-rec-mode');
+      if (qhrm) qhrm.value = homeRecMode;
+      const qlt = pop.querySelector('#qs-lucky-tab');
+      if (qlt) qlt.checked = luckyTabOn;
       const qR = pop.querySelector('#qs-random-bg');
       if (qR) qR.checked = localStorage.getItem(SET_KEYS.randomBg) !== '0';
       const qN = pop.querySelector('#qs-show-notes');
@@ -16110,6 +16671,10 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (fcm) fcm.value = coverMode;
       const fts = mask.querySelector('#full-trophy-style');
       if (fts) fts.value = trophyStyle;
+      const fhrm = mask.querySelector('#full-home-rec-mode');
+      if (fhrm) fhrm.value = homeRecMode;
+      const flt = mask.querySelector('#full-lucky-tab');
+      if (flt) flt.checked = luckyTabOn;
 
       const rawLa = localStorage.getItem(SET_KEYS.liquidAmp);
       let laPct = 50;
@@ -20443,7 +21008,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (typeof config.git.branch === 'string') localStorage.setItem('javdb_git_branch', config.git.branch);
           if (typeof config.git.token === 'string') localStorage.setItem('javdb_git_token', config.git.token);
         }
-        try { applySettings(); } catch (e) {}
+        try {
+          applySettings();
+          if (typeof applyHomeRecMode === 'function') applyHomeRecMode();
+          if (typeof refreshHomeTabsAndTopNav === 'function') refreshHomeTabsAndTopNav();
+        } catch (e) {}
       } catch (e) {
         log('恢复配置异常: ' + e.message);
       }
@@ -24977,45 +25546,31 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       document.querySelectorAll('.cover-status-buttons, .cover-modal-base, .jdbe-modal-v2, #jdbe-preview-modal').forEach(function (el) { el.remove(); });
       return;
     }
-    document.querySelectorAll('.movie-list .item, #emby-favorites-panel .item, #emby-top250-panel .item').forEach(function (item) {
+    document.querySelectorAll('.movie-list .item, #emby-favorites-panel .item, #emby-lucky-panel .item, #emby-top250-panel .item').forEach(function (item) {
       attachCoverStatusAndPreview(item);
     });
   }
 
   /* =======================================================================
-   * 首页视图标签栏（首页 / 收藏夹）
-   * pill 样式切换按钮，置于 .movie-list 上方。
-   * 「首页」显示正常影片列表；「收藏夹」显示空白占位面板（后续增强）。
-   * 活跃标签持久化到 localStorage，刷新后保持选择。
+   * 首页视图标签栏（首页 / 手氣不錯 / 收藏夹 / 预览画廊 / TOP250）
    * ===================================================================== */
   let homeTabsBuilt = false;   // 模块级防重：即使 SPA 重渲染替换了 .movie-list 节点也不重建第二条标签栏
   let homeTabsBar = null;
-  // 画廊面板内部滚动：① 驱动回顶按钮；② 下滑隐藏「首页/收藏夹/预览画廊」切换栏，上滑复现（与收藏夹一致）。
-  // buildHomeTabs 与 ensureFavSurface 两处建面板入口共用，dataset 防重复绑定。
-  function bindGalleryPanelScroll(gp) {
-    if (!gp || gp.dataset.gScrollBound) return;
-    gp.dataset.gScrollBound = '1';
-    let lastGScrollTop = 0;
-    gp.addEventListener('scroll', function () {
-      const st = gp.scrollTop || 0;
-      if (st > lastGScrollTop && st > 60) document.documentElement.classList.add('efav-tabs-hide');
-      else if (st < lastGScrollTop) document.documentElement.classList.remove('efav-tabs-hide');
-      lastGScrollTop = st;
+  function bindPanelScroll(panelEl, boundKey) {
+    if (!panelEl || panelEl.dataset[boundKey]) return;
+    panelEl.dataset[boundKey] = '1';
+    let lastScrollTop = 0;
+    panelEl.addEventListener('scroll', function () {
+      const st = panelEl.scrollTop || 0;
+      if (st > lastScrollTop && st > 60) document.documentElement.classList.add('efav-tabs-hide');
+      else if (st < lastScrollTop) document.documentElement.classList.remove('efav-tabs-hide');
+      lastScrollTop = st;
       if (window.__embyUpdateBackTop) window.__embyUpdateBackTop(st);
     }, { passive: true });
   }
-  function bindTop250PanelScroll(tp) {
-    if (!tp || tp.dataset.topScrollBound) return;
-    tp.dataset.topScrollBound = '1';
-    let lastTopScrollTop = 0;
-    tp.addEventListener('scroll', function () {
-      const st = tp.scrollTop || 0;
-      if (st > lastTopScrollTop && st > 60) document.documentElement.classList.add('efav-tabs-hide');
-      else if (st < lastTopScrollTop) document.documentElement.classList.remove('efav-tabs-hide');
-      lastTopScrollTop = st;
-      if (window.__embyUpdateBackTop) window.__embyUpdateBackTop(st);
-    }, { passive: true });
-  }
+  function bindGalleryPanelScroll(gp) { bindPanelScroll(gp, 'gScrollBound'); }
+  function bindTop250PanelScroll(tp) { bindPanelScroll(tp, 'topScrollBound'); }
+  function bindLuckyPanelScroll(lp) { bindPanelScroll(lp, 'luckyScrollBound'); }
 
   // 安全锚点解析：确保传入 insertBefore 的 ref 节点必然为 parent 的直接子节点，
   // 杜绝因 JAVDB 结构嵌套（如 .main-tabs-wrap 嵌套 .tabs）导致「The child can not be found in the parent」DOMException 崩溃
@@ -25030,7 +25585,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
   function findTopAnchor(parent, movieListEl) {
     if (!parent) return movieListEl;
-    const candidate = parent.querySelector('.main-tabs-wrap, .tabs, .main-tabs, .toolbar');
+    const candidate = parent.querySelector('h1[data-controller="recommend"], #emby-rec-bar, #recommend-container, .main-tabs-wrap, .tabs, .main-tabs, .toolbar');
     const directCandidate = resolveDirectChildAnchor(parent, candidate);
     return directCandidate || parent.firstElementChild || movieListEl;
   }
@@ -25051,7 +25606,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   function buildHomeTabs(movieListEl) {
     if (!movieListEl) return;
     const parent = movieListEl.parentNode;
-    // 找到容器最顶部锚点（原生分类栏/工具栏或容器首个元素），导航按钮必须置于其上方
+    // 找到容器最顶部锚点（含每週推薦条、原生分类栏/工具栏或容器首个元素），导航按钮必须置于其上方
     const topAnchor = findTopAnchor(parent, movieListEl);
 
     // DOM 级幂等与多重去重巡检（防御 Turbolinks 页面快照恢复、双实例并发注入或游离节点残留）
@@ -25067,7 +25622,6 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     }
 
     if (homeTabsBuilt && homeTabsBar && homeTabsBar.isConnected) {
-      // 已建过且在文档中：确保标签栏移到当前主页最顶部（置于原生分类条之上）
       if (parent && homeTabsBar !== topAnchor && homeTabsBar.nextElementSibling !== topAnchor) {
         safeInsertBefore(parent, homeTabsBar, topAnchor, movieListEl);
       }
@@ -25080,44 +25634,33 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     tabsBar.id = 'emby-home-tabs';
     tabsBar.className = 'emby-home-tabs';
 
-    // 视图 Tab 动态生成（与 LOGO 悬停导航共用 HOME_TAB_DEFS，新增 tab 两处自动同步）
-    HOME_TAB_DEFS.forEach(function (def) {
-      const t = document.createElement('a');
-      t.className = 'emby-home-tab';
-      t.href = '#' + def.key;
-      t.dataset.tab = def.key;
-      t.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
-      t.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        switchTab(def.key);
-      });
-      tabsBar.appendChild(t);
-      if (def.key === 'home') tabHome = t;
-      else if (def.key === 'favorites') tabFav = t;
-      else if (def.key === 'gallery') tabGallery = t;
-      else if (def.key === 'top250') tabTop250 = t;
-    });
+    // 视图 Tab 动态生成（与 LOGO 悬停导航共用 getHomeTabDefs()，支持手氣不錯开关动态同步）
+    populateTabContainer(tabsBar, { assignRefs: true });
     homeTabsBar = tabsBar;
 
+    // 手氣不錯发现面板
+    luckyPanel = document.getElementById('emby-lucky-panel') || document.createElement('div');
+    luckyPanel.id = 'emby-lucky-panel';
+    bindLuckyPanelScroll(luckyPanel);
+
     // 收藏夹面板（v5.00：由 FAVUI 挂载真实功能界面）
-    favPanel = document.createElement('div');
+    favPanel = document.getElementById('emby-favorites-panel') || document.createElement('div');
     favPanel.id = 'emby-favorites-panel';
 
     // 预览画廊面板
-    galleryPanel = document.createElement('div');
+    galleryPanel = document.getElementById('emby-gallery-panel') || document.createElement('div');
     galleryPanel.id = 'emby-gallery-panel';
-    // 画廊面板内部滚动也驱动回顶按钮（画廊是面板内滚动，不触发 window scroll）；监听绑定见 bindGalleryPanelScroll
     bindGalleryPanelScroll(galleryPanel);
 
     // TOP250 面板
-    top250Panel = document.createElement('div');
+    top250Panel = document.getElementById('emby-top250-panel') || document.createElement('div');
     top250Panel.id = 'emby-top250-panel';
     bindTop250PanelScroll(top250Panel);
 
-    // 四个导航按钮插入到页面最顶部（置于原生分类栏与工具条之上），子面板挂载在父容器中
+    // 导航按钮插入到页面最顶部（置于每週推薦与原生分类栏之上），子面板挂载在父容器中
     if (parent) {
       safeInsertBefore(parent, tabsBar, topAnchor, movieListEl);
+      safeInsertBefore(parent, luckyPanel, movieListEl);
       safeInsertBefore(parent, favPanel, movieListEl);
       safeInsertBefore(parent, galleryPanel, movieListEl);
       safeInsertBefore(parent, top250Panel, movieListEl);
@@ -25131,74 +25674,262 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       switchTab('favorites');
     } else if (hash === 'gallery') {
       switchTab('gallery');
+    } else if (hash === 'lucky' && isLuckyTabEnabled()) {
+      switchTab('lucky');
     } else {
       switchTab('home');
     }
   }
 
   /* =======================================================================
-   * 网格重构 —— 基于 .movie-list > .item > .box 真实结构
-   * 为每张卡片注入 STEAM 风格卡牌高光层 (.emby-card-shine) 并绑定 3D 倾斜，
-   * 不再注入 Emby 文字/播放浮层。
+   * 主页「每週推薦」改造与状态持久化 (v7.6.0 方案 D)
+   * - 将原生 h1[data-controller="recommend"] + #recommend-container 与主新片信息流解耦
+   * - 支持三种模式：rail(单行精选横栏) / pill(默认收起胶囊) / hide(彻底隐藏)
+   * - 折叠态持久化至 SET_KEYS.homeRecCollapsed，跨周刊 cookie-key 更新仍记住用户选择
    * ===================================================================== */
-   function restructureGrid() {
-     if (!enabled) return;
-     // 布局类自愈 + 引擎残留清理（必须先于 movieLists 过滤执行——
-     // 收藏夹面板内的懒加载 mutation 也会走到这里，若面板内是唯一 .movie-list，
-     // 过滤后 movieLists 为空会提前 return，残留就清不到了）
-     ensureLayoutClasses();
-     // 排除收藏夹与TOP250面板内部生成的 .movie-list（面板自管卡片）
-     const movieLists = Array.prototype.filter.call(
-       document.querySelectorAll('.movie-list'),
-       function (l) { return !l.closest('#emby-favorites-panel') && !l.closest('#emby-top250-panel'); }
-     );
-     if (!movieLists.length) return;
-
-     // 主页：隐藏「最新網址」公告栏（裁切仅发生在瀑布流大视图，见 emby-masonry-large）
-     hideJavdbAnnouncement();
-     try { hideJavdbAds(); } catch (e) {}
-
-     // ====== 首页视图标签栏（首页 / 收藏夹）—— 仅真正主页、仅首次 ======
-     // 演员页/系列页/搜索页等也有 .movie-list，绝不能在这些页面构建标签栏，
-     // 否则 localStorage 记住的「收藏夹」态会全屏覆盖这些页面。
-     if (location.pathname === '/' || /^\/(\?|$)/.test(location.pathname + location.search)) {
-       try {
-         buildHomeTabs(movieLists[0]);
-       } catch (e) {
-         log('buildHomeTabs 异常: ' + e.message);
-       }
-     }
-
-     let count = 0;
-     // 只处理未标记过的卡片（:not([data-grid-done])）：懒加载/增量渲染时跳过已加互动层的老卡，
-     // 避免每次 mutation 都对全量卡片重扫（SPA 懒加载下 restructureGrid 可被 500ms 防抖反复触发）
-     const items = movieLists[0].querySelectorAll('.item:not([data-grid-done])');
-    items.forEach(function (item) {
-      item.dataset.gridDone = '1';
-      const box = item.querySelector('.box');
-      if (!box) return;
-      // 注入 Steam 高光层
-      if (!box.querySelector('.emby-card-shine')) {
-        const shine = document.createElement('span');
-        shine.className = 'emby-card-shine';
-        box.appendChild(shine);
+  function extractRecommendMeta(recH1, recCont) {
+    let rawTitle = '每週推薦';
+    let subText = '週一/四更新';
+    let metaText = '';
+    let cookieKey = '';
+    if (recH1) {
+      cookieKey = recH1.getAttribute('data-cookie-key') || recH1.dataset.cookieKey || '';
+      const metaEl = recH1.querySelector('.meta');
+      if (metaEl) metaText = (metaEl.textContent || '').trim();
+      let headTxt = '';
+      for (let i = 0; i < recH1.childNodes.length; i++) {
+        if (recH1.childNodes[i].nodeType === 3) headTxt += recH1.childNodes[i].textContent || '';
       }
-      // 瀑布流：为每张卡赋予「错落比例」(--mz-ar)，使高度参差（高低错落）。
-      // 用封面 URL 哈希做确定性取值 → 刷新/重排不抖动；范围约 0.6~1.12（竖图偏多）。
-      const cvImg = box.querySelector('.cover img');
-      if (cvImg) {
-        if (cvImg.getAttribute('referrerpolicy') !== 'no-referrer') {
-          cvImg.setAttribute('referrerpolicy', 'no-referrer');
-          cvImg.referrerPolicy = 'no-referrer';
+      headTxt = headTxt.trim();
+      const m = headTxt.match(/^([^\(（]+)[\(（]([^\)）]+)[\)）]/);
+      if (m) {
+        rawTitle = m[1].trim() || rawTitle;
+        subText = m[2].trim() || subText;
+      } else if (headTxt) {
+        rawTitle = headTxt;
+      }
+    }
+    const itemCount = recCont ? recCont.querySelectorAll('.item').length : 0;
+    return { title: rawTitle, sub: subText, meta: metaText, cookieKey: cookieKey, count: itemCount };
+  }
+
+  function applyHomeRecMode() {
+    if (!enabled) return;
+    const recH1 = document.querySelector('h1[data-controller="recommend"]');
+    const recCont = document.getElementById('recommend-container');
+    if (!recH1 && !recCont) {
+      const staleBar = document.getElementById('emby-rec-bar');
+      if (staleBar) staleBar.remove();
+      return;
+    }
+    if (recCont && typeof recCont.dataset.embyOrigDisplay === 'undefined') {
+      recCont.dataset.embyOrigDisplay = recCont.style.display || '';
+    }
+    const mode = getHomeRecMode();
+    const info = extractRecommendMeta(recH1, recCont);
+    const storedCol = localStorage.getItem(SET_KEYS.homeRecCollapsed);
+    let collapsed = false;
+    if (storedCol === '1') collapsed = true;
+    else if (storedCol === '0') collapsed = false;
+    else collapsed = (mode === 'pill') || !!(recCont && recCont.dataset.embyOrigDisplay === 'none');
+
+    if (recH1) recH1.classList.add('emby-rec-native-hidden');
+
+    let bar = document.getElementById('emby-rec-bar');
+    if (!bar && recCont && recCont.parentNode) {
+      bar = document.createElement('div');
+      bar.id = 'emby-rec-bar';
+      bar.className = 'emby-rec-bar';
+      bar.innerHTML =
+        '<div class="emby-rec-left">' +
+          '<span class="material-symbols-outlined emby-rec-icon">auto_awesome</span>' +
+          '<span class="emby-rec-title"></span>' +
+          '<span class="emby-rec-sub"></span>' +
+          '<span class="emby-rec-count"></span>' +
+          '<span class="emby-rec-meta"></span>' +
+          '<span class="emby-rec-new-badge">NEW · 本期上新</span>' +
+        '</div>' +
+        '<div class="emby-rec-actions">' +
+          '<button type="button" class="emby-rec-arrow-btn" data-dir="-1" title="向左滾動" aria-label="向左滾動">' +
+            '<span class="material-symbols-outlined" style="font-size:18px;">chevron_left</span>' +
+          '</button>' +
+          '<button type="button" class="emby-rec-arrow-btn" data-dir="1" title="向右滾動" aria-label="向右滾動">' +
+            '<span class="material-symbols-outlined" style="font-size:18px;">chevron_right</span>' +
+          '</button>' +
+          '<button type="button" class="emby-rec-toggle-btn">' +
+            '<span class="material-symbols-outlined emby-rec-toggle-icon" style="font-size:16px;">unfold_less</span>' +
+            '<span class="emby-rec-toggle-txt">收起橫欄</span>' +
+          '</button>' +
+        '</div>';
+      safeInsertBefore(recCont.parentNode, bar, recCont);
+
+      bar.querySelectorAll('.emby-rec-arrow-btn').forEach(function (ab) {
+        ab.addEventListener('click', function () {
+          const c = document.getElementById('recommend-container');
+          if (!c) return;
+          const dir = parseInt(ab.dataset.dir, 10) || 1;
+          const step = Math.max(320, Math.round((c.clientWidth || 720) * 0.72));
+          if (typeof c.scrollBy === 'function') c.scrollBy({ left: dir * step, behavior: 'smooth' });
+          else c.scrollLeft += dir * step;
+        });
+      });
+
+      const toggleBtn = bar.querySelector('.emby-rec-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+          const curStored = localStorage.getItem(SET_KEYS.homeRecCollapsed);
+          const curMode = getHomeRecMode();
+          const rc = document.getElementById('recommend-container');
+          const curCollapsed = (curStored === '1')
+            ? true
+            : ((curStored === '0') ? false : (curMode === 'pill' || !!(rc && rc.classList.contains('emby-rec-collapsed'))));
+          const nextCollapsed = !curCollapsed;
+          localStorage.setItem(SET_KEYS.homeRecCollapsed, nextCollapsed ? '1' : '0');
+          if (!nextCollapsed && info.cookieKey) {
+            try { localStorage.setItem(REC_SEEN_COOKIE_KEY, info.cookieKey); } catch (e) {}
+          }
+          applyHomeRecMode();
+        });
+      }
+    }
+
+    if (bar) {
+      const titleEl = bar.querySelector('.emby-rec-title');
+      const subEl = bar.querySelector('.emby-rec-sub');
+      const countEl = bar.querySelector('.emby-rec-count');
+      const metaEl = bar.querySelector('.emby-rec-meta');
+      const badgeEl = bar.querySelector('.emby-rec-new-badge');
+      const toggleTxt = bar.querySelector('.emby-rec-toggle-txt');
+      const toggleIcon = bar.querySelector('.emby-rec-toggle-icon');
+
+      if (titleEl) titleEl.textContent = info.title;
+      if (subEl) subEl.textContent = info.sub;
+      if (countEl) countEl.textContent = info.count + ' 部';
+      if (metaEl) metaEl.textContent = info.meta;
+
+      let seenCookie = '';
+      try { seenCookie = localStorage.getItem(REC_SEEN_COOKIE_KEY) || ''; } catch (e) {}
+      const showNew = !!(collapsed && info.cookieKey && seenCookie !== info.cookieKey);
+      if (badgeEl) badgeEl.classList.toggle('show', showNew);
+      if (!collapsed && info.cookieKey && seenCookie !== info.cookieKey) {
+        try { localStorage.setItem(REC_SEEN_COOKIE_KEY, info.cookieKey); } catch (e) {}
+      }
+
+      if (mode === 'hide') {
+        bar.classList.add('emby-rec-hidden');
+      } else {
+        bar.classList.remove('emby-rec-hidden');
+        bar.classList.toggle('collapsed', collapsed);
+        if (toggleTxt) toggleTxt.textContent = collapsed ? '展開推薦' : '收起推薦';
+        if (toggleIcon) toggleIcon.textContent = collapsed ? 'expand_more' : 'expand_less';
+        if (typeof LiquidGlass !== 'undefined' && document.documentElement.classList.contains('emby-style-liquid')) {
+          try { LiquidGlass.ensureApplied(bar); } catch (e) {}
         }
       }
-      const srcKey = cvImg ? (cvImg.getAttribute('src') || '') : '';
-      const ar = masonryAspect(srcKey, count);
-      const cvEl = box.querySelector('.cover');
-      if (cvEl) cvEl.style.setProperty('--mz-ar', ar.toFixed(3));
-      attachCard3D(box); // STEAM 风格卡牌互动：三布局统一
-      if (document.documentElement.classList.contains('emby-dynamic-focus')) attachDynamicFocus(box);
-      count++;
+    }
+
+    if (recCont) {
+      recCont.classList.remove('emby-masonry', 'emby-dynamic-focus');
+      if (mode === 'hide') {
+        recCont.classList.add('emby-rec-hidden');
+        recCont.classList.remove('emby-rec-rail', 'emby-row', 'emby-rec-collapsed');
+      } else {
+        recCont.classList.remove('emby-rec-hidden');
+        recCont.classList.add('emby-rec-rail', 'emby-row');
+        recCont.classList.toggle('emby-rec-collapsed', collapsed);
+      }
+    }
+  }
+
+  /* =======================================================================
+   * 卡片增强与网格重构 —— 基于 .movie-list > .item > .box 真实结构
+   * 为每张卡片注入 STEAM 风格卡牌高光层 (.emby-card-shine) 并绑定 3D 倾斜；
+   * 支持 #recommend-container 无 .box 原生链接的可逆补类，无损兼容退出皮肤。
+   * ===================================================================== */
+  function enhanceCardItem(item, indexOffset, opts) {
+    if (!item || item.dataset.gridDone === '1') return false;
+    item.dataset.gridDone = '1';
+    const isRecommend = !!(opts && opts.isRecommend);
+    let box = item.querySelector('.box');
+    if (!box && isRecommend) {
+      box = item.querySelector('a');
+      if (box && !box.classList.contains('box')) {
+        box.classList.add('box');
+        box.dataset.embyAddedBox = '1';
+      }
+    }
+    if (!box) return false;
+
+    if (!box.querySelector('.emby-card-shine')) {
+      const shine = document.createElement('span');
+      shine.className = 'emby-card-shine';
+      box.appendChild(shine);
+    }
+    const cvImg = box.querySelector('.cover img');
+    if (cvImg && cvImg.getAttribute('referrerpolicy') !== 'no-referrer') {
+      cvImg.setAttribute('referrerpolicy', 'no-referrer');
+      cvImg.referrerPolicy = 'no-referrer';
+    }
+    const srcKey = cvImg ? (cvImg.getAttribute('src') || '') : '';
+    const ar = masonryAspect(srcKey, indexOffset || 0);
+    const cvEl = box.querySelector('.cover');
+    if (cvEl) cvEl.style.setProperty('--mz-ar', ar.toFixed(3));
+    attachCard3D(box);
+    if (!isRecommend && document.documentElement.classList.contains('emby-dynamic-focus')) {
+      attachDynamicFocus(box);
+    }
+    return true;
+  }
+
+  function restructureGrid() {
+    if (!enabled) return;
+    // 布局类自愈 + 引擎残留清理（必须先于 movieLists 过滤执行——
+    // 收藏夹/手氣不錯面板内的懒加载 mutation 也会走到这里，若面板内是唯一 .movie-list，
+    // 过滤后 movieLists 为空会提前 return，残留就清不到了）
+    ensureLayoutClasses();
+    // 排除面板内部与每週推薦容器：各自独立渲染与控管，绝不污染主新片信息流
+    const movieLists = Array.prototype.filter.call(
+      document.querySelectorAll('.movie-list'),
+      function (l) { return !isPanelInternalList(l) && !isRecommendList(l); }
+    );
+    const recCont = document.getElementById('recommend-container');
+    if (!movieLists.length && !recCont) return;
+
+    // 主页：隐藏「最新網址」公告栏与广告
+    hideJavdbAnnouncement();
+    try { hideJavdbAds(); } catch (e) {}
+
+    // ====== 首页视图标签栏 & 每週推薦横栏 —— 仅真正主页 ======
+    if (location.pathname === '/' || /^\/(\?|$)/.test(location.pathname + location.search)) {
+      try {
+        applyHomeRecMode();
+      } catch (e) {
+        log('applyHomeRecMode 异常: ' + e.message);
+      }
+      try {
+        buildHomeTabs(movieLists[0] || recCont);
+      } catch (e) {
+        log('buildHomeTabs 异常: ' + e.message);
+      }
+    } else {
+      const staleBar = document.getElementById('emby-rec-bar');
+      if (staleBar) staleBar.remove();
+    }
+
+    if (isLuckyPage()) {
+      try { LuckyViewManager.enhanceNativePage(); } catch (e) {}
+    }
+
+    let count = 0;
+    if (recCont) {
+      recCont.querySelectorAll('.item:not([data-grid-done])').forEach(function (item) {
+        if (enhanceCardItem(item, count, { isRecommend: true })) count++;
+      });
+    }
+    movieLists.forEach(function (listEl) {
+      listEl.querySelectorAll('.item:not([data-grid-done])').forEach(function (item) {
+        if (enhanceCardItem(item, count, { isRecommend: false })) count++;
+      });
     });
     // 日志收敛：懒加载批量追加可能高频触发重构，只在新卡出现且 10s 内未打印过才记录
     const nowTs = Date.now();
@@ -27619,8 +28350,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     ['emby-topbar','emby-drawer','emby-drawer-scrim',
      'emby-detail-hero','emby-detail-bg','emby-detail-scrim',
      'emby-detail-root','emby-play-btn','emby-compact-bar','emby-backtop',
-     'emby-search-modal','emby-settings-panel',
-     'emby-favorites-panel','emby-gallery-panel','emby-top250-panel',
+     'emby-search-modal','emby-settings-panel','emby-rec-bar',
+     'emby-favorites-panel','emby-lucky-panel','emby-gallery-panel','emby-top250-panel',
      'emby-df-preview','emby-df-scrim',
      'efav-gallery-lb','efav-style-morph','efav-filter-mask','efav-collect-mask','efav-backup-mask','emby-note-tip',
      'jhs-settings-mask','emby-quick-settings-popover','jhs-wd-list-modal','jhs-infinite-loader','plugin-diag-modal','top250-login-modal',
@@ -27635,6 +28366,26 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     document.querySelectorAll('.cover-status-buttons, .cover-modal-base, .jdbe-modal-v2, #jdbe-preview-modal, #emby-detail-video-pop').forEach(function (el) {
       el.remove();
     });
+    // 无损还原主页「每週推薦」区块（移除插件添加的临时类与 inline 状态）
+    document.querySelectorAll('h1[data-controller="recommend"].emby-rec-native-hidden').forEach(function (h1) {
+      h1.classList.remove('emby-rec-native-hidden');
+    });
+    const recCont = document.getElementById('recommend-container');
+    if (recCont) {
+      recCont.classList.remove('emby-rec-rail', 'emby-row', 'emby-rec-collapsed', 'emby-rec-hidden', 'emby-masonry', 'emby-dynamic-focus');
+      if (typeof recCont.dataset.embyOrigDisplay !== 'undefined') {
+        recCont.style.display = recCont.dataset.embyOrigDisplay;
+        delete recCont.dataset.embyOrigDisplay;
+      }
+      recCont.querySelectorAll('.item').forEach(function (it) { delete it.dataset.gridDone; });
+      recCont.querySelectorAll('.emby-card-shine').forEach(function (sh) { sh.remove(); });
+      recCont.querySelectorAll('[data-emby-added-box="1"]').forEach(function (a) {
+        a.classList.remove('box');
+        delete a.dataset.embyAddedBox;
+        delete a.dataset.tilt;
+        a.style.position = '';
+      });
+    }
     // 清理过渡遮罩
     const overlay = document.querySelector('.emby-morph-overlay');
     if (overlay) overlay.remove();
@@ -27643,12 +28394,17 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     homeTabsBuilt = false;
     homeTabsBar = null;
     try { FAVUI.unmount(); } catch (e) {}
-    // 收藏夹/画廊/TOP250模块级引用清空（下次开启按需重建，避免悬挂游离节点）
-    favPanel = null; galleryPanel = null; top250Panel = null;
+    if (window.__embyLuckyBgHandler) {
+      try { window.removeEventListener('efav-randombg-change', window.__embyLuckyBgHandler); } catch (e) {}
+      window.__embyLuckyBgHandler = null;
+    }
+    // 收藏夹/手氣不錯/画廊/TOP250模块级引用清空（下次开启按需重建，避免悬挂游离节点）
+    favPanel = null; luckyPanel = null; galleryPanel = null; top250Panel = null;
+    tabHome = null; tabLucky = null; tabFav = null; tabGallery = null; tabTop250 = null;
     // 重置 movie-list 的 data 标记与布局类（恢复 JAVDB 原生排版）
     document.querySelectorAll('.movie-list').forEach(function (ml) {
       delete ml.dataset.homeTabsBuilt;
-      ml.style.display = '';
+      if (!isRecommendList(ml)) ml.style.display = '';
       ml.classList.remove('emby-masonry', 'emby-dynamic-focus');
     });
     // 清理收藏夹全屏视图态与 <html> 上所有皮肤状态类（旧版遗留的类在下次开启时可能产生脏状态）
@@ -27678,30 +28434,25 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
    * 导致 favPanel/tabsBar 未创建；跳转收藏夹前调用本函数兜底补建。
    * ===================================================================== */
   function ensureFavSurface() {
+    const findAnchorList = function () {
+      return Array.prototype.find.call(
+        document.querySelectorAll('.movie-list'),
+        function (l) { return !isPanelInternalList(l) && !isRecommendList(l); }
+      ) || document.getElementById('recommend-container') || document.querySelector('.movie-list');
+    };
+    const mountPanelIntoParent = function (panelEl) {
+      const ml = findAnchorList();
+      if (ml && ml.parentNode) { safeInsertBefore(ml.parentNode, panelEl, ml); }
+      else { const root = document.querySelector('main') || document.body; if (root) safeInsertBefore(root, panelEl, root.firstChild, null); }
+    };
+
     // 标签栏
     let tabsBar = document.querySelector('.emby-home-tabs');
     if (!tabsBar) {
       tabsBar = document.createElement('div');
       tabsBar.className = 'emby-home-tabs';
-      // 视图 Tab 动态生成（与 buildHomeTabs / LOGO 悬停导航共用 HOME_TAB_DEFS）
-      HOME_TAB_DEFS.forEach(function (def) {
-        const t = document.createElement('a');
-        t.className = 'emby-home-tab';
-        t.href = '#' + def.key;
-        t.dataset.tab = def.key;
-        t.innerHTML = '<span class="material-symbols-outlined" style="font-size:1em;margin-right:.3em;vertical-align:-2px;">' + def.icon + '</span>' + def.label;
-        t.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          switchTab(def.key);
-        });
-        tabsBar.appendChild(t);
-        if (def.key === 'home') tabHome = t;
-        else if (def.key === 'favorites') tabFav = t;
-        else if (def.key === 'gallery') tabGallery = t;
-        else if (def.key === 'top250') tabTop250 = t;
-      });
-      const ml = document.querySelector('.movie-list');
+      populateTabContainer(tabsBar, { assignRefs: true });
+      const ml = findAnchorList();
       homeTabsBar = tabsBar;
       homeTabsBuilt = true;
       if (ml && ml.parentNode) {
@@ -27712,60 +28463,65 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       }
     } else {
       tabHome = tabsBar.querySelector('[data-tab="home"]');
+      tabLucky = tabsBar.querySelector('[data-tab="lucky"]');
       tabFav = tabsBar.querySelector('[data-tab="favorites"]');
       tabGallery = tabsBar.querySelector('[data-tab="gallery"]');
       tabTop250 = tabsBar.querySelector('[data-tab="top250"]');
     }
     // 面板
+    luckyPanel = document.getElementById('emby-lucky-panel');
+    if (!luckyPanel) {
+      luckyPanel = document.createElement('div');
+      luckyPanel.id = 'emby-lucky-panel';
+      mountPanelIntoParent(luckyPanel);
+    }
+    bindLuckyPanelScroll(luckyPanel);
     favPanel = document.getElementById('emby-favorites-panel');
     if (!favPanel) {
       favPanel = document.createElement('div');
       favPanel.id = 'emby-favorites-panel';
-      const ml = document.querySelector('.movie-list');
-      if (ml && ml.parentNode) { safeInsertBefore(ml.parentNode, favPanel, ml); }
-      else { const root = document.querySelector('main') || document.body; if (root) safeInsertBefore(root, favPanel, root.firstChild, null); }
+      mountPanelIntoParent(favPanel);
     }
     galleryPanel = document.getElementById('emby-gallery-panel');
     if (!galleryPanel) {
       galleryPanel = document.createElement('div');
       galleryPanel.id = 'emby-gallery-panel';
-      const ml = document.querySelector('.movie-list');
-      if (ml && ml.parentNode) { safeInsertBefore(ml.parentNode, galleryPanel, ml); }
-      else { const root = document.querySelector('main') || document.body; if (root) safeInsertBefore(root, galleryPanel, root.firstChild, null); }
+      mountPanelIntoParent(galleryPanel);
     }
     bindGalleryPanelScroll(galleryPanel);
     top250Panel = document.getElementById('emby-top250-panel');
     if (!top250Panel) {
       top250Panel = document.createElement('div');
       top250Panel.id = 'emby-top250-panel';
-      const ml = document.querySelector('.movie-list');
-      if (ml && ml.parentNode) { safeInsertBefore(ml.parentNode, top250Panel, ml); }
-      else { const root = document.querySelector('main') || document.body; if (root) safeInsertBefore(root, top250Panel, root.firstChild, null); }
+      mountPanelIntoParent(top250Panel);
     }
     bindTop250PanelScroll(top250Panel);
   }
 
   /* =======================================================================
-   * 首页 / 收藏夹 切换（顶层函数，供 buildChrome 与 FAVUI.filterByDetail 跨闭包调用）
-   * 依赖顶层变量 tabHome / tabFav / favPanel（由 buildChrome 或 ensureFavSurface 赋值）。
+   * 首页 / 手氣不錯 / 收藏夹 切换（顶层函数，供 buildChrome 与 FAVUI.filterByDetail 跨闭包调用）
+   * 依赖顶层变量 tabHome / tabLucky / tabFav / favPanel（由 buildHomeTabs 或 ensureFavSurface 赋值）。
    * ===================================================================== */
   function switchTab(tab) {
-    // 去收藏夹/画廊/TOP250前确保面板/标签栏存在（应对 buildChrome 因 SPA 重入 guard 未创建的情况）
-    if (tab === 'favorites') ensureFavSurface();
-    if (tab === 'gallery') ensureFavSurface();
-    if (tab === 'top250') ensureFavSurface();
+    if (tab === 'lucky' && !isLuckyTabEnabled()) tab = 'home';
+    // 去手氣不錯/收藏夹/画廊/TOP250前确保面板/标签栏存在（应对 buildChrome 因 SPA 重入 guard 未创建的情况）
+    if (tab === 'lucky' || tab === 'favorites' || tab === 'gallery' || tab === 'top250') {
+      ensureFavSurface();
+    }
     // active 高亮统一处理：所有 .emby-home-tab[data-tab] 按钮（首页标签栏 + 顶栏 .emby-topnav 常驻按钮）
     try {
       document.querySelectorAll('.emby-home-tab[data-tab]').forEach(function (t) {
         t.classList.toggle('active', t.dataset.tab === tab);
       });
     } catch (e) {}
-    // 兼容旧引用（部分代码直接读 tabHome/tabFav/tabGallery/tabTop250 的状态）
+    // 兼容旧引用
     if (tabHome) tabHome.classList.toggle('active', tab === 'home');
+    if (tabLucky) tabLucky.classList.toggle('active', tab === 'lucky');
     if (tabFav) tabFav.classList.toggle('active', tab === 'favorites');
     if (tabGallery) tabGallery.classList.toggle('active', tab === 'gallery');
     if (tabTop250) tabTop250.classList.toggle('active', tab === 'top250');
     // 防御：buildChrome 可能因 SPA 重入 guard 未给顶层面板赋值，这里兜底重新获取
+    if (!luckyPanel) luckyPanel = document.getElementById('emby-lucky-panel');
     if (!favPanel) favPanel = document.getElementById('emby-favorites-panel');
     if (!galleryPanel) galleryPanel = document.getElementById('emby-gallery-panel');
     if (!top250Panel) top250Panel = document.getElementById('emby-top250-panel');
@@ -27773,22 +28529,38 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       try { Top250ViewManager.abortSync(); } catch (e) {}
     }
     if (tab === 'favorites') {
-      // 全新干净全屏视图：隐藏 javdb 原生主页全部内容/按钮，仅留 emby 顶栏与抽屉
       document.documentElement.classList.add('emby-fav-view');
       if (favPanel) favPanel.classList.add('show');
+      if (luckyPanel) luckyPanel.classList.remove('show');
       if (galleryPanel) galleryPanel.classList.remove('show');
       if (top250Panel) top250Panel.classList.remove('show');
-      // 挂载收藏夹功能 UI（仅首次或被清理后）
       if (favPanel && !favPanel.dataset.favMounted) {
         favPanel.dataset.favMounted = '1';
         try { FAVUI.mount(favPanel); }
         catch (err) { log('收藏夹挂载失败: ' + err.message); }
       }
-      // 面板显示后容器宽度才可用：瀑布流引擎重排一次（含收藏夹/画廊，避免显示前宽度为 0 导致排布错误）
       try { if (document.documentElement.classList.contains('emby-masonry-large')) WaterfallEngine.refresh(); } catch (e) {}
+    } else if (tab === 'lucky') {
+      document.documentElement.classList.add('emby-fav-view');
+      if (favPanel) favPanel.classList.remove('show');
+      if (galleryPanel) galleryPanel.classList.remove('show');
+      if (top250Panel) top250Panel.classList.remove('show');
+      if (luckyPanel) {
+        luckyPanel.classList.add('show');
+        if (!luckyPanel.dataset.luckyMounted) {
+          luckyPanel.dataset.luckyMounted = '1';
+          try { LuckyViewManager.mount(luckyPanel); }
+          catch (err) { log('手氣不錯挂载失败: ' + err.message); }
+        } else {
+          try { LuckyViewManager.applyLuckyRandomBg(luckyPanel); } catch (e) {}
+        }
+      }
+      try { if (document.documentElement.classList.contains('emby-masonry-large')) WaterfallEngine.refresh(); } catch (e) {}
+      if (window.__embyUpdateBackTop) window.__embyUpdateBackTop(luckyPanel ? (luckyPanel.scrollTop || 0) : 0);
     } else if (tab === 'gallery') {
       document.documentElement.classList.add('emby-fav-view');
       if (favPanel) favPanel.classList.remove('show');
+      if (luckyPanel) luckyPanel.classList.remove('show');
       if (galleryPanel) galleryPanel.classList.add('show');
       if (top250Panel) top250Panel.classList.remove('show');
       if (galleryPanel) {
@@ -27801,11 +28573,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         }
       }
       try { if (document.documentElement.classList.contains('emby-masonry-large')) WaterfallEngine.refresh(); } catch (e) {}
-      // 画廊进入时立即按面板滚动位置更新回顶按钮可见性
       if (window.__embyUpdateBackTop) window.__embyUpdateBackTop(galleryPanel ? (galleryPanel.scrollTop || 0) : 0);
     } else if (tab === 'top250') {
       document.documentElement.classList.add('emby-fav-view');
       if (favPanel) favPanel.classList.remove('show');
+      if (luckyPanel) luckyPanel.classList.remove('show');
       if (galleryPanel) galleryPanel.classList.remove('show');
       if (top250Panel) {
         top250Panel.classList.add('show');
@@ -27823,14 +28595,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       document.documentElement.classList.remove('emby-fav-view');
       document.documentElement.classList.remove('efav-tabs-hide');
       if (favPanel) favPanel.classList.remove('show');
+      if (luckyPanel) luckyPanel.classList.remove('show');
       if (galleryPanel) galleryPanel.classList.remove('show');
       if (top250Panel) top250Panel.classList.remove('show');
-      // 切回首页：原生 .movie-list 重新可见，瀑布流引擎按当前宽度重排
       try { if (document.documentElement.classList.contains('emby-masonry-large')) WaterfallEngine.refresh(); } catch (e) {}
     }
     try {
       if (tab === 'home') {
-        if (location.hash && ['#top250', '#favorites', '#gallery'].includes(location.hash)) {
+        if (location.hash && ['#top250', '#favorites', '#gallery', '#lucky'].includes(location.hash)) {
           history.replaceState(null, '', location.pathname + location.search);
         }
       } else {
@@ -27950,7 +28722,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   // 皮肤自管理子树：这些容器内部的结构变化由各自模块自行处理（收藏夹/画廊分批渲染、
   // 悬停预览气泡、弹窗、顶栏抽屉、卡片高光注入），无需触发 javdb 路由重构——
   // 作为全局 MutationObserver 的增量过滤依据，砍掉 javdb 高频 DOM 变化中的最大噪声源。
-  const SKIN_CHROME_SEL = '#emby-topbar,#emby-drawer,#emby-drawer-scrim,#emby-favorites-panel,' +
+  const SKIN_CHROME_SEL = '#emby-topbar,#emby-drawer,#emby-drawer-scrim,#emby-favorites-panel,#emby-lucky-panel,#emby-rec-bar,' +
     '#emby-gallery-panel,#emby-top250-panel,#emby-df-preview,#emby-df-scrim,#emby-search-modal,#emby-settings-panel,#jhs-settings-mask,' +
     '#emby-quick-settings-popover,#jhs-wd-list-modal,#emby-compact-bar,#emby-detail-root,#emby-detail-bg,' +
     '#emby-detail-scrim,#emby-backtop,#emby-toast,#javdb-emby-toggle,.emby-home-tabs,' +

@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（28,225 行，v7.5.1）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（28,997 行，v7.6.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -294,7 +294,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 28,225 Lines)
+## 架构子系统全景地图 (Architecture Map Across 28,997 Lines)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -353,7 +353,8 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 │    • 共演交集算子: 多选演员从并集 (OR) 切严格子集交集 (AND)，全维度频次动态重新汇算         │
 │    • StatisticsCenter: 媒体库数据统计中心 (核心KPI卡片、四阶评分梯队占比、排行榜)           │
 │    • Top250ViewManager: 网页登录态优先 (Cookie直连) + 移动端 Token 双轨容灾 + 代数令牌防乱序│
-│    • 导航外壳与设置控制台: buildHomeTabs 常驻导航 + 全局 `/` 与单次 Esc 快捷键 + 设置中心   │
+│    • LuckyViewManager: /lucky 手氣不錯原位AJAX面板 + 首页「每週推薦」可折叠隔离精选横栏    │
+│    • 导航外壳与设置控制台: buildHomeTabs 五标签联动导航 + `/` 与 `Esc` 快捷键 + 设置中心      │
 │    • 凭据防嗅探体系 (sanitizeSearchInputs): type=search, role=searchbox, 11项属性与聚焦冲刷 │
 │                                                                                             │
 │ 7. 外部服务、女优智能画像与云端网关 (Lines 12575 - 16117 & Lines 22983 - 23666)             │
@@ -399,9 +400,9 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ---
 
-## 核心“弯弯绕绕”与历史避坑铁律 (33 Critical Invariants & Gotchas)
+## 核心“弯弯绕绕”与历史避坑铁律 (34 Critical Invariants & Gotchas)
 
-这 33 条铁律是整个项目 28,225 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 34 条铁律是整个项目 28,997 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -573,6 +574,14 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：若用 `/rankings/movies` 宽泛匹配 TOP250 视图，用户点击日榜/周榜/月榜时会被强制劫持到 TOP250 面板导致常规排行榜彻底无法访问；若在网页会话过期时无差别清除 `APP_AUTH_KEY`，会导致用户辛苦获取的移动端 Token 被静默清空；若在 `MutationObserver` 中无过滤地触发全量 DOM 查询，会在瀑布流无限滚动时引发严重的帧率暴跌与主线程卡顿。
 * **参见决策**：[ADR-0029: 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构](./docs/adr/0029-rankings-route-decoupling-web-session-top250-and-runtime-throttling.md)
 
+### 34. 主页「每週推薦」容器严格隔离、折叠记忆与 `/lucky` 路由兼容准则
+* **铁律**：
+  1. **多 `.movie-list` 容器隔离**：首页第一页新增的 `#recommend-container` 与各全屏子面板内网格必须通过 `isRecommendList(el)` 与 `isPanelInternalList(el)` 严格从主新片流中排除；任何主网格布局（`applyLayout` / `ensureLayoutClasses` / `WaterfallEngine` / `ensureDynamicFocusGrid`）、顶部锚点查询（`findTopAnchor`）及无限滚动（`InfiniteScrollManager.findMainMovieList()` / `loadNext()` 抓包解析）**严禁**将 `#recommend-container` 误认为主新片列表，`.emby-home-tabs` 必须置于 `h1[data-controller="recommend"], #emby-rec-bar, #recommend-container` 之上。
+  2. **原生折叠冲突修复与可逆 `.box` 适配**：不得仅依赖 `#recommend-container` 的内联 `style="display:none"` 控制收起（会被 `html.emby-skin .movie-list { display:grid !important; }` 击穿），必须通过更高特异性的 `.emby-rec-rail` / `.emby-rec-collapsed` / `.emby-rec-hidden` 接管，并将折叠态持久化至 `SET_KEYS.homeRecCollapsed` 以跨越每周 `data-cookie-key` 轮换；针对 `#recommend-container > .item > a` 原生缺失 `.box` 的结构差异，`enhanceCardItem` 补齐 `.box` 时必须标记 `data-emby-added-box="1"`，`removeEmbyDOM()` 关闭皮肤时必须完整清理并还原 `embyOrigDisplay` 与原生 class。
+  3. **`/lucky` 路由与全屏视图协同**：`/lucky` 无分页路由及包含 `a[data-controller="lucky-shuffle"]` 的页面必须豁免 `InfiniteScrollManager` 的底栏注入，避免误弹「已经到底了」；`html.emby-skin.emby-fav-view` 必须隐藏 `.site-announce`、`.main-tabs-wrap`、`.has-text-centered.my-5` 与周更推荐节点，同时显式豁免 `#emby-lucky-panel` 及其内部网格，防止毛玻璃/液态玻璃全屏面板出现原生公告黄底透底或网格被隐藏。
+* **陷阱**：若仅取第一个 `.movie-list`，无限滚动与瀑布流会错抓或错排仅有 10 张小卡的周更推荐区并在翻页时重复混入主列表；若忘记在全屏视图隐藏 `.site-announce` 与 `.main-tabs-wrap`，毛玻璃/液态玻璃主题下 `.efav-bg`（35% 透明度）会透出底层的明黄色全站公告条。
+* **参见决策**：[ADR-0031: 主页「每週推薦」精选横栏隔离改造与 `/lucky`「手氣不錯」全景发现架构](./docs/adr/0031-homepage-weekly-recommend-rail-and-lucky-discovery-architecture.md)
+
 ---
 
 ## 架构决策档案索引 (Architectural Decision Records)
@@ -609,5 +618,6 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 28. [ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
 29. [ADR-0029: 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构](./docs/adr/0029-rankings-route-decoupling-web-session-top250-and-runtime-throttling.md)
 30. [ADR-0030: 公开清单 40/页稳定路由切换、无依赖双语维基女优解析与看过评分分桶同步架构](./docs/adr/0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)
+31. [ADR-0031: 主页「每週推薦」精选横栏隔离改造与 `/lucky`「手氣不錯」全景发现架构](./docs/adr/0031-homepage-weekly-recommend-rail-and-lucky-discovery-architecture.md)
 
 
