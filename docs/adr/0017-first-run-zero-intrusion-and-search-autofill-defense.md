@@ -1,7 +1,7 @@
 # 0017. 首次运行零侵入开关与 Chrome 搜索框账号防误填架构
 
 ## 状态
-已接受 (Accepted)
+已接受 (Accepted；v7.4.1 & v7.6.2 增补设置凭据去密码框伪装与克隆搜索框 ID 去重)
 
 ## 上下文
 在 JavdbEmbySkin 日常使用与新用户安装场景中，存在两项严重影响使用体验的关键架构缺陷：
@@ -151,11 +151,15 @@ function sanitizeSearchInputs(root) {
 ```
 保证各平台各分辨率下搜索框外观与原生 Emby 风格无缝贴合。
 
+#### 第五层：设置凭据脱离 `type="password"` 伪装与克隆模态表单 ID 去重（v7.4.1 / v7.6.2 增补）
+* **去 `type="password"` 防 Chrome 提交搜索触发保存密码弹窗（v7.4.1）**：当同一文档中同时存在普通 `<input type="password">`（如云同步 Git Token `#git-token` 或 TOP250 登录密码 `#t250-login-pass`）与搜索表单提交动作时，Chrome 仍会将搜索词提交误判为账号凭据变更并弹出“是否保存密码”。为此 `#git-token`、`#t250-login-pass` 等脚本内密文输入框统一改用 `type="text"` 配合 CSS `-webkit-text-security:disc !important;text-security:disc !important;` 实现掩码渲染并附带 `data-lpignore` / `data-1p-ignore` / `data-bwignore` 属性；同时 `sanitizeSearchInputs()` 为 `form[action*="/search"]` 等搜索表单注入 `autocomplete="off"` 与 `role="search"`，在表单 `submit` 与 `window` `beforeunload` 时调用 `purgeCredentialsFromDOM()` 清空 `wd-pass`、`git-token`、`wd-user`、`t250-login-pass`、`t250-login-user` 的 DOM 残留值。
+* **整块克隆原生搜索框的 ID 去重与事件重接（v7.6.2）**：`buildSearchModal()` 与 `openSearchModal()` 通过 `src.cloneNode(true)` 原样克隆 `#search-bar-container .search-bar-wrap` 时，必须调用 `dedupeClonedIds(inner, '--emby-modal')` 为克隆容器内全部 `[id]` 与 `label[for]` 附加 `--emby-modal` 后缀，消除全文档重复表单控件 ID 告警并防止 `<label>` 误聚焦至底层原生搜索框；随后在 `wireSearchClone(inner)` 中显式重新接回 `.search-image button` 点击触发 `input[type="file"]` 及文件变更提交流程。
+
 ---
 
 ## 原因与权衡
 * **为什么单纯设置 `autocomplete="off"` 无法完全阻止 Chrome 自动填充？**
-  * 近代 Chrome 策略为了提升“用户登录便利度”，会特意忽略常规登录表单上的 `autocomplete="off"`。只有将输入框的语义类型升级为 `type="search"`，同时辅以 `role="searchbox"`、`data-lpignore`（屏蔽 LastPass/Bitwarden）、`data-1p-ignore`（屏蔽 1Password）、`data-form-type="other"` 并配合 JS 在获取焦点及异步就绪时的主动值比对清洗，才能 100% 根治顽固的密码管理器嗅探。
+  * 近代 Chrome 策略为了提升“用户登录便利度”，会特意忽略常规登录表单上的 `autocomplete="off"`。只有将输入框的语义类型升级为 `type="search"`，同时辅以 `role="searchbox"`、`data-lpignore`（屏蔽 LastPass/Bitwarden）、`data-1p-ignore`（屏蔽 1Password）、`data-form-type="other"` 并配合 JS 在获取焦点及异步就绪时的主动值比对清洗，同时令弹窗克隆节点具备唯一 `id`/`for` 映射并移除同文档内脚本自有 `type="password"` 节点，才能 100% 根治顽固的密码管理器嗅探、误存密码弹窗与表单 ID 冲突。
 
 ---
 

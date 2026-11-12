@@ -1,7 +1,7 @@
 # 0027. DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构
 
 ## 状态
-已接受 (Accepted)
+已接受 (Accepted；v7.6.2 增补隐身浮层 visibility 隔离与页签切换槽位清空)
 
 ## 上下文与视觉交互革命 (Context & Aesthetic Philosophy)
 
@@ -187,6 +187,10 @@ document.addEventListener('mousemove', function (e) {
 ### 铁律 5：标题与元数据克隆脱敏去重
 在生成大图下方的信息条时，直接读取 `.video-title` 或 `.meta` 的 `textContent` 会导致内部嵌套的徽章文字（如「金标」、「想看」圆点）与无演员作品的行内备注（`.efav-card-note`）被机械拼接，造成信息重复显示。
 **防御规范：读取文字前必须通过 `cloneNode(true)` 生成深拷贝节点，显式删除 `strong, .efav-award-badge, .efav-dot, .efav-card-note` 后再提取纯净文本**。
+
+### 铁律 6：隐身态禁用纯 `opacity: 0`，切页强制清空陈旧文本槽位（v7.6.2 增补）
+`#emby-df-scrim` 与 `#emby-df-preview` 若仅依赖 `opacity: 0` 隐藏，节点仍在可访问性树（Accessibility Tree）及整页 DOM 文本检索中保持暴露；若用户在动态聚焦悬停后切换至「手气不错 / 收藏夹 / 画廊 / TOP250」，未清空的 `.dfp-title` / `.dfp-meta` / `.dfp-extra` 会残留上一部影片文本。
+**防御规范：未激活态必须设置 `opacity:0; visibility:hidden;` 并配置延后切换的 `visibility` 过渡（`#emby-df-scrim` 延迟 `.28s`、`#emby-df-preview` 延迟 `.16s`，`.show` 态 `visibility:visible` 保持 `0s` 即时显现）；`switchTab()` 切入任意全屏页签前必须调用 `dfPopupHide(true)` 清空全部信息槽位**。
 
 ---
 
