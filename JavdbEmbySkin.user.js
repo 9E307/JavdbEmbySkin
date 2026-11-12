@@ -1248,14 +1248,6 @@ html.emby-skin .emby-hide-announce { display:none !important; }
   display:flex; align-items:flex-start; flex-wrap:wrap;
   padding-top:1.2em; padding-left:0; padding-right:0;
   box-sizing:border-box;
-  transition:background-color .22s ease, box-shadow .22s ease, backdrop-filter .22s ease;
-}
-html.emby-skin:not(.emby-style-glass):not(.emby-style-liquid) #emby-topbar.scrolled {
-  background-color:rgba(16,18,24,.78);
-  background-image:linear-gradient(to bottom, rgba(16,18,24,.96), rgba(16,18,24,.74));
-  backdrop-filter:blur(16px) saturate(1.25);
-  -webkit-backdrop-filter:blur(16px) saturate(1.25);
-  box-shadow:0 4px 20px rgba(0,0,0,.35);
 }
 #emby-topbar::before {
   /* 渐变遮罩横条已取代底部硬白线，这里不再画分隔线 */
@@ -2321,7 +2313,7 @@ html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-
   box-sizing:border-box;
 }
 html.emby-skin #recommend-container.emby-rec-rail > .item {
-  flex:0 0 auto !important; width:clamp(168px, var(--e-rel-w, 204px), 232px) !important; scroll-snap-align:start;
+  flex:0 0 auto !important; width:260px !important; scroll-snap-align:start;
 }
 html.emby-skin #recommend-container.emby-rec-rail > .item .box {
   height:auto !important; background:var(--e-card) !important;
@@ -2384,6 +2376,7 @@ html.emby-skin.emby-style-liquid #emby-rec-bar::before {
 @media (max-width:700px) {
   html.emby-skin #emby-rec-bar { width:calc(100% - 1.6em); padding:.5em .75em; }
   html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) { padding:.4em .8em 1em !important; }
+  html.emby-skin #recommend-container.emby-rec-rail > .item { width:min(260px, 72vw) !important; }
 }
 
 /* 原版预览（Fancybox 原生播放/看图控件，移动保留 data-fancybox，可看原站预告片/样图，不再自写灯箱） */
@@ -2876,12 +2869,11 @@ html.emby-skin.cover-fusion.cover-fusion-collapsed .emby-detail-hero .info {
   z-index:2147482995;
   display:flex; align-items:center; gap:1.1em;
   height:114px; padding:0 1.6em; box-sizing:border-box;
-  /* EMBY经典：紧凑条需保持清晰磨砂背景与渐变遮罩，防止正文内容透过顶缘与标题文字混叠；
-     毛玻璃/液态玻璃由专属规则覆盖其背景 */
-  background-image:linear-gradient(to bottom, rgba(18,20,26,.86), rgba(18,20,26,.94));
-  background-color:rgba(18,20,26,.78);
-  backdrop-filter:blur(16px) saturate(1.2);
-  -webkit-backdrop-filter:blur(16px) saturate(1.2);
+  /* EMBY经典：适配顶栏效果，渐变倒置（下深上透），与顶部融合不突兀；
+     毛玻璃/液态玻璃由专属规则覆盖其背景） */
+  background-image:linear-gradient(to top, rgba(22,24,29,.92), rgba(22,24,29,0));
+  background-color:unset;
+  backdrop-filter:none;
   border-bottom:1px solid rgba(255,255,255,.08);
   opacity:0; transform:translateY(-14px); pointer-events:none;
   transition:opacity .28s ease, transform .28s ease;
@@ -8038,10 +8030,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     document.body.appendChild(backTop);
     window.__embyBackTop = backTop;
     function updateBackTop(st) {
-      const y = st || 0;
-      backTop.classList.toggle('show', y > 240);
-      const tb = document.getElementById('emby-topbar');
-      if (tb) tb.classList.toggle('scrolled', y > 12);
+      const show = st > 240;
+      backTop.classList.toggle('show', show);
     }
     window.__embyUpdateBackTop = updateBackTop;
     backTop.addEventListener('click', function () {
@@ -9335,6 +9325,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       }
     }
     fbWasOpen = open;
+    if (typeof window.__embySyncGalleryCollect === 'function') {
+      try { window.__embySyncGalleryCollect(open); } catch (e) {}
+    }
   }
   let fancyboxObserver = null;
   function setupFancyboxGuard() {
@@ -15420,7 +15413,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               '</div>' +
             '</div>' +
 
-            // 近期版本演进亮点 (最近两版) + 查看完整更新日志
+            // 近期版本演进亮点 (最近三版) + 查看完整更新日志
             '<div class="about-section-box">' +
               '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
                 '<div style="font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
@@ -16980,8 +16973,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     if (!listEl) return;
 
     try {
-      const cached = sessionStorage.getItem('javdbEmbyRecentChangelogHtml');
-      const cachedTime = sessionStorage.getItem('javdbEmbyRecentChangelogTime');
+      const cached = sessionStorage.getItem('javdbEmbyRecentChangelogHtml_v3');
+      const cachedTime = sessionStorage.getItem('javdbEmbyRecentChangelogTime_v3');
       if (cached && cachedTime && (Date.now() - parseInt(cachedTime, 10) < 10 * 60 * 1000)) {
         listEl.innerHTML = cached;
         return;
@@ -17000,7 +16993,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (!md) throw new Error('Empty');
       const sections = md.split(/(?=^##\s+\[)/m).filter(function (s) { return s.trim().startsWith('## ['); });
       if (!sections || sections.length === 0) throw new Error('No version');
-      const recents = sections.slice(0, 2).map(function (sec) {
+      const recents = sections.slice(0, 3).map(function (sec) {
         const lines = sec.trim().split('\n');
         const header = lines[0].replace(/^##\s+/, '').trim();
         const verMatch = header.match(/\[(.*?)\]\s*(?:-\s*(.*))?/);
@@ -17017,7 +17010,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               groups.push(currentGroup);
             }
             currentGroup = { title: rawLine.replace(/^###\s+/, '').trim(), bullets: [] };
-          } else if (rawLine.startsWith('* ')) {
+          } else if (rawLine.startsWith('* ') || rawLine.startsWith('- ')) {
             currentGroup.bullets.push(rawLine.substring(2).trim());
           }
         }
@@ -17071,8 +17064,8 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
       listEl.innerHTML = html;
       try {
-        sessionStorage.setItem('javdbEmbyRecentChangelogHtml', html);
-        sessionStorage.setItem('javdbEmbyRecentChangelogTime', String(Date.now()));
+        sessionStorage.setItem('javdbEmbyRecentChangelogHtml_v3', html);
+        sessionStorage.setItem('javdbEmbyRecentChangelogTime_v3', String(Date.now()));
       } catch (e) {}
     }
 
@@ -24050,10 +24043,14 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             }
           }
         } catch (e) {}
-        // 回退 A：当前激活 slide 选择器（覆盖各版本 class）
-        const sel = fb.querySelector('.fancybox__slide.is-selected .fancybox__content img, .fancybox__slide.is-current .fancybox__content img, .fancybox__slide[aria-hidden="false"] .fancybox__content img, .fancybox-slide--current img, .fancybox-slide.current img');
-        if (sel && sel.getAttribute('src')) { window.__efavFbMethod = 'slideClass'; return sel.getAttribute('src'); }
-        // 回退 B：多图共存时取「视口内、可见、面积最大」的那张（当前图铺满视口，相邻图被 transform 移出视口被排除）
+        // 回退 A：存在激活 slide 容器时严格限定在当前 slide 内查找图片，防止预告片视频等非图片 slide 误取相邻预览图
+        const activeSlide = fb.querySelector('.fancybox__slide.is-selected, .fancybox__slide.is-current, .fancybox__slide[aria-hidden="false"], .fancybox-slide--current, .fancybox-slide.current');
+        if (activeSlide) {
+          const slideImg = activeSlide.querySelector('.fancybox__content img, img.fancybox-image, img.fancybox__image, img');
+          if (slideImg && slideImg.getAttribute('src')) { window.__efavFbMethod = 'slideClass'; return slideImg.getAttribute('src'); }
+          return '';
+        }
+        // 回退 B：旧版/无激活类灯箱多图共存时取「视口内、可见、面积最大」的那张
         const imgs = fb.querySelectorAll('.fancybox__content img, img.fancybox__image, .fancybox-image, img');
         const vw = window.innerWidth || document.documentElement.clientWidth || 0;
         const vh = window.innerHeight || document.documentElement.clientHeight || 0;
@@ -24086,11 +24083,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (!rel) return '';
         return vid + '|' + rel;
       }
-      function updateBtn() {
+      function updateBtn(hasTarget) {
         const fb = document.querySelector('.fancybox__container, .fancybox-container');
-        // 轮询只管显示/隐藏，绝不重置按钮文字和 saved 状态（否则会冲掉「已收藏 ✓」）
-        btn.style.display = fb ? 'inline-flex' : 'none';
-        if (!fb && btn.classList.contains('saved')) resetBtn(); // 灯箱关闭时恢复初始态
+        // 轮询只管显示/隐藏，绝不重置按钮文字和 saved 状态（否则会冲掉「已收藏 ✓」）；
+        // 预告片等非图片 slide（hasTarget === false）时收起按钮，切回预览图时自动恢复。
+        const show = !!(fb && hasTarget !== false);
+        btn.style.display = show ? 'inline-flex' : 'none';
+        if (!show && btn.classList.contains('saved')) resetBtn(); // 关闭或切至非图片 slide 时恢复初始态
       }
       function resetBtn() {
         btn.classList.remove('saved');
@@ -24130,7 +24129,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       // 用轻量轮询替代全文档 MutationObserver（避免 javdb 页面持续 DOM 变动触发回调风暴卡死主线程）。
       // 仅在详情页（URL 含 /v/）才显示按钮并轮询 fancybox 开关，非详情页直接隐藏。
       let pollTimer = null;
-      let movedToTop = false; // 灯箱出现时把按钮移到 body 末尾，确保同 z-index 时盖过灯箱
+      let observedBody = null;
       // 显示状态完全由内存真相源 isCollected(当前图片id) 同步决定，异步 DB 结果无法串台
       function paintSaved(curId) {
         if (!curId) return;
@@ -24142,15 +24141,26 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           const tx = btn.querySelector('.efav-gc-text'); if (tx) tx.textContent = '收藏此图';
         }
       }
+      function ensureBtnMounted(fb) {
+        // Fancybox v5 全屏模式会把容器推入浏览器 Top Layer，此时必须把按钮挂载到 fullscreenElement 内才能保持可见
+        const fsEl = document.fullscreenElement;
+        const target = (fsEl && fsEl.nodeType === 1 && (!fb || fsEl.contains(fb) || fb === fsEl)) ? fsEl : document.body;
+        if (target && (btn.parentElement !== target || (fb && target === fb.parentElement && target.lastElementChild !== btn))) {
+          target.appendChild(btn);
+        }
+      }
       function startPoll() {
         if (pollTimer) return;
         poll();
-        pollTimer = setInterval(poll, 500);
+        pollTimer = setInterval(poll, 350);
       }
       function stopPoll() {
         if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-        if (btn) btn.style.display = 'none';
-        movedToTop = false;
+        if (btn) {
+          btn.style.display = 'none';
+          if (btn.classList.contains('saved')) resetBtn();
+        }
+        ensureBtnMounted(null);
       }
       const poll = function () {
         if (!enabled) { stopPoll(); return; }
@@ -24158,20 +24168,39 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (!onDetail) { stopPoll(); return; }
         const fb = document.querySelector('.fancybox__container, .fancybox-container');
         if (!fb) { stopPoll(); return; }
-        updateBtn();
-        if (!movedToTop) { document.body.appendChild(btn); movedToTop = true; }
+        ensureBtnMounted(fb);
         const curId = currentGalleryId();
-        paintSaved(curId);   // 同步：当前真实图的收藏状态，绝不会串到别的图
+        updateBtn(!!curId);
+        if (curId) paintSaved(curId);   // 同步：当前真实图的收藏状态，绝不会串到别的图
       };
 
-      // 事件驱动监听灯箱开启：仅当用户打开灯箱时启动局部轮询，关闭即刻销毁定时器，根除全站常驻空转
-      const fbObserver = new MutationObserver(function () {
+      function syncGalleryObserver() {
+        if (document.body && observedBody !== document.body) {
+          observedBody = document.body;
+          if (!btn.isConnected) document.body.appendChild(btn);
+          try { fbObserver.observe(document.body, { childList: true }); } catch (e) {}
+        }
         const fb = document.querySelector('.fancybox__container, .fancybox-container');
         if (fb) startPoll();
         else if (pollTimer) stopPoll();
-      });
-      fbObserver.observe(document.body, { childList: true });
-      window.addEventListener('beforeunload', function () { stopPoll(); fbObserver.disconnect(); });
+      }
+
+      // 事件驱动监听灯箱开启：绝不在 beforeunload 断开观察器（点击 magnet: 链、取消跳转或 bfcache 返回后页仍存活）
+      const fbObserver = new MutationObserver(syncGalleryObserver);
+      if (document.body) {
+        observedBody = document.body;
+        fbObserver.observe(document.body, { childList: true });
+      }
+      window.__embySyncGalleryCollect = syncGalleryObserver;
+      document.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('[data-fancybox]')) {
+          setTimeout(syncGalleryObserver, 120);
+          setTimeout(syncGalleryObserver, 450);
+        }
+      }, true);
+      document.addEventListener('fullscreenchange', syncGalleryObserver);
+      window.addEventListener('pageshow', syncGalleryObserver);
+      window.addEventListener('pagehide', stopPoll);
     }
     initGalleryCollect();
 
