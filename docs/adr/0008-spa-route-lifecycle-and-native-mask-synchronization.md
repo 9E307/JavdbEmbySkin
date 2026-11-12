@@ -1,7 +1,7 @@
 # 0008. JAVDB SPA 局部路由生命周期接管与原生浮层同步
 
 ## 状态
-已接受 (Accepted；v7.328 增补原生网格排版熔断修复，v7.5.0 增补入口双执行拦截与全局按键监听幂等守卫)
+已接受 (Accepted；v7.328 增补原生网格排版熔断修复，v7.5.0 增补入口双执行拦截与全局按键监听幂等守卫，v7.6.2 增补 Fancybox v5 灯箱生命周期与 Top Layer 宿主迁移)
 
 ## 上下文
 JAVDB 网站采用部分单页应用（SPA）与 Turbolinks 机制：当用户在分类、搜索、排行榜或分页间跳转时，往往不会重新刷新整个页面，而是通过局部替换 DOM 和更新 `History API` 进行导航。早先版本中，这导致了严重的“事件堆叠（Event Listener Leak）”、“幽灵卡片容器（Ghost DOM Containers）”、“浮动遮罩未销毁阻塞点击”以及切回原生皮肤后排版完全错乱等问题。
@@ -25,11 +25,16 @@ JAVDB 网站采用部分单页应用（SPA）与 Turbolinks 机制：当用户�
    * 脚本底部仅允许在 `if (document.readyState === 'loading')` 分支内执行轻量防闪烁守卫，严禁在分支外提前调用详情页或榜单初始化，消除 `@run-at document-idle` 下与 `init()` 并行双执行的竞态与双倍 DOM/IndexedDB 写入；
    * `FAV.passiveCollect` 对同路径增加在途 Promise 合并及成功后 `2500ms` 冷却锁，防止并发或短时间重复采集写库；
    * `buildSearchModal()` 的全局 `document` `Esc` 监听使用 `document.documentElement.dataset.embyEscCloseBound` 保证单次绑定，并在触发时实时查询当前 `#emby-search-modal` 节点，避免开关皮肤删除重建弹窗后监听器累积泄漏。
+7. **Fancybox v5 预览灯箱持久化观察、非图片滑块隔离与 Fullscreen Top Layer 宿主迁移（v7.6.2 增补）**：
+   * `initGalleryCollect()` 中的 `fbObserver` **严禁**绑定 `window` 的 `beforeunload` 事件执行 `.disconnect()`；统一改为由持久化 `syncGalleryObserver()`（挂载 `document.body`、`[data-fancybox]` 捕获点击、`fullscreenchange`、`pageshow`）与 `syncFancyboxGuard()` 内部主动回调 `window.__embySyncGalleryCollect(open)` 联动驱动，仅在 `pagehide` 时通过 `stopPoll()` 暂停轮询；
+   * `fancySrc()` 在检测到激活滑块容器（`.fancybox__slide.is-selected`、`.is-current`、`[aria-hidden="false"]`、`.fancybox-slide--current`）时，严格只在该激活滑块内部查找图片，找不到则直接返回空字符串（绝不跨回退分支借用相邻已挂载图片滑块），并由 `updateBtn(!!curId)` 在非图片滑块上隐藏 `#efav-gallery-collect` 且复位 `.saved` 状态；
+   * 新增 `ensureBtnMounted(fb)`，在进入浏览器原生全屏（`document.fullscreenElement` 包含灯箱容器）时将 `#efav-gallery-collect` 动态迁移至 `fullscreenElement` 尾部，退出全屏后还原回 `document.body`。
 
 ## 原因与权衡
 * **解决局部渲染的“幽灵残影”**：如果不做 SPA 路由接管，用户从“收藏夹”点击某部影片进入详情页，收藏夹的 DOM 会潜伏在后台继续响应键盘快捷键；而当用户点浏览器后退时，详情页的样式又会残留在列表中。
 * **原生共存承诺**：本脚本承诺“一键关闭皮肤、随时完美回退原生”。要兑现此承诺，必须做到样式、DOM 和监听器的绝对可逆销毁。
 * **第一性原理抵御过度设计（v7.328）**：面对排版错位，拒绝推翻重构既有的 `removeEmbyDOM()` 稳定架构，通过精准定位“容器 Masonry 类名残留”与“引擎缺乏启闭熔断”两个核心支点，仅用 6 行代码实现零副作用、100% 原生网格还原。
+* **`beforeunload` 非毁灭性、预告片帧隔离与 Top Layer 权衡（v7.6.2）**：在详情页点击 `magnet:?` 协议链接、取消离开或往返缓存（bfcache）恢复时，浏览器会触发 `beforeunload` 但页面及脚本实例依然存活；若断开 `fbObserver`，后续点开灯箱按钮将永久停留在 `display:none`。新版官方详情页采用 webpack 打包的 Fancybox v5（`window.Fancybox` 不暴露且第 0 帧为 `#preview-video-box` 内联视频滑块），因此在存在 `activeSlide` 时宁可留空也不越界兜底抓图。对于灯箱自带全屏按钮触发的浏览器 Top Layer，任何 `z-index` 都无法穿透，唯有按 `fullscreenchange` 动态切换 DOM 宿主节点才可保持「收藏此图」按钮可见。
 
 ## 结果与影响
 * **收益**：长时间连续浏览无内存泄漏、前进后退丝滑无卡顿、原生/Emby 模式切换零残影、关闭皮肤后 JAVDB 原生 4/5 列 CSS Grid 排版 100% 完美复原。

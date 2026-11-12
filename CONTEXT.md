@@ -590,6 +590,14 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：在多语言混用正则里随手把 `\b` 加在整个非捕获分组外侧，往往会让英文测试用例全绿而中文生产页面悄然失灵；而在未限制正文长度或未设保护选择器的情况下用 `官方 App` 做父级隐藏，一旦页面正文某处出现同类词汇就会把整个 `<main>` 网格连根隐藏。
 * **参见决策**：[ADR-0032: 全链路多语言 DOM 统一解析、新版官方 App 推广条结构性拦截与全屏面板图层隔离架构](./docs/adr/0032-multilingual-dom-unification-app-banner-and-panel-layering.md)
 
+### 36. 详情页灯箱收藏持久化观察、视频帧隔离与 Fullscreen Top Layer 宿主迁移准则
+* **铁律**：
+  1. **严禁在 `beforeunload` 永久断开常驻灯箱观察器**：详情页触发 `magnet:?` 磁链、取消跳转或 bfcache 恢复时均可能激发 `beforeunload` 而页实例继续存活；`initGalleryCollect()` 的 `fbObserver` 必须保持常驻并在 `document.body` 变更时通过 `syncGalleryObserver()` 重绑，同时联动 `syncFancyboxGuard()` 中的 `window.__embySyncGalleryCollect(open)`，仅允许在 `pagehide` 时通过 `stopPoll()` 暂停轮询。
+  2. **存在激活滑块时禁止跨滑块借图**：新版 Fancybox v5 第 0 帧可能为 `#preview-video-box` 等无 `<img>` 的内联视频滑块；`fancySrc()` 一旦命中 `.fancybox__slide.is-selected` / `.is-current` 等当前滑块容器，必须严格限定只在该滑块内找图，未找到时直接返回 `''` 并由 `updateBtn(false)` 收起按钮、复位 `.saved` 状态。
+  3. **原生全屏模式动态迁移浮层宿主**：当 `document.fullscreenElement` 存在且包含灯箱容器时，`ensureBtnMounted(fb)` 必须将 `#efav-gallery-collect` 迁入 `document.fullscreenElement`，退出全屏后还原回 `document.body`，不得试图仅靠提高 `z-index` 穿透浏览器 Top Layer。
+* **陷阱**：看似规范的资源清理（`window.addEventListener('beforeunload', () => fbObserver.disconnect())`）在含 `magnet:?` 协议链接的详情页上等同于一次点击后永久杀死预览图收藏按钮；而在全容器范围做兜底抓图则会导致用户浏览第 0 帧预告片时误将下一张相邻剧照当成当前图片写入画廊库。
+* **参见决策**：[ADR-0008: JAVDB SPA 局部路由生命周期接管与原生浮层同步 (v7.6.2 增补)](./docs/adr/0008-spa-route-lifecycle-and-native-mask-synchronization.md)
+
 ---
 
 ## 架构决策档案索引 (Architectural Decision Records)
