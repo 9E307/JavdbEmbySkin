@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JAVDB EmbySkin - LTX 影片展示方案交互式演示</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --emby-bg: #12141a;
+      --emby-card: #1b1e28;
+      --emby-hover: #242836;
+      --emby-accent: #00a4dc;
+      --emby-accent-glow: rgba(0, 164, 220, 0.45);
+      --ltx-cyan: #00f2fe;
+      --ltx-blue: #4facfe;
+      --ltx-purple: #9d4edd;
+      --ltx-glow: rgba(0, 242, 254, 0.35);
+    }
+    body {
+      background-color: var(--emby-bg);
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    /* 卡牌 3D 悬停微动与流光动画 */
+    .emby-card {
+      transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease;
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--emby-card);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .emby-card:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+    /* 方案一：赛博霓虹微光边缘 */
+    .ltx-glow-card {
+      border: 1px solid rgba(0, 242, 254, 0.45) !important;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.2), inset 0 0 15px rgba(0, 242, 254, 0.08);
+    }
+    .ltx-glow-card:hover {
+      box-shadow: 0 0 28px rgba(0, 242, 254, 0.45), 0 18px 40px rgba(0, 0, 0, 0.65) !important;
+      border-color: var(--ltx-cyan) !important;
+    }
+    /* 方案一：透镜微光胶囊角标 */
+    .ltx-lens-badge {
+      background: linear-gradient(135deg, rgba(0, 242, 254, 0.85), rgba(79, 172, 254, 0.85));
+      color: #05101a;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 10px rgba(0, 242, 254, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: pulse-glow 3s infinite alternate;
+    }
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 8px rgba(0, 242, 254, 0.35); }
+      100% { box-shadow: 0 0 18px rgba(0, 242, 254, 0.7); }
+    }
+    /* 方案二：横向滑轨隐藏滚动条 */
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* 原版 Fusion 粗暴红框模拟 */
+    .fusion-crude-card {
+      border: 2px solid #ef4444 !important;
+      position: relative;
+    }
+    .fusion-crude-badge {
+      background: #dc2626;
+      color: #fff;
+      font-weight: bold;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      position: absolute;
+      top: 6px;
+      right: 6px;
+    }
+    /* 选项卡激活样式 */
+    .tab-btn.active {
+      background: rgba(0, 164, 220, 0.18);
+      border-color: var(--emby-accent);
+      color: #fff;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 max-w-7xl mx-auto antialiased selection:bg-cyan-500 selection:text-black">
+
+  <!-- 顶部标题与说明 -->
+  <header class="mb-8 border-b border-white/10 pb-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-2">
+          <span>⚡ JAVDB EmbySkin v7.6.3</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+          <span>设计方案推演预览</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          LTX 影片专区展示与交互设计参考方案
+        </h1>
+        <p class="text-gray-400 text-sm mt-1">
+          直观对比 4 种不同维度的视觉与交互方案，支持实时切换体验，并提供与原版 Fusion 粗暴红框的直接对比。
+        </p>
+      </div>
+
+      <!-- 快速跳转选项卡 -->
+      <nav class="flex flex-wrap items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-white/10" id="scheme-tabs">
+        <button onclick="switchTab('scheme1')" class="tab-btn active px-3.5 py-1.5 rounded-lg text-sm font-medium text-gray-300 transition-all border border-transparent">
+          方案一：微光透镜角标
+        </button>
+        <button onclick="switchTab('scheme2')" class="tab-btn px-3.5 py-1.5 rounded-lg text-sm font-medium text-gray-300 transition-all border border-transparent">
+          方案二：专属滑轨频道
+        </button>
+        <button onclick="switchTab('scheme3')" class="tab-btn px-3.5 py-1.5 rounded-lg text-sm font-medium text-gray-300 transition-all border border-transparent">
+          方案三：流式重排 Filter Chip
+        </button>
+        <button onclick="switchTab('scheme4')" class="tab-btn px-3.5 py-1.5 rounded-lg text-sm font-medium text-gray-300 transition-all border border-transparent">
+          方案四：多合一综合架构
+        </button>
+        <button onclick="switchTab('compare')" class="tab-btn px-3.5 py-1.5 rounded-lg text-sm font-medium text-amber-300 transition-all border border-amber-500/30 bg-amber-950/30">
+          ⚖️ 对比 Fusion 原版
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- 方案一：赛博霓虹透镜角标与微光边缘 -->
+  <!-- ======================================================== -->
+  <section id="section-scheme1" class="scheme-section space-y-6">
+    <div class="bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-transparent p-5 rounded-xl border border-cyan-500/20">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest">方案一 · 默认推荐首选</span>
+          <h2 class="text-xl font-bold text-white mt-1">「赛博霓虹微光」透镜角标与边缘高光 (Ambient Glow Badge)</h2>
+          <p class="text-gray-300 text-sm mt-1 max-w-3xl">
+            <strong>核心哲学：零侵入感微质感增强。</strong> 不采用高饱和度的大红线框刺眼破坏整体视觉，而是采用 Emby 原生设计语言的霓虹微光阴影外描边，卡片右上角悬浮毛玻璃透镜胶囊，鼠标悬停时与 Steam 3D 卡牌倾角微光联动。
+          </p>
+        </div>
+        <div class="hidden md:flex gap-2 text-xs">
+          <span class="px-2.5 py-1 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-400">零布局改动</span>
+          <span class="px-2.5 py-1 rounded bg-blue-950 border border-blue-500/40 text-blue-400">高级暗黑质感</span>
+          <span class="px-2.5 py-1 rounded bg-purple-950 border border-purple-500/40 text-purple-400">支持三种皮肤</span>
+        </div>
+      </div>
+
+      <!-- 动态样式微调试衣间 -->
+      <div class="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center gap-4 text-xs text-gray-300">
+        <span class="font-semibold text-white">🎨 试衣间即时切换角标样式：</span>
+        <label class="inline-flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="badge-style" value="cyan" checked onchange="updateBadgeStyle(this.value)" class="text-cyan-500 focus:ring-0">
+          <span>电光青蓝 (Neon Cyan)</span>
+        </label>
+        <label class="inline-flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="badge-style" value="purple" onchange="updateBadgeStyle(this.value)" class="text-purple-500 focus:ring-0">
+          <span>紫晶霓虹 (Cyber Violet)</span>
+        </label>
+        <label class="inline-flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="badge-style" value="gold" onchange="updateBadgeStyle(this.value)" class="text-amber-500 focus:ring-0">
+          <span>香槟黑金 (Luxury Gold)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 模拟主页卡片网格 -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+      <!-- 卡片 1 (命中 LTX) -->
+      <div class="emby-card ltx-glow-card group cursor-pointer">
+        <div class="relative aspect-[7/10] bg-slate-800 overflow-hidden flex items-center justify-center">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
+          <div class="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-cyan-950 flex flex-col items-center justify-center p-4 text-center">
+            <span class="text-4xl mb-2">🎬</span>
+            <span class="text-cyan-400 text-xs font-mono font-bold tracking-wider">4K · AI 修复流出</span>
+          </div>
+          <!-- 透镜角标 -->
+          <div id="badge-demo-1" class="ltx-lens-badge absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1">
+            <span>✦</span>
+            <span>LTX 破解</span>
+          </div>
+          <div class="absolute bottom-2 left-2.5 z-20 text-[11px] text-cyan-300 font-medium bg-black/60 px-1.5 py-0.5 rounded backdrop-blur">
+            4.85 分 (1,520人)
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <strong class="text-cyan-300 font-bold font-mono">SSIS-888</strong>
+            <span class="text-gray-400 text-[11px]">2026-10-18</span>
+          </div>
+          <div class="text-sm font-semibold text-white truncate group-hover:text-cyan-300 transition-colors">
+            【LTX流出无码】専属最高傑作プレミアムエディション
+          </div>
+          <div class="mt-2 flex items-center gap-1 text-[11px]">
+            <span class="bg-cyan-950 text-cyan-400 border border-cyan-800 px-1.5 py-0.2 rounded">无码破解</span>
+            <span class="bg-blue-950 text-blue-400 border border-blue-800 px-1.5 py-0.2 rounded">含中文字幕</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 2 (普通卡片，未命中) -->
+      <div class="emby-card group cursor-pointer opacity-90">
+        <div class="relative aspect-[7/10] bg-slate-800 overflow-hidden flex items-center justify-center">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
+          <div class="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
+            <span class="text-4xl mb-2">📼</span>
+            <span class="text-gray-400 text-xs font-mono">官方原生版</span>
+          </div>
+          <div class="absolute bottom-2 left-2.5 z-20 text-[11px] text-gray-300 font-medium bg-black/60 px-1.5 py-0.5 rounded backdrop-blur">
+            4.20 分 (830人)
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <strong class="text-gray-200 font-bold font-mono">MIDE-992</strong>
+            <span class="text-gray-400 text-[11px]">2026-10-17</span>
+          </div>
+          <div class="text-sm font-semibold text-gray-300 truncate group-hover:text-white transition-colors">
+            通常通常リリース版・人気女優共演スペシャル
+          </div>
+          <div class="mt-2 flex items-center gap-1 text-[11px]">
+            <span class="bg-slate-800 text-gray-400 px-1.5 py-0.2 rounded">高清HD</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 3 (命中 LTX) -->
+      <div class="emby-card ltx-glow-card group cursor-pointer">
+        <div class="relative aspect-[7/10] bg-slate-800 overflow-hidden flex items-center justify-center">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
+          <div class="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-cyan-950 flex flex-col items-center justify-center p-4 text-center">
+            <span class="text-4xl mb-2">💎</span>
+            <span class="text-cyan-400 text-xs font-mono font-bold tracking-wider">AI 去码精修</span>
+          </div>
+          <!-- 透镜角标 -->
+          <div id="badge-demo-2" class="ltx-lens-badge absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1">
+            <span>✦</span>
+            <span>LTX 破解</span>
+          </div>
+          <div class="absolute bottom-2 left-2.5 z-20 text-[11px] text-cyan-300 font-medium bg-black/60 px-1.5 py-0.5 rounded backdrop-blur">
+            4.92 分 (2,100人)
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <strong class="text-cyan-300 font-bold font-mono">IPX-777</strong>
+            <span class="text-gray-400 text-[11px]">2026-10-16</span>
+          </div>
+          <div class="text-sm font-semibold text-white truncate group-hover:text-cyan-300 transition-colors">
+            【高画質流出】完全無修正ディレクターズカット
+          </div>
+          <div class="mt-2 flex items-center gap-1 text-[11px]">
+            <span class="bg-cyan-950 text-cyan-400 border border-cyan-800 px-1.5 py-0.2 rounded">无码破解</span>
+            <span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-1.5 py-0.2 rounded">今日新種</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 4 (普通卡片，未命中) -->
+      <div class="emby-card group cursor-pointer opacity-90">
+        <div class="relative aspect-[7/10] bg-slate-800 overflow-hidden flex items-center justify-center">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
+          <div class="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
+            <span class="text-4xl mb-2">🎞️</span>
+            <span class="text-gray-400 text-xs font-mono">官方原生版</span>
+          </div>
+          <div class="absolute bottom-2 left-2.5 z-20 text-[11px] text-gray-300 font-medium bg-black/60 px-1.5 py-0.5 rounded backdrop-blur">
+            4.10 分 (420人)
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <strong class="text-gray-200 font-bold font-mono">ABP-520</strong>
+            <span class="text-gray-400 text-[11px]">2026-10-15</span>
+          </div>
+          <div class="text-sm font-semibold text-gray-300 truncate group-hover:text-white transition-colors">
+            日常系ドラマ作品・週末限定エピソード
+          </div>
+          <div class="mt-2 flex items-center gap-1 text-[11px]">
+            <span class="bg-slate-800 text-gray-400 px-1.5 py-0.2 rounded">高清HD</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 5 (命中 LTX) -->
+      <div class="emby-card ltx-glow-card group cursor-pointer">
+        <div class="relative aspect-[7/10] bg-slate-800 overflow-hidden flex items-center justify-center">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10"></div>
+          <div class="w-full h-full bg-gradient-to-br from-slate-700 via-slate-800 to-cyan-950 flex flex-col items-center justify-center p-4 text-center">
+            <span class="text-4xl mb-2">✨</span>
+            <span class="text-cyan-400 text-xs font-mono font-bold tracking-wider">流出特别篇</span>
+          </div>
+          <!-- 透镜角标 -->
+          <div id="badge-demo-3" class="ltx-lens-badge absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1">
+            <span>✦</span>
+            <span>LTX 破解</span>
+          </div>
+          <div class="absolute bottom-2 left-2.5 z-20 text-[11px] text-cyan-300 font-medium bg-black/60 px-1.5 py-0.5 rounded backdrop-blur">
+            4.78 分 (1,890人)
+          </div>
+        </div>
+        <div class="p-3">
+          <div class="flex items-center justify-between text-xs mb-1">
+            <strong class="text-cyan-300 font-bold font-mono">JUL-321</strong>
+            <span class="text-gray-400 text-[11px]">2026-10-14</span>
+          </div>
+          <div class="text-sm font-semibold text-white truncate group-hover:text-cyan-300 transition-colors">
+            【AI復元流出】熟女美肌鮮明ハイビジョン
+          </div>
+          <div class="mt-2 flex items-center gap-1 text-[11px]">
+            <span class="bg-cyan-950 text-cyan-400 border border-cyan-800 px-1.5 py-0.2 rounded">无码破解</span>
+            <span class="bg-blue-950 text-blue-400 border border-blue-800 px-1.5 py-0.2 rounded">含中文字幕</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== -->
+  <!-- 方案二：首页专属「LTX 精选专区」横向滑轨推荐频道 -->
+  <!-- ======================================================== -->
+  <section id="section-scheme2" class="scheme-section hidden space-y-6">
+    <div class="bg-gradient-to-r from-blue-950/40 via-slate-900/40 to-transparent p-5 rounded-xl border border-blue-500/20">
+      <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">方案二 · 沉浸流媒体频道模式</span>
+      <h2 class="text-xl font-bold text-white mt-1">首页独立专属「LTX 精选专区」横向滑轨频道 (Horizontal Rail)</h2>
+      <p class="text-gray-300 text-sm mt-1 max-w-3xl">
+        <strong>核心哲学：专区集中曝光，不干扰常规流。</strong> 类似 Netflix 与 Apple TV 的独立栏目，在首页上方构建一个可横滑、可折叠的专属频道。既让流出影片一目了然，又避免在下方主网格混合干扰普通影片浏览。
+      </p>
+    </div>
+
+    <!-- 模拟横向滑轨组件 -->
+    <div class="bg-slate-900/80 border border-white/10 rounded-2xl p-5 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-2.5 h-6 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full"></div>
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>⚡ LTX 无码破解专区 · AI/4K修复精选</span>
+              <span class="text-xs bg-cyan-950 text-cyan-400 border border-cyan-700/50 px-2 py-0.5 rounded-full font-normal">
+                已收录 1,280+ 部
+              </span>
+            </h3>
+            <p class="text-xs text-gray-400">基于官方 /tags?c7=390 索引实时同步 · 点击卡片直达</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="scrollRail('left')" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-white/10 flex items-center justify-center text-white transition-colors" title="向左滚动">
+            ‹
+          </button>
+          <button onclick="scrollRail('right')" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-white/10 flex items-center justify-center text-white transition-colors" title="向右滚动">
+            ›
+          </button>
+          <button class="text-xs text-cyan-400 hover:text-cyan-300 ml-2 font-medium">查看全库 (1,280) ›</button>
+        </div>
+      </div>
+
+      <!-- 横向滚动卡片轨 -->
+      <div id="ltx-rail" class="flex gap-4 overflow-x-auto hide-scrollbar scroll-smooth pb-2">
+        <!-- 滚动卡片 1 -->
+        <div class="min-w-[210px] w-[210px] emby-card ltx-glow-card flex-shrink-0 cursor-pointer group">
+          <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+            <div class="text-center p-3">
+              <span class="text-3xl block mb-1">👑</span>
+              <span class="text-cyan-300 font-mono text-xs font-bold">HOT 榜首流出</span>
+            </div>
+            <span class="ltx-lens-badge absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+          </div>
+          <div class="p-2.5">
+            <strong class="text-cyan-400 font-mono text-xs">SSIS-888</strong>
+            <p class="text-xs text-gray-200 truncate mt-0.5 font-medium">専属最高傑作プレミアムエディション</p>
+          </div>
+        </div>
+
+        <!-- 滚动卡片 2 -->
+        <div class="min-w-[210px] w-[210px] emby-card ltx-glow-card flex-shrink-0 cursor-pointer group">
+          <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+            <div class="text-center p-3">
+              <span class="text-3xl block mb-1">🔥</span>
+              <span class="text-cyan-300 font-mono text-xs font-bold">今日新发</span>
+            </div>
+            <span class="ltx-lens-badge absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+          </div>
+          <div class="p-2.5">
+            <strong class="text-cyan-400 font-mono text-xs">IPX-777</strong>
+            <p class="text-xs text-gray-200 truncate mt-0.5 font-medium">完全無修正ディレクターズカット</p>
+          </div>
+        </div>
+
+        <!-- 滚动卡片 3 -->
+        <div class="min-w-[210px] w-[210px] emby-card ltx-glow-card flex-shrink-0 cursor-pointer group">
+          <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+            <div class="text-center p-3">
+              <span class="text-3xl block mb-1">✨</span>
+              <span class="text-cyan-300 font-mono text-xs font-bold">4K 极致画质</span>
+            </div>
+            <span class="ltx-lens-badge absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+          </div>
+          <div class="p-2.5">
+            <strong class="text-cyan-400 font-mono text-xs">JUL-321</strong>
+            <p class="text-xs text-gray-200 truncate mt-0.5 font-medium">熟女美肌鮮明ハイビジョン特別版</p>
+          </div>
+        </div>
+
+        <!-- 滚动卡片 4 -->
+        <div class="min-w-[210px] w-[210px] emby-card ltx-glow-card flex-shrink-0 cursor-pointer group">
+          <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+            <div class="text-center p-3">
+              <span class="text-3xl block mb-1">💎</span>
+              <span class="text-cyan-300 font-mono text-xs font-bold">珍品稀缺流出</span>
+            </div>
+            <span class="ltx-lens-badge absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+          </div>
+          <div class="p-2.5">
+            <strong class="text-cyan-400 font-mono text-xs">MIDV-045</strong>
+            <p class="text-xs text-gray-200 truncate mt-0.5 font-medium">秘蔵未公開カット収録決定版</p>
+          </div>
+        </div>
+
+        <!-- 滚动卡片 5 -->
+        <div class="min-w-[210px] w-[210px] emby-card ltx-glow-card flex-shrink-0 cursor-pointer group">
+          <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+            <div class="text-center p-3">
+              <span class="text-3xl block mb-1">🌟</span>
+              <span class="text-cyan-300 font-mono text-xs font-bold">高分口碑</span>
+            </div>
+            <span class="ltx-lens-badge absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+          </div>
+          <div class="p-2.5">
+            <strong class="text-cyan-400 font-mono text-xs">PRED-600</strong>
+            <p class="text-xs text-gray-200 truncate mt-0.5 font-medium">伝説的タイトル无修正再リリース</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== -->
+  <!-- 方案三：流式控制栏「快捷过滤胶囊 (Filter Chip)」与智能紧凑重排 -->
+  <!-- ======================================================== -->
+  <section id="section-scheme3" class="scheme-section hidden space-y-6">
+    <div class="bg-gradient-to-r from-emerald-950/40 via-slate-900/40 to-transparent p-5 rounded-xl border border-emerald-500/20">
+      <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">方案三 · 智能重排与流式过滤</span>
+      <h2 class="text-xl font-bold text-white mt-1">流式控制栏「快捷过滤胶囊」与瀑布流智能紧凑重排 (Fluid Reflow)</h2>
+      <p class="text-gray-300 text-sm mt-1 max-w-3xl">
+        <strong>核心哲学：根治 Fusion 原版布局留白坍塌。</strong> 在网格工具条嵌入即时 Filter Chip，用户一键切换「只看 LTX」时，通过 <code>WaterfallEngine</code> 重新分配列高与网格，绝无空白缺口，滚动触底加载无缝衔接。
+      </p>
+    </div>
+
+    <!-- 模拟工具栏 -->
+    <div class="bg-slate-900/90 border border-white/10 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-400 font-medium">快速筛选：</span>
+        <button id="filter-chip-btn" onclick="toggleLtxFilter()" class="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all bg-slate-800 hover:bg-slate-700 text-gray-300 border border-white/10">
+          <span class="text-cyan-400">✦</span>
+          <span>只看 LTX 流出</span>
+          <span id="filter-badge" class="px-1.5 py-0.2 rounded-full bg-cyan-950 text-cyan-400 text-[10px] border border-cyan-700">3/5 部</span>
+        </button>
+        <span id="filter-status-tip" class="text-xs text-gray-400 hidden">
+          ✓ 已过滤非 LTX 影片，布局已平滑紧凑重排
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <span>排序：最新发布 ▼</span>
+        <span>|</span>
+        <span>视图：网格 (5列) ▼</span>
+      </div>
+    </div>
+
+    <!-- 动态可过滤网格 -->
+    <div id="filterable-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 transition-all duration-300">
+      <!-- 动态卡片 1 (LTX) -->
+      <div class="emby-card ltx-glow-card grid-item is-ltx" data-ltx="1">
+        <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+          <span class="text-cyan-300 font-mono text-sm font-bold">SSIS-888</span>
+          <span class="ltx-lens-badge absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+        </div>
+        <div class="p-3">
+          <strong class="text-cyan-300 text-xs font-mono">SSIS-888</strong>
+          <p class="text-xs text-white truncate mt-1">【LTX流出】専属最高傑作</p>
+        </div>
+      </div>
+
+      <!-- 动态卡片 2 (普通) -->
+      <div class="emby-card grid-item not-ltx" data-ltx="0">
+        <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+          <span class="text-gray-400 font-mono text-sm">MIDE-992</span>
+        </div>
+        <div class="p-3">
+          <strong class="text-gray-300 text-xs font-mono">MIDE-992</strong>
+          <p class="text-xs text-gray-400 truncate mt-1">通常版・人気女優共演</p>
+        </div>
+      </div>
+
+      <!-- 动态卡片 3 (LTX) -->
+      <div class="emby-card ltx-glow-card grid-item is-ltx" data-ltx="1">
+        <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+          <span class="text-cyan-300 font-mono text-sm font-bold">IPX-777</span>
+          <span class="ltx-lens-badge absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+        </div>
+        <div class="p-3">
+          <strong class="text-cyan-300 text-xs font-mono">IPX-777</strong>
+          <p class="text-xs text-white truncate mt-1">【完全無修正】ディレクターズカット</p>
+        </div>
+      </div>
+
+      <!-- 动态卡片 4 (普通) -->
+      <div class="emby-card grid-item not-ltx" data-ltx="0">
+        <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+          <span class="text-gray-400 font-mono text-sm">ABP-520</span>
+        </div>
+        <div class="p-3">
+          <strong class="text-gray-300 text-xs font-mono">ABP-520</strong>
+          <p class="text-xs text-gray-400 truncate mt-1">日常系ドラマ作品</p>
+        </div>
+      </div>
+
+      <!-- 动态卡片 5 (LTX) -->
+      <div class="emby-card ltx-glow-card grid-item is-ltx" data-ltx="1">
+        <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+          <span class="text-cyan-300 font-mono text-sm font-bold">JUL-321</span>
+          <span class="ltx-lens-badge absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px]">LTX</span>
+        </div>
+        <div class="p-3">
+          <strong class="text-cyan-300 text-xs font-mono">JUL-321</strong>
+          <p class="text-xs text-white truncate mt-1">【AI復元流出】美肌鮮明版</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== -->
+  <!-- 方案四：多合一综合架构 (全景联动) -->
+  <!-- ======================================================== -->
+  <section id="section-scheme4" class="scheme-section hidden space-y-6">
+    <div class="bg-gradient-to-r from-purple-950/40 via-slate-900/40 to-transparent p-5 rounded-xl border border-purple-500/20">
+      <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">方案四 · 全功能终极形态</span>
+      <h2 class="text-xl font-bold text-white mt-1">多维度全景联动方案（卡片 + 筛选 + 详情页 + 磁力验车协同）</h2>
+      <p class="text-gray-300 text-sm mt-1 max-w-3xl">
+        <strong>核心哲学：全链路打通。</strong> 首页横向滑轨发现 ➔ 列表卡片微光标识 ➔ 工具栏智能重排 ➔ 详情页磁力列表标注 + Whatslink 在线验车直接验证是否为真实流出！在设置中心开放模块化开关，按需自选。
+      </p>
+    </div>
+
+    <!-- 模拟详情页磁力联动展示 -->
+    <div class="bg-slate-900/90 border border-white/10 rounded-xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-3">
+          <span class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 text-xs font-mono font-bold border border-cyan-800">
+            ✦ LTX 破解专区收录作品
+          </span>
+          <span class="text-sm font-bold text-white">详情页磁力列表联动模拟：</span>
+        </div>
+        <span class="text-xs text-gray-400">已自动与 Whatslink 验车引擎打通</span>
+      </div>
+
+      <!-- 模拟磁力行 1 (流出版) -->
+      <div class="p-3 rounded-lg bg-cyan-950/20 border border-cyan-500/30 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-cyan-500 text-black font-extrabold text-[10px]">LTX 流出</span>
+            <strong class="text-sm text-cyan-200 font-mono">SSIS-888-C_4K_Uncensored_Leaked.mp4</strong>
+            <span class="text-xs text-gray-400">(6.82 GB)</span>
+          </div>
+          <p class="text-xs text-cyan-300/80 mt-1">AI 无码重置 · 4K 修复流出版 · 包含中文字幕</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a class="button px-2.5 py-1 rounded text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-medium cursor-pointer">複製</a>
+          <a class="button px-2.5 py-1 rounded text-xs border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-medium cursor-pointer">下載</a>
+          <a class="button px-2.5 py-1 rounded text-xs border border-cyan-400 text-cyan-300 bg-cyan-950/50 hover:bg-cyan-900/50 font-bold flex items-center gap-1 cursor-pointer">
+            <span>🔍 在线验证</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- 模拟磁力行 2 (普通原生版) -->
+      <div class="p-3 rounded-lg bg-slate-800/40 border border-white/5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-slate-700 text-gray-300 font-medium text-[10px]">官方版</span>
+            <strong class="text-sm text-gray-300 font-mono">SSIS-888-HD.mp4</strong>
+            <span class="text-xs text-gray-500">(3.45 GB)</span>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">官方原始有码版本</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a class="button px-2.5 py-1 rounded text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-medium cursor-pointer">複製</a>
+          <a class="button px-2.5 py-1 rounded text-xs border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-medium cursor-pointer">下載</a>
+          <a class="button px-2.5 py-1 rounded text-xs border border-cyan-500/60 text-cyan-400/80 hover:bg-cyan-500/10 font-medium cursor-pointer">
+            <span>在线验证</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== -->
+  <!-- 对比视图：Fusion 粗暴红线框 VS EmbySkin 方案 -->
+  <!-- ======================================================== -->
+  <section id="section-compare" class="scheme-section hidden space-y-6">
+    <div class="bg-gradient-to-r from-red-950/40 via-slate-900/40 to-transparent p-5 rounded-xl border border-red-500/20">
+      <span class="text-xs font-bold text-red-400 uppercase tracking-widest">⚖️ 视觉与架构横向对比</span>
+      <h2 class="text-xl font-bold text-white mt-1">原版 Fusion 粗暴红线框 VS EmbySkin 推荐方案直观对比</h2>
+      <p class="text-gray-300 text-sm mt-1 max-w-3xl">
+        Fusion 的实现存在 3 大硬伤：① 刺眼的纯红实体粗框破坏了暗色与毛玻璃整体美感；② 筛选时仅粗暴设置 <code>display: none</code>，导致瀑布流列高失衡、大面积空白与滚动坍塌；③ 缺少与详情页磁力验车的链路联动。
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Fusion 现状 (左侧) -->
+      <div class="bg-slate-900/90 border border-red-500/30 p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-red-500/20">
+          <div class="flex items-center gap-2">
+            <span class="text-red-500 text-lg">⚠️</span>
+            <h3 class="font-bold text-red-400 text-base">JavdbFusion 粗暴红线框做法</h3>
+          </div>
+          <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded">缺点明显</span>
+        </div>
+
+        <div class="flex justify-center p-4 bg-black/40 rounded-lg">
+          <div class="w-[200px] emby-card fusion-crude-card">
+            <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+              <span class="fusion-crude-badge">LTX</span>
+              <span class="text-gray-400 text-xs">封面内容</span>
+            </div>
+            <div class="p-2.5">
+              <strong class="text-red-400 text-xs font-mono">SSIS-888</strong>
+              <p class="text-xs text-gray-300 truncate mt-1">刺眼红框导致视觉疲劳</p>
+            </div>
+          </div>
+        </div>
+
+        <ul class="mt-4 space-y-1.5 text-xs text-gray-400 list-disc list-inside">
+          <li>高对比度 <code>2px solid red</code> 严重割裂暗黑质感与毛玻璃背景。</li>
+          <li>筛选时仅单纯隐藏元素，瀑布流卡片空缺无法重新对齐。</li>
+        </ul>
+      </div>
+
+      <!-- EmbySkin 推荐方案 (右侧) -->
+      <div class="bg-slate-900/90 border border-cyan-500/30 p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-4 pb-2 border-b border-cyan-500/20">
+          <div class="flex items-center gap-2">
+            <span class="text-cyan-400 text-lg">✨</span>
+            <h3 class="font-bold text-cyan-300 text-base">EmbySkin 优雅微光透镜方案</h3>
+          </div>
+          <span class="text-xs bg-cyan-950 text-cyan-400 border border-cyan-700 px-2 py-0.5 rounded">优雅自然</span>
+        </div>
+
+        <div class="flex justify-center p-4 bg-black/40 rounded-lg">
+          <div class="w-[200px] emby-card ltx-glow-card">
+            <div class="relative aspect-[7/10] bg-slate-800 flex items-center justify-center">
+              <span class="ltx-lens-badge absolute top-2 right-2 px-1.5 py-0.5 rounded text-[10px]">✦ LTX 破解</span>
+              <span class="text-cyan-300 text-xs font-mono">优雅微光</span>
+            </div>
+            <div class="p-2.5">
+              <strong class="text-cyan-400 text-xs font-mono">SSIS-888</strong>
+              <p class="text-xs text-white truncate mt-1">柔和微光边框与透镜呼吸</p>
+            </div>
+          </div>
+        </div>
+
+        <ul class="mt-4 space-y-1.5 text-xs text-gray-300 list-disc list-inside">
+          <li>柔和外发光边框，与 Emby/Steam 3D 悬停微光高度协同。</li>
+          <li>结合瀑布流引擎紧凑排版，无破损空白，视觉体验高级。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 底部交互脚本 -->
+  <script>
+    function switchTab(schemeId) {
+      document.querySelectorAll('.scheme-section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+      const activeSec = document.getElementById('section-' + schemeId);
+      if (activeSec) activeSec.classList.remove('hidden');
+
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => 
+        b.getAttribute('onclick') && b.getAttribute('onclick').includes(schemeId)
+      );
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function updateBadgeStyle(style) {
+      const badges = [document.getElementById('badge-demo-1'), document.getElementById('badge-demo-2'), document.getElementById('badge-demo-3')];
+      badges.forEach(b => {
+        if (!b) return;
+        if (style === 'cyan') {
+          b.className = 'ltx-lens-badge absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1';
+          b.style.background = 'linear-gradient(135deg, rgba(0, 242, 254, 0.85), rgba(79, 172, 254, 0.85))';
+          b.style.color = '#05101a';
+        } else if (style === 'purple') {
+          b.className = 'ltx-lens-badge absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1';
+          b.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(236, 72, 153, 0.9))';
+          b.style.color = '#ffffff';
+        } else if (style === 'gold') {
+          b.className = 'ltx-lens-badge absolute top-2.5 right-2.5 z-20 px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1';
+          b.style.background = 'linear-gradient(135deg, rgba(251, 191, 36, 0.9), rgba(217, 119, 6, 0.9))';
+          b.style.color = '#1f1300';
+        }
+      });
+    }
+
+    function scrollRail(direction) {
+      const rail = document.getElementById('ltx-rail');
+      if (!rail) return;
+      const offset = direction === 'left' ? -260 : 260;
+      rail.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+
+    let isFilterActive = false;
+    function toggleLtxFilter() {
+      isFilterActive = !isFilterActive;
+      const btn = document.getElementById('filter-chip-btn');
+      const tip = document.getElementById('filter-status-tip');
+      const items = document.querySelectorAll('#filterable-grid .grid-item');
+
+      if (isFilterActive) {
+        btn.classList.add('bg-cyan-950', 'text-cyan-300', 'border-cyan-500');
+        btn.classList.remove('bg-slate-800', 'text-gray-300', 'border-white/10');
+        tip.classList.remove('hidden');
+        items.forEach(it => {
+          if (it.dataset.ltx === '0') {
+            it.style.display = 'none';
+          }
+        });
+      } else {
+        btn.classList.remove('bg-cyan-950', 'text-cyan-300', 'border-cyan-500');
+        btn.classList.add('bg-slate-800', 'text-gray-300', 'border-white/10');
+        tip.classList.add('hidden');
+        items.forEach(it => {
+          it.style.display = '';
+        });
+      }
+    }
+  </script>
+</body>
+</html>
