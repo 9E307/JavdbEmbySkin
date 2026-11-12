@@ -2149,9 +2149,8 @@ html.emby-skin .movie-list.jhs-ltx-only .item.jhs-ltx-hit {
   display: block !important;
 }
 
-/* 4. 原生及顶栏 LTX 筛选按钮高亮样式 */
+/* 4. 原生 LTX 筛选按钮高亮样式 (Cyber Violet 紫晶霓虹高亮) */
 a.button.is-small[href*="vft=6"].is-selected,
-#jhs-ltx-btn.active,
 .button.jhs-ltx-filter-btn.active {
   background: linear-gradient(135deg, #a855f7, #ec4899) !important;
   color: #ffffff !important;
@@ -2160,25 +2159,12 @@ a.button.is-small[href*="vft=6"].is-selected,
   font-weight: 800 !important;
 }
 
-/* 顶栏 LTX 筛选胶囊按钮 */
-#jhs-ltx-btn {
-  color: #f3e8ff;
-  border: 1px solid rgba(168, 85, 247, 0.55);
-  border-radius: 999px;
-  padding: .22em .85em;
-  font-weight: 800;
-  font-size: .82em;
-  letter-spacing: .04em;
-  margin-right: .5em;
-  background: rgba(168, 85, 247, 0.15);
-  cursor: pointer;
-  transition: all .2s ease;
-}
-#jhs-ltx-btn:hover {
-  background: rgba(168, 85, 247, 0.35);
-  color: #fff;
-  border-color: rgba(168, 85, 247, 0.85);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
+/* 收藏夹工具栏 LTX 专用高亮状态 */
+#efav-ltx-btn.accent {
+  background: linear-gradient(135deg, #a855f7, #ec4899) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.45) !important;
 }
 
 /* 5. 详情页 LTX 分类标签与磁力行标注 */
@@ -2207,10 +2193,10 @@ a.button.is-small[href*="vft=6"].is-selected,
   vertical-align: middle;
 }
 
-/* 6. 首页横向滑轨推荐频道 (方案四集成) */
+/* 6. 首页横向滑轨推荐频道 (置于每周推荐下方，支持展开与收起) */
 .jhs-ltx-rail-section {
-  margin: 1.2rem 0 1.8rem;
-  padding: 0 0.5rem;
+  margin: 0.6rem 0 1.2rem;
+  padding: 0;
   position: relative;
   z-index: 5;
 }
@@ -2218,46 +2204,95 @@ a.button.is-small[href*="vft=6"].is-selected,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
-  padding: 0 0.2rem;
+  margin-bottom: 0.65rem;
+  padding: 0.42em 0.8em;
+  background: var(--e-bg2, rgba(255, 255, 255, 0.04));
+  border-radius: var(--e-r, 8px);
+  border: 1px solid var(--e-border, rgba(255, 255, 255, 0.08));
 }
-.jhs-ltx-rail-title {
+.jhs-ltx-rail-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.1rem;
-  font-weight: 800;
+  gap: 0.55em;
+  min-width: 0;
+}
+.jhs-ltx-rail-left .rail-icon {
+  color: #a855f7;
+  font-size: 1.25em;
+}
+.jhs-ltx-rail-title {
+  font-weight: 700;
+  font-size: 0.98em;
   color: #fff;
-  letter-spacing: .02em;
 }
-.jhs-ltx-rail-title .rail-icon {
-  color: #ec4899;
-  font-size: 1.3rem;
-  vertical-align: middle;
+.jhs-ltx-rail-count {
+  font-size: 0.8em;
+  color: var(--e-text3, #94a3b8);
 }
-.jhs-ltx-rail-badge {
-  font-size: 0.7rem;
-  padding: 0.15rem 0.55rem;
+.jhs-ltx-rail-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.jhs-ltx-arrow-btn,
+.jhs-ltx-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  background: linear-gradient(135deg, #a855f7, #ec4899);
   color: #fff;
-  font-weight: 800;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.jhs-ltx-arrow-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.jhs-ltx-arrow-btn span {
+  font-size: 18px;
+}
+.jhs-ltx-toggle-btn {
+  padding: .34em .88em;
+  font-size: .82em;
+  font-weight: 600;
+}
+.jhs-ltx-arrow-btn:hover,
+.jhs-ltx-toggle-btn:hover {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #fff;
 }
 .jhs-ltx-rail-more {
-  font-size: 0.78rem;
+  font-size: 0.82em;
+  font-weight: 600;
   color: #e9d5ff !important;
-  border: 1px solid rgba(168, 85, 247, 0.45);
+  border: 1px solid rgba(168, 85, 247, 0.4);
   border-radius: 999px;
-  padding: 0.25rem 0.75rem;
+  padding: .34em .88em;
   transition: all .2s ease;
   text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
 }
 .jhs-ltx-rail-more:hover {
-  background: rgba(168, 85, 247, 0.25);
+  background: rgba(168, 85, 247, 0.3);
   color: #fff !important;
   border-color: #a855f7;
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.35);
+}
+.jhs-ltx-rail-section.collapsed .jhs-ltx-arrow-btn {
+  display: none !important;
+}
+.jhs-ltx-rail-section.collapsed .jhs-ltx-rail-container {
+  display: none !important;
+}
+.jhs-ltx-rail-section.collapsed {
+  margin-bottom: 0.75rem;
 }
 .jhs-ltx-rail-container {
   display: flex;
@@ -8318,7 +8353,6 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         '<span class="material-symbols-outlined">menu</span></button>' +
       '<div class="logo-nav-wrap">' + javdbLogoHtml() + '<nav class="emby-topnav"></nav></div>' +
       '<span class="spacer"></span>' +
-      '<button class="hb jhs-ltx-btn" id="jhs-ltx-btn" title="✦ LTX 破解影片筛选（点击筛选，Shift+点击全库专区）" aria-label="✦ LTX 破解影片筛选" style="display:none;">✦ LTX</button>' +
       '<button class="hb" id="emby-search-trigger" title="搜索（按 / 快速打开）" aria-label="搜索（按 / 快速打开）" aria-keyshortcuts="/" role="search">' +
         '<span class="material-symbols-outlined">search</span></button>' +
       '<button id="emby-settings-btn" title="设置" aria-label="设置">' +
@@ -8567,18 +8601,6 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     // 构建搜索弹窗 + 设置面板（幂等）
     buildSearchModal();
     buildFullSettingsDialog();
-    // LTX 筛选胶囊按钮事件绑定
-    const ltxBtn = document.getElementById('jhs-ltx-btn');
-    if (ltxBtn && !ltxBtn.dataset.bound) {
-      ltxBtn.dataset.bound = '1';
-      ltxBtn.addEventListener('click', function (e) {
-        e.preventDefault(); e.stopPropagation();
-        if (e.shiftKey) { location.href = '/tags?c7=390'; return; }
-        if (typeof LtxViewManager !== 'undefined') LtxViewManager.toggleFilter(ltxBtn);
-      });
-    }
-    if (typeof LtxViewManager !== 'undefined') LtxViewManager.updateTopbarButton();
-
     // 搜索触发：点击顶部搜索框 → 居中弹窗
     const trig = document.getElementById('emby-search-trigger');
     if (trig && !trig.dataset.bound) {
@@ -10845,10 +10867,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const items = scope.querySelectorAll('.movie-list .item, .emby-row .item, #recommend-container .item');
       items.forEach(function (it) { applyToItem(it); });
       updateNativeFilterButton();
-      updateTopbarButton();
     }
 
-    // 切换「只看 LTX」过滤状态
+    // 切换「只看 LTX」过滤状态（仅作用于当前列表流，由原生筛选栏按钮控制）
     function toggleFilter(fromBtn) {
       if (!isLtxPluginEnabled()) return;
       const idx = LtxIndexManager.readIndex();
@@ -10867,23 +10888,15 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
       filterActive = !filterActive;
       document.querySelectorAll('.movie-list').forEach(function (l) {
+        // 排除收藏夹与TOP250面板内部生成的 .movie-list
+        if (l.closest('#emby-favorites-panel') || l.closest('#emby-top250-panel') || l.id === 'recommend-container') return;
         l.classList.toggle('jhs-ltx-only', filterActive);
       });
 
       if (filterActive) {
-        const hits = document.querySelectorAll('.movie-list .item.jhs-ltx-hit').length;
-        if (hits === 0 && location.pathname !== '/tags') {
-          if (typeof showToast === 'function') {
-            showToast('当前页暂无 LTX 破解影片，正在为您跳转至完整 LTX 破解专区…');
-          }
-          setTimeout(function () {
-            location.href = '/tags?c7=390';
-          }, 800);
-          return;
-        } else {
-          if (typeof showToast === 'function') {
-            showToast('已开启只看 LTX（当前页匹配 ' + hits + ' 部）· 再次点击恢复');
-          }
+        const hits = document.querySelectorAll('.movie-list:not(#recommend-container) .item.jhs-ltx-hit').length;
+        if (typeof showToast === 'function') {
+          showToast(hits === 0 ? '当前列表暂无 LTX 破解影片' : ('已开启 LTX 筛选（当前页匹配 ' + hits + ' 部）· 再次点击恢复'));
         }
       } else {
         if (typeof showToast === 'function') {
@@ -10892,7 +10905,6 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       }
 
       updateNativeFilterButton();
-      updateTopbarButton();
 
       if (typeof WaterfallEngine !== 'undefined' && typeof WaterfallEngine.refresh === 'function') {
         WaterfallEngine.refresh();
@@ -10903,46 +10915,29 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     function updateNativeFilterButton() {
       const isLtxTagPage = location.pathname.startsWith('/tags') && location.search.includes('c7=390');
       const active = filterActive || isLtxTagPage;
-      const btns = document.querySelectorAll('a.button[href*="vft=6"], a.button[href*="c7=390"]');
+      const btns = document.querySelectorAll('a.button[href*="vft=6"]');
       btns.forEach(function (btn) {
         btn.classList.toggle('is-selected', active);
-        btn.classList.toggle('is-info', active);
       });
     }
 
-    // 更新顶栏 LTX 筛选按钮
-    function updateTopbarButton() {
-      const btn = document.getElementById('jhs-ltx-btn');
-      if (!btn) return;
-      if (!isLtxPluginEnabled() || isDetailPage()) {
-        btn.style.display = 'none';
-        return;
-      }
-      btn.style.display = '';
-      const isLtxTagPage = location.pathname.startsWith('/tags') && location.search.includes('c7=390');
-      const active = filterActive || isLtxTagPage;
-      btn.classList.toggle('active', active);
-      btn.textContent = active ? '✦ LTX ✓' : '✦ LTX';
-      const idx = LtxIndexManager.readIndex();
-      const count = idx ? idx.ids.size : 0;
-      btn.title = count
-        ? ('LTX 破解影片已收录 ' + count + ' 部 · 点击' + (active ? '恢复全部' : '只看 LTX') + ' · Shift+点击查看完整专区')
-        : '点击同步与筛选 LTX 破解专区';
-    }
-
-    // 渲染首页专属横向滑轨推荐频道 (方案四集成)
+    // 渲染首页专属横向滑轨推荐频道 (方案四集成：置于每周推荐下方，支持展开与收起)
     async function renderHomeRail() {
       if (!isLtxPluginEnabled() || !isLtxRailEnabled()) return;
       if (location.pathname !== '/' && location.pathname !== '') return;
       if (document.getElementById('jhs-ltx-rail')) return;
 
-      const mainList = document.querySelector('.movie-list');
-      if (!mainList) return;
+      // 核心定位：必须放置在每周推荐 (#recommend-container) 之后；若无推荐容器，则放在主列表之前
+      const recCont = document.getElementById('recommend-container');
+      const mainList = Array.from(document.querySelectorAll('.movie-list')).find(function (l) {
+        return l.id !== 'recommend-container' && !l.closest('#emby-favorites-panel') && !l.closest('#emby-top250-panel');
+      });
+
+      if (!recCont && !mainList) return;
 
       const idx = LtxIndexManager.readIndex();
       let recent = (idx && idx.recent) ? idx.recent : [];
       if (!recent || !recent.length) {
-        // 若内存尚未加载 recent，尝试同步第 1 页
         try {
           const firstPage = await LtxIndexManager.fetchTagPage(1);
           if (firstPage && firstPage.recent && firstPage.recent.length) {
@@ -10953,9 +10948,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
       if (!recent || !recent.length) return;
 
+      // 读取用户保存的折叠/展开状态（默认展开）
+      const storedCollapsed = localStorage.getItem('jhs_ltx_rail_collapsed');
+      const isCollapsed = (storedCollapsed === '1');
+
       const section = document.createElement('div');
       section.id = 'jhs-ltx-rail';
-      section.className = 'jhs-ltx-rail-section';
+      section.className = 'jhs-ltx-rail-section' + (isCollapsed ? ' collapsed' : '');
 
       let cardsHtml = '';
       recent.slice(0, 16).forEach(function (m) {
@@ -10972,18 +10971,69 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           '</a>';
       });
 
+      const totalCount = (idx && idx.ids) ? idx.ids.size : (recent.length || 0);
+      const countDisplay = totalCount > 0 ? ('(' + totalCount + ' 部)') : '';
+
       section.innerHTML =
         '<div class="jhs-ltx-rail-header">' +
-          '<div class="jhs-ltx-rail-title">' +
+          '<div class="jhs-ltx-rail-left">' +
             '<span class="material-symbols-outlined rail-icon">auto_awesome</span>' +
-            '<span>LTX 破解精选</span>' +
-            '<span class="jhs-ltx-rail-badge">紫晶霓虹专区</span>' +
+            '<span class="jhs-ltx-rail-title">LTX 破解精选</span>' +
+            (countDisplay ? '<span class="jhs-ltx-rail-count">' + escapeHtml(countDisplay) + '</span>' : '') +
           '</div>' +
-          '<a class="jhs-ltx-rail-more" href="/tags?c7=390">完整专区 (' + ((idx && idx.ids) ? idx.ids.size : '300+') + '部) ➔</a>' +
+          '<div class="jhs-ltx-rail-actions">' +
+            '<button type="button" class="jhs-ltx-arrow-btn" data-dir="-1" title="向左滚动" aria-label="向左滚动">' +
+              '<span class="material-symbols-outlined">chevron_left</span>' +
+            '</button>' +
+            '<button type="button" class="jhs-ltx-arrow-btn" data-dir="1" title="向右滚动" aria-label="向右滚动">' +
+              '<span class="material-symbols-outlined">chevron_right</span>' +
+            '</button>' +
+            '<button type="button" class="jhs-ltx-toggle-btn">' +
+              '<span class="material-symbols-outlined jhs-ltx-toggle-icon">' + (isCollapsed ? 'expand_more' : 'unfold_less') + '</span>' +
+              '<span class="jhs-ltx-toggle-txt">' + (isCollapsed ? '展开专区' : '收起专区') + '</span>' +
+            '</button>' +
+            '<a class="jhs-ltx-rail-more" href="/tags?c7=390">完整专区 ➔</a>' +
+          '</div>' +
         '</div>' +
         '<div class="jhs-ltx-rail-container">' + cardsHtml + '</div>';
 
-      mainList.parentNode.insertBefore(section, mainList);
+      // 绑定左右滚动箭头事件
+      section.querySelectorAll('.jhs-ltx-arrow-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const c = section.querySelector('.jhs-ltx-rail-container');
+          if (!c) return;
+          const dir = parseInt(btn.dataset.dir, 10) || 1;
+          const step = Math.max(300, Math.round((c.clientWidth || 700) * 0.7));
+          if (typeof c.scrollBy === 'function') c.scrollBy({ left: dir * step, behavior: 'smooth' });
+          else c.scrollLeft += dir * step;
+        });
+      });
+
+      // 绑定展开/收起按钮事件
+      const toggleBtn = section.querySelector('.jhs-ltx-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
+          const nowCollapsed = section.classList.contains('collapsed');
+          const nextCollapsed = !nowCollapsed;
+          section.classList.toggle('collapsed', nextCollapsed);
+          localStorage.setItem('jhs_ltx_rail_collapsed', nextCollapsed ? '1' : '0');
+          const txt = section.querySelector('.jhs-ltx-toggle-txt');
+          const ico = section.querySelector('.jhs-ltx-toggle-icon');
+          if (txt) txt.textContent = nextCollapsed ? '展开专区' : '收起专区';
+          if (ico) ico.textContent = nextCollapsed ? 'expand_more' : 'unfold_less';
+        });
+      }
+
+      // 插入 DOM：严格插入在每周推荐 (#recommend-container) 之后；若无推荐容器，则在 mainList 之前
+      if (recCont && recCont.parentNode) {
+        if (recCont.nextSibling) {
+          recCont.parentNode.insertBefore(section, recCont.nextSibling);
+        } else {
+          recCont.parentNode.appendChild(section);
+        }
+      } else if (mainList && mainList.parentNode) {
+        mainList.parentNode.insertBefore(section, mainList);
+      }
     }
 
     // 详情页增强（类别高亮 + 磁力流出标）
@@ -11012,7 +11062,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       });
     }
 
-    // 全局点击监听与导航劫持（彻底杜绝 302 -> /plans/ypay -> TOP250 接管 BUG）
+    // 全局点击监听与导航拦截：依据是否开启 VIP 破解灵活调度
     function initClickGuards() {
       if (boundClickGuard) return;
       boundClickGuard = true;
@@ -11020,30 +11070,23 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       document.addEventListener('click', function (e) {
         if (!e || !e.target || typeof e.target.closest !== 'function') return;
         // 匹配任意包含 vft=6 的链接（如原生的「LTX破解」按钮）
-        const link = e.target.closest('a[href*="vft=6"], a[href*="c7=390"]');
+        const link = e.target.closest('a[href*="vft=6"]');
         if (!link) return;
 
-        // 若链接正是 c7=390 且非 vft=6，允许默认跳转（本就安全可达）
-        const href = link.getAttribute('href') || '';
-        if (href.includes('c7=390') && !href.includes('vft=6')) return;
+        // 若用户未开启「绕过JAVDB限制 / VIP破解」，绝不拦截，允许原生访问 https://javdb.com/?vft=6，交由服务端处理
+        if (!isPluginEnabled('reviewListInfinite')) return;
 
-        // 核心修复：阻止浏览器向服务端请求 /?vft=6（避免 302 重定向到 /plans/ypay 进而被 TOP250 劫持）
+        // 若用户开启了 VIP 破解，拦截原生 302 访问，转为在当前页面切换 LTX 筛选突出显示
         e.preventDefault();
         e.stopPropagation();
 
         if (e.shiftKey) {
-          // Shift + 点击：直接进入完整专区
+          // Shift + 点击：快速直达完整专区页面
           location.href = '/tags?c7=390';
           return;
         }
 
-        // 点击时：若在首页，直接跳转至已解锁的完整专区 /tags?c7=390；
-        // 若在特定分类/演员页面，就地切换 LTX 过滤
-        if (location.pathname === '/' || location.pathname === '') {
-          location.href = '/tags?c7=390';
-        } else {
-          toggleFilter(link);
-        }
+        toggleFilter(link);
       }, true);
     }
 
@@ -11054,7 +11097,6 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       renderHomeRail: renderHomeRail,
       enhanceDetailPage: enhanceDetailPage,
       initClickGuards: initClickGuards,
-      updateTopbarButton: updateTopbarButton,
       updateNativeFilterButton: updateNativeFilterButton
     };
   })();
@@ -22808,6 +22850,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       incompleteOnly: false,  // 只看未补全：仅显示缺标题/封面/演员/评分任一关键字段的条目
       notesOnly: false,       // 只看有备注（筛选浮窗内）：作品本身或其演员/片商/系列带备注
       notesWorkOnly: false,   // 工具条「仅显示备注作品」：只认作品级备注（详情页番号旁「備註」按钮写的）
+      ltxOnly: false,         // 工具条「LTX 破解」：只显示已收录 LTX 破解磁链的收藏作品
       reviewWanted: false,    // 只看想看（筛选弹窗开关，与「看過」同开为并集）
       reviewWatched: false,   // 只看看過（筛选弹窗开关）
       recentDays: 0,          // 最近 N 天发行快捷视图（0=全部；7/30/90，按作品发行日期 date 判定）
@@ -23114,6 +23157,16 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         applyAndRender();
       });
       bar.appendChild(nwBtn);
+      // 收藏夹 LTX 破解作品专属筛选开关
+      const ltxFavBtn = h('<button class="efav-btn" id="efav-ltx-btn">' + icon('auto_awesome') + 'LTX 破解</button>');
+      ltxFavBtn.title = '只显示已收录 LTX 破解磁链的收藏作品；再次点击恢复全部展示。';
+      ltxFavBtn.addEventListener('click', function () {
+        state.ltxOnly = !state.ltxOnly;
+        syncLtxFavBtn();
+        saveState();
+        applyAndRender();
+      });
+      bar.appendChild(ltxFavBtn);
       bar.appendChild(mkBtn('auto_awesome', '获取和整理收藏', openCollectModal, false, '获取和整理收藏：同步清单 / 补全信息 / 刷新详情 / 识别性别 统一入口'));
       const starredBtn = h('<button class="efav-btn">' + sym('cards_star') + '收藏的清单</button>');
       starredBtn.title = '浏览你收藏的他人分享清单（实时抓取，纯预览）';
@@ -23212,6 +23265,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       const b = document.getElementById('efav-notes-work-btn');
       if (b) b.classList.toggle('accent', !!state.notesWorkOnly);
     }
+    // 工具条「LTX 破解」开关视觉同步（开 = 强调色）
+    function syncLtxFavBtn() {
+      const b = document.getElementById('efav-ltx-btn');
+      if (b) b.classList.toggle('accent', !!state.ltxOnly);
+    }
     function refreshScopeMenu() {
       if (!scopeMenu) return;
       const lists = (cache && cache.lists) ? cache.lists : [];
@@ -23304,10 +23362,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (f.scoreMax != null && f.scoreMax < 5.0) chip('评分', '≤ ' + f.scoreMax + '分', function () { f.scoreMax = 5.0; });
       if (f.codePrefix) chip('番号前缀', f.codePrefix, function () { f.codePrefix = ''; });
       if (state.keyword) chip('搜索', state.keyword, function () { state.keyword = ''; searchInput.value = ''; });
-      if (state.notesWorkOnly) chip('仅看', '备注作品', function () { state.notesWorkOnly = false; syncNotesWorkBtn(); });
+      if (state.notesWorkOnly) chip('仅看', '备注作品', function () { state.notesWorkOnly = false; syncNotesWorkBtn(); applyAndRender(); });
+      if (state.ltxOnly) chip('仅看', 'LTX 破解', function () { state.ltxOnly = false; syncLtxFavBtn(); applyAndRender(); });
       const cnt = h('<span class="efav-count">共 ' + renderList.length + ' 部</span>');
       chipsRow.appendChild(cnt);
       syncNotesWorkBtn();
+      syncLtxFavBtn();
     }
 
     /* ---------- 筛选与排序 ---------- */
@@ -23356,6 +23416,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (state.notesWorkOnly) {
           var wn = v.code ? noteMap['code:' + v.code] : null;
           if (!(wn && wn.content)) return false;
+        }
+        // 工具条「LTX 破解」：仅显示已收录 LTX 破解磁链的收藏作品
+        if (state.ltxOnly) {
+          const isLtx = typeof LtxIndexManager !== 'undefined' && LtxIndexManager.isLtx(v.id || '', v.code || '');
+          if (!isLtx) return false;
         }
         // 想看/看過筛选（筛选弹窗开关）：单开=精确状态；双开=并集（任一命中即可）
         if (state.reviewWanted || state.reviewWatched) {
@@ -23697,6 +23762,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           onlyAward: !!state.onlyAward,
           incompleteOnly: !!state.incompleteOnly, notesOnly: !!state.notesOnly,
           notesWorkOnly: !!state.notesWorkOnly,
+          ltxOnly: !!state.ltxOnly,
           reviewWanted: !!state.reviewWanted, reviewWatched: !!state.reviewWatched,
           recentDays: state.recentDays || 0,
           filters: state.filters,
@@ -23720,6 +23786,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         if (typeof s.incompleteOnly === 'boolean') state.incompleteOnly = s.incompleteOnly;
         if (typeof s.notesOnly === 'boolean') state.notesOnly = s.notesOnly;
         if (typeof s.notesWorkOnly === 'boolean') state.notesWorkOnly = s.notesWorkOnly;
+        if (typeof s.ltxOnly === 'boolean') state.ltxOnly = s.ltxOnly;
         if (typeof s.reviewWanted === 'boolean') state.reviewWanted = s.reviewWanted;
         if (typeof s.reviewWatched === 'boolean') state.reviewWatched = s.reviewWatched;
         if (s.recentDays === 7 || s.recentDays === 30 || s.recentDays === 90 || s.recentDays === 0) state.recentDays = s.recentDays;
@@ -27438,7 +27505,6 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (typeof LtxViewManager !== 'undefined') {
         LtxViewManager.renderHomeRail();
         LtxViewManager.updateNativeFilterButton();
-        LtxViewManager.updateTopbarButton();
       }
     } catch (e) {}
   }
