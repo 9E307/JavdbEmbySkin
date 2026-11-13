@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（30,690 行，v7.7.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（30,797 行，v7.7.1）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -169,12 +169,20 @@ _Avoid_: SiteAvatar, JdbPic, DefaultAvatar
 _Avoid_: DefaultIcon, EmptyAvatar, Placeholder
 
 **Actress Profile Bubble (女优悬浮画像卡片)**:
-鼠标悬停在演员名字上时弹出的气泡卡片（`.emby-note-tip`），整合高清定妆照、生日生平、三围特征、现役退役状态与一键穿透筛选。
+鼠标悬停在演员名字上时弹出的气泡卡片（`.emby-note-tip`），以 0ms 零延迟即时呈现基础卡片骨架，后台流式异步注水维基百科高清数据，整合生日生平、三围特征、罩杯、现役/退役活跃状态与云端收藏红心。
 _Avoid_: ActressTooltip, CastModal, ActorPopover
 
 **Actress Career Status (现役/退役活跃探针)**:
-通过 `ja/zh` 维基百科直连、MediaWiki 重定向与 `langlinks` 跨语言别名桥接解析 Infobox 生平参数（含三围、罩杯、身高体重与现役/退役状态）。
+通过 `ja/zh` 维基百科 MediaWiki Action API 接入、繁简与艺名重定向（`redirects=1`）及跨语言 `langlinks` 桥接，解析 Infobox 生平参数（含三围、罩杯、身高体重与现役/退役状态）。
 _Avoid_: CareerState, IsRetired, ActiveDetector
+
+**MediaWiki CORS Action API Pipeline (MediaWiki 跨域解析管道)**:
+基于 `action=parse&prop=text&origin=*` 的官方免鉴权跨域流水线，彻底替代脆弱的常规 HTML 页面抓取，免疫浏览器 CORS 拦截阻断，体积低至 70KB。
+_Avoid_: WikiScraper, HtmlCrawler, WikiPageGetter
+
+**Negative Cache Auto-healing (短效负缓存与自愈清洗机制)**:
+对未收录词条实施 10 分钟短效隔离，网络异常绝不写入负缓存；并在运行时自愈净化历史残留毒化记录，杜绝知名女优被 24 小时死锁。
+_Avoid_: BlacklistCache, ErrorBlocker, MissLock
 
 **Co-actress Stack & Collapse Badge (共演女优堆叠与折叠展开徽章)**:
 当单部影片参演女优较多时，超出阈值的女优自动折叠为 `+N` 堆叠徽章，点击展开/收起时主动触发 `WaterfallEngine.refresh()` 重排以防布局重叠。
@@ -678,5 +686,6 @@ _Avoid_: RequestDeduplication, GetCache, RequestLock
 32. [ADR-0032: 全链路多语言 DOM 统一解析、新版官方 App 推广条结构性拦截与全屏面板图层隔离架构](./docs/adr/0032-multilingual-dom-unification-app-banner-and-panel-layering.md)
 33. [ADR-0033: Whatslink 磁力真实截图验车、全域在途 GET 请求单例去重与 CSP 事件捕获委托架构](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)
 34. [ADR-0034: LTX 破解影片全景多合一架构、双轨资源导流与赛博紫晶霓虹视觉重排系统](./docs/adr/0034-ltx-uncensored-crack-panoramic-hub-and-dual-track-indexing.md)
+35. [ADR-0035: 维基女优生平 MediaWiki Action API 跨域容灾、负缓存自愈与 0ms 零延迟异步卡片架构](./docs/adr/0035-actress-biography-mediawiki-api-cors-resilience-and-zero-delay-hover.md)
 
 

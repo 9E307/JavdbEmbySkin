@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JavdbEmbySkin - JAVDB 界面美化与收藏管理增强
 // @namespace    com.local.javdbemby
-// @version      7.7
+// @version      7.7.1
 // @connect      jdforrepam.com
 // @connect      c0.jdbstatic.com
 // @connect      jdbstatic.com
@@ -10,6 +10,8 @@
 // @connect      api.github.com
 // @connect      gitee.com
 // @connect      whatslink.info
+// @connect      wikipedia.org
+// @connect      *.wikipedia.org
 // @connect      *
 // @description  将 JAVDB 传统前端完全重构为 Emby 风格的现代化样式结构并且提供更强大的数据收藏统计管理的功能脚本。支持全局皮肤开关与原生页面兼容共存，Emby+毛玻璃+液态玻璃三种视觉风格。番号详情页播放支持 JAVDB 官方影片播放与外部多源站点选择与检测。同时对用户在 JAVDB 清单中的作品建立本地数据库机制形成收藏夹，用于解决 JAVDB 没有更进一步的收藏统计管理等功能。
 // @author       hy3 + deepseek-v4flash + gemini3.8flash
@@ -174,7 +176,7 @@
     } catch (e) {}
   }
   setupImgFallbackDelegation();
-  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.6.3';
+  var VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) ? GM_info.script.version : '7.7.1';
   var tabHome = null, tabFav = null, favPanel = null;
   var tabLucky = null, luckyPanel = null;
   var tabGallery = null, galleryPanel = null;
@@ -955,7 +957,18 @@
   }
 
   let hideTipTimer = null;
-  async function showNoteTip(target) {
+  function repositionNoteTip(targetEl) {
+    if (!noteTipEl || !targetEl) return;
+    const r = targetEl.getBoundingClientRect();
+    const tw = noteTipEl.offsetWidth, th = noteTipEl.offsetHeight;
+    let x = Math.max(8, Math.min(r.left + r.width / 2 - tw / 2, window.innerWidth - tw - 8));
+    let y = r.top - th - 10;
+    if (y < 8) y = r.bottom + 10; // 上方空间不够放下方
+    noteTipEl.style.left = x + 'px';
+    noteTipEl.style.top = y + 'px';
+  }
+
+  function showNoteTip(target) {
     if (!target) return;
     if (hideTipTimer) { clearTimeout(hideTipTimer); hideTipTimer = null; }
 
@@ -966,14 +979,16 @@
     // 如果不是演员且没有备注，普通实体（片商/系列）才跳过；演员 Chip 必定展示！
     if (!isActor && !hasNote) return;
 
-    let actorData = null;
     const actorName = isActor ? (target.el.getAttribute('data-actor-name') || (target.el.querySelector('.nm') ? target.el.querySelector('.nm').textContent : '')).trim() : '';
     const starId = isActor ? (target.starId || '') : '';
 
-    if (isActor && isPluginEnabled('actressInfo') && actorName) {
-      try {
-        actorData = await ActressService.getActressData(actorName);
-      } catch (e) {}
+    let actorData = null;
+    const isActInfoEnabled = isActor && isPluginEnabled('actressInfo') && actorName;
+    if (isActInfoEnabled && typeof ActressService !== 'undefined') {
+      const cached = ActressService.getLocalCache()[actorName];
+      if (cached && !cached._miss) {
+        actorData = cached;
+      }
     }
 
     if (!noteTipEl) {
@@ -988,6 +1003,9 @@
       });
       document.body.appendChild(noteTipEl);
     }
+
+    noteTipEl._actorTarget = target.el;
+    noteTipEl._actorName = actorName;
 
     if (isActor) {
       // 方案 1：一体化分层精美悬浮卡片（全覆盖任何演员）
@@ -1033,7 +1051,11 @@
         }
       }
       if (!tagsHtml) {
-        tagsHtml = '<div class="ap-tags empty"><span class="ap-tag-sub">暂无生平资料</span></div>';
+        if (isActInfoEnabled) {
+          tagsHtml = '<div class="ap-tags loading"><span class="ap-tag-sub" style="opacity:0.8;"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:-2px;animation:edv-spin 0.8s linear infinite;">progress_activity</span> 资料获取中…</span></div>';
+        } else {
+          tagsHtml = '<div class="ap-tags empty"><span class="ap-tag-sub">暂无生平资料</span></div>';
+        }
       }
 
       let noteHtml = '';
@@ -1108,20 +1130,49 @@
           }
         });
       }
+
+      // 若未命中全量缓存且启用了女优信息，发起异步查询并在到达后秒级更新
+      if (!actorData && isActInfoEnabled && typeof ActressService !== 'undefined') {
+        ActressService.getActressData(actorName).then(function (data) {
+          if (noteTipEl && noteTipEl._actorTarget === target.el && noteTipEl.classList.contains('show')) {
+            const stEl = noteTipEl.querySelector('.ap-status');
+            if (stEl && data && data.status) {
+              stEl.className = 'ap-status ' + (data.status === '引退' ? 'retire' : 'active');
+              stEl.textContent = data.status;
+            }
+            const tagsEl = noteTipEl.querySelector('.ap-tags');
+            if (tagsEl) {
+              let newTagsHtml = '';
+              if (data) {
+                const tags = [];
+                if (data.age) tags.push(data.age);
+                if (data.birthday) tags.push(data.birthday);
+                if (data.height) tags.push(data.height);
+                if (data.braSize) tags.push(data.braSize);
+                if (data.threeSizeText) tags.push(data.threeSizeText);
+                if (tags.length) {
+                  newTagsHtml = tags.map(function (t) { return '<span class="ap-tag">' + escapeHtml(t) + '</span>'; }).join('');
+                }
+              }
+              if (newTagsHtml) {
+                tagsEl.className = 'ap-tags';
+                tagsEl.innerHTML = newTagsHtml;
+              } else {
+                tagsEl.className = 'ap-tags empty';
+                tagsEl.innerHTML = '<span class="ap-tag-sub">暂无生平资料</span>';
+              }
+            }
+            repositionNoteTip(target.el);
+          }
+        }).catch(function () {});
+      }
     } else {
       // 普通实体（片商/系列/作品备注）保持纯净气泡
       noteTipEl.innerHTML = '<div style="font-size:12px;line-height:1.45;color:#ffe8cc;word-break:break-word;">' + escapeHtml(n.content) + '</div>';
     }
 
     noteTipEl.classList.remove('show');
-    noteTipEl.style.left = '0px'; noteTipEl.style.top = '0px';
-    const r = target.el.getBoundingClientRect();
-    const tw = noteTipEl.offsetWidth, th = noteTipEl.offsetHeight;
-    let x = Math.max(8, Math.min(r.left + r.width / 2 - tw / 2, window.innerWidth - tw - 8));
-    let y = r.top - th - 10;
-    if (y < 8) y = r.bottom + 10; // 上方空间不够放下方
-    noteTipEl.style.left = x + 'px';
-    noteTipEl.style.top = y + 'px';
+    repositionNoteTip(target.el);
     void noteTipEl.offsetHeight;
     noteTipEl.classList.add('show');
   }
@@ -13996,7 +14047,25 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           localStorage.removeItem('jhs_repo_index_cache');
         } catch (e) {}
       }
-      try { return JSON.parse(localStorage.getItem(this._cacheKey) || '{}'); } catch (e) { return {}; }
+      try {
+        const raw = localStorage.getItem(this._cacheKey);
+        const parsed = raw ? JSON.parse(raw) : {};
+        // 自动净化历史版本遗留的 24h 毒化负缓存（清理所有历史未标记 _v4Safe 或已超 10 分钟的 _miss 记录，给女优自愈探测机会）
+        const now = Date.now();
+        let cleaned = false;
+        Object.keys(parsed).forEach(function (k) {
+          if (parsed[k] && parsed[k]._miss) {
+            if (!parsed[k]._v4Safe || (now - parsed[k]._ts > 10 * 60 * 1000)) {
+              delete parsed[k];
+              cleaned = true;
+            }
+          }
+        });
+        if (cleaned) {
+          try { localStorage.setItem(this._cacheKey, JSON.stringify(parsed)); } catch (e) {}
+        }
+        return parsed;
+      } catch (e) { return {}; }
     },
     saveLocalCache: function (cache) {
       try {
@@ -14274,21 +14343,55 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
 
     _fetchWikiDoc: async function (lang, title) {
       if (!title) return null;
+      // 1. 优先采用官方 MediaWiki parse API（带 origin=* 原生支持跨域 CORS，轻量直达纯 Infobox 内容）
+      const apiUrl = 'https://' + lang + '.wikipedia.org/w/api.php?action=parse&page=' +
+        encodeURIComponent(title) + '&redirects=1&prop=text&format=json&origin=*';
+      try {
+        let json = null;
+        try {
+          const txt = await (typeof gmHttp !== 'undefined' ? gmHttp.get(apiUrl) : fetch(apiUrl).then(function (r) { return r.text(); }));
+          if (txt) json = typeof txt === 'string' ? JSON.parse(txt) : txt;
+        } catch (apiErr) {
+          try {
+            const resp = await fetch(apiUrl);
+            if (resp.ok) json = await resp.json();
+          } catch (fErr) {}
+        }
+        if (json) {
+          if (json.error) {
+            // 维基明确返回 missingtitle 错误，说明条目不存在，直接返回 null 避免无谓重试
+            return null;
+          }
+          if (json.parse && json.parse.text && json.parse.text['*']) {
+            const doc = new DOMParser().parseFromString(json.parse.text['*'], 'text/html');
+            const resolvedTitle = json.parse.title || title;
+            const wikiUrl = 'https://' + lang + '.wikipedia.org/wiki/' + encodeURIComponent(resolvedTitle);
+            return { doc: doc, url: wikiUrl, title: resolvedTitle };
+          }
+        }
+      } catch (e) {}
+
+      // 2. 降级兜底：直接抓取维基条目完整 HTML 页面
       const url = 'https://' + lang + '.wikipedia.org/wiki/' + encodeURIComponent(title);
       try {
         const html = await gmHttp.get(url);
         if (!html) return null;
         const doc = new DOMParser().parseFromString(html, 'text/html');
         if (doc.querySelector('#noarticletext')) return null;
-        return { doc: doc, url: url };
+        return { doc: doc, url: url, title: title };
       } catch (e) { return null; }
     },
 
     _fetchJson: async function (url) {
       try {
         const txt = await gmHttp.get(url);
-        return txt ? JSON.parse(txt) : null;
-      } catch (e) { return null; }
+        return txt ? (typeof txt === 'string' ? JSON.parse(txt) : txt) : null;
+      } catch (e) {
+        try {
+          const r = await fetch(url);
+          return r.ok ? await r.json() : null;
+        } catch (fe) { return null; }
+      }
     },
 
     _resolveZhAndJaTitle: async function (candidates) {
@@ -14429,7 +14532,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       if (cached && cached._ts) {
         const ageMs = Date.now() - cached._ts;
         if (cached._miss) {
-          if (ageMs < 86400000) return null; // 24h 负缓存，避免重复请求未建档女优
+          if (ageMs < 10 * 60 * 1000) return null; // 负缓存严格限制为 10 分钟短缓存，坚决杜绝 24 小时死锁
         } else if (ageMs < 7 * 86400000) {
           return cached;
         }
@@ -14448,8 +14551,12 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             self.saveLocalCache(freshCache);
             return data;
           }
-          freshCache[name] = { _miss: true, _ts: Date.now() };
+          // 仅在明确查找无果时写入短期负缓存（10分钟）
+          freshCache[name] = { _miss: true, _v4Safe: true, _ts: Date.now() };
           self.saveLocalCache(freshCache);
+          return (cached && !cached._miss) ? cached : null;
+        } catch (err) {
+          // 发生网络异常时绝不写入 _miss 负缓存，避免网络抖动毒化缓存
           return (cached && !cached._miss) ? cached : null;
         } finally {
           delete self._inflight[name];
