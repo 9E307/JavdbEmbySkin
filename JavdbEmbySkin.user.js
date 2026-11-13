@@ -2134,19 +2134,32 @@ html.emby-skin .jhs-ltx-tag,
   z-index: 2 !important;
 }
 
-/* 2. LTX 影片卡片柔和微光边缘（避免粗暴红框，采用优雅紫晶外发光） */
+/* 2. LTX 影片卡片动态微光边缘：静态不常驻边框，仅当鼠标悬停时动态显现 1px 细致紫晶边框与外发光（首页与收藏夹通用） */
 html.emby-skin .item.jhs-ltx-hit .box {
-  outline: 1.5px solid rgba(168, 85, 247, 0.65) !important;
-  outline-offset: 1px !important;
-  box-shadow: 0 0 14px rgba(168, 85, 247, 0.25), 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  transition: outline .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+html.emby-skin .item.jhs-ltx-hit:hover .box,
+html.emby-skin .item.jhs-ltx-hit .box:hover {
+  outline: 1px solid rgba(168, 85, 247, 0.75) !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.32), 0 8px 24px rgba(0, 0, 0, 0.45) !important;
 }
 
-/* 3. LTX 筛选激活状态：未命中卡片隐藏并让网格重排 */
-html.emby-skin .movie-list.jhs-ltx-only .item:not(.jhs-ltx-hit) {
+/* 3. LTX 筛选激活状态：未命中卡片隐藏并让网格重排（标准网格、瀑布流、动态聚焦均生效） */
+html.emby-skin .movie-list.jhs-ltx-only .item:not(.jhs-ltx-hit),
+html.emby-skin.emby-masonry-large .movie-list.emby-masonry.jhs-ltx-only .item:not(.jhs-ltx-hit),
+html.emby-skin .movie-list.jhs-ltx-only > .item:not(.jhs-ltx-hit) {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
-html.emby-skin .movie-list.jhs-ltx-only .item.jhs-ltx-hit {
+html.emby-skin .movie-list.jhs-ltx-only .item.jhs-ltx-hit,
+html.emby-skin.emby-masonry-large .movie-list.emby-masonry.jhs-ltx-only .item.jhs-ltx-hit {
   display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 /* 4. 原生 LTX 筛选按钮高亮样式 (Cyber Violet 紫晶霓虹高亮) */
@@ -2205,9 +2218,9 @@ a.button.is-small[href*="vft=6"].is-selected,
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.65rem;
-  padding: 0.42em 0.8em;
+  padding: 0.56em 1em;
   background: var(--e-bg2, rgba(255, 255, 255, 0.04));
-  border-radius: var(--e-r, 8px);
+  border-radius: 12px;
   border: 1px solid var(--e-border, rgba(255, 255, 255, 0.08));
 }
 .jhs-ltx-rail-left {
@@ -2312,8 +2325,8 @@ a.button.is-small[href*="vft=6"].is-selected,
   border-radius: 999px;
 }
 .jhs-ltx-rail-card {
-  flex: 0 0 180px;
-  width: 180px;
+  flex: 0 0 260px;
+  width: 260px;
   border-radius: 8px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
@@ -2332,16 +2345,28 @@ a.button.is-small[href*="vft=6"].is-selected,
 }
 .jhs-ltx-rail-card .rail-cover {
   width: 100%;
-  aspect-ratio: 0.7;
+  aspect-ratio: 2 / 3;
   background: #111;
   overflow: hidden;
   position: relative;
 }
 .jhs-ltx-rail-card .rail-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: 200% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: right center !important;
   display: block;
+}
+@media (max-width: 700px) {
+  .jhs-ltx-rail-card {
+    flex: 0 0 min(260px, 72vw);
+    width: min(260px, 72vw);
+  }
 }
 .jhs-ltx-rail-card .rail-info {
   padding: 0.5rem 0.6rem;
@@ -2857,7 +2882,7 @@ html.emby-skin #recommend-container.emby-rec-rail > .item .box {
   height:auto !important; background:var(--e-card) !important;
 }
 html.emby-skin #emby-rec-bar {
-  max-width:calc(1600px - 3.2em); width:calc(100% - 3.2em); margin:.2em auto .55em;
+  max-width:100%; width:100%; margin:.2em 0 .55em;
   padding:.56em 1em; border-radius:12px; box-sizing:border-box; position:relative; overflow:hidden;
   display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
   background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.09); color:var(--e-text);
@@ -2912,7 +2937,7 @@ html.emby-skin.emby-style-liquid #emby-rec-bar::before {
   background:linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent); opacity:.75; pointer-events:none;
 }
 @media (max-width:700px) {
-  html.emby-skin #emby-rec-bar { width:calc(100% - 1.6em); padding:.5em .75em; }
+  html.emby-skin #emby-rec-bar { width:100%; padding:.5em .75em; }
   html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) { padding:.4em .8em 1em !important; }
   html.emby-skin #recommend-container.emby-rec-rail > .item { width:min(260px, 72vw) !important; }
 }
@@ -8649,9 +8674,13 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
     var fontsBound = false;
     // 可见子项：排除哨兵/隐藏元素（避免循环访问 offsetParent 造成强制重排）
     function visibleItems(el) {
+      var isLtxOnly = el.classList.contains('jhs-ltx-only');
       return Array.prototype.filter.call(el.children, function (c) {
-        return c.nodeType === 1 && !c.classList.contains('efav-sentinel') &&
-          !c.classList.contains('is-filtered-out') && !c.hidden && c.style.display !== 'none';
+        if (c.nodeType !== 1) return false;
+        if (c.classList.contains('efav-sentinel') || c.classList.contains('is-filtered-out')) return false;
+        if (c.hidden || c.style.display === 'none') return false;
+        if (isLtxOnly && !c.classList.contains('jhs-ltx-hit')) return false;
+        return true;
       });
     }
     // 按容器宽 + 列宽基准计算列数与列宽
@@ -10891,6 +10920,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         // 排除收藏夹与TOP250面板内部生成的 .movie-list
         if (l.closest('#emby-favorites-panel') || l.closest('#emby-top250-panel') || l.id === 'recommend-container') return;
         l.classList.toggle('jhs-ltx-only', filterActive);
+        if (typeof WaterfallEngine !== 'undefined' && l.classList.contains('emby-masonry')) {
+          try { WaterfallEngine.register(l); } catch (e) {}
+        }
       });
 
       if (filterActive) {
@@ -10988,11 +11020,11 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<button type="button" class="jhs-ltx-arrow-btn" data-dir="1" title="向右滚动" aria-label="向右滚动">' +
               '<span class="material-symbols-outlined">chevron_right</span>' +
             '</button>' +
+            '<a class="jhs-ltx-rail-more" href="/tags?c7=390">完整专区 ➔</a>' +
             '<button type="button" class="jhs-ltx-toggle-btn">' +
               '<span class="material-symbols-outlined jhs-ltx-toggle-icon">' + (isCollapsed ? 'expand_more' : 'unfold_less') + '</span>' +
               '<span class="jhs-ltx-toggle-txt">' + (isCollapsed ? '展开专区' : '收起专区') + '</span>' +
             '</button>' +
-            '<a class="jhs-ltx-rail-more" href="/tags?c7=390">完整专区 ➔</a>' +
           '</div>' +
         '</div>' +
         '<div class="jhs-ltx-rail-container">' + cardsHtml + '</div>';
