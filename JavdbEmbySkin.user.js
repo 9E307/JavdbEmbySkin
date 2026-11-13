@@ -2219,9 +2219,14 @@ a.button.is-small[href*="vft=6"].is-selected,
   justify-content: space-between;
   margin-bottom: 0.65rem;
   padding: 0.56em 1em;
-  background: var(--e-bg2, rgba(255, 255, 255, 0.04));
+  background: rgba(255, 255, 255, 0.045);
   border-radius: 12px;
-  border: 1px solid var(--e-border, rgba(255, 255, 255, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  color: var(--e-text, #fff);
+  transition: background .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
 .jhs-ltx-rail-left {
   display: flex;
@@ -2297,6 +2302,31 @@ a.button.is-small[href*="vft=6"].is-selected,
   color: #fff !important;
   border-color: #a855f7;
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.35);
+}
+.jhs-ltx-ext-btn {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: #e9d5ff !important;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.32);
+  border-radius: 999px;
+  padding: .22em .72em;
+  transition: all .2s ease;
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+.jhs-ltx-ext-btn:hover {
+  background: rgba(168, 85, 247, 0.28);
+  color: #fff !important;
+  border-color: #a855f7;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+.jhs-ltx-ext-btn .ext-icon {
+  font-size: 14px;
+  color: #c084fc;
 }
 .jhs-ltx-rail-section.collapsed .jhs-ltx-arrow-btn {
   display: none !important;
@@ -2876,7 +2906,7 @@ html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-
   box-sizing:border-box;
 }
 html.emby-skin #recommend-container.emby-rec-rail > .item {
-  flex:0 0 auto !important; width:260px !important; scroll-snap-align:start;
+  flex:0 0 auto !important; width:300px !important; scroll-snap-align:start;
 }
 html.emby-skin #recommend-container.emby-rec-rail > .item .box {
   height:auto !important; background:var(--e-card) !important;
@@ -2922,24 +2952,27 @@ html.emby-skin #emby-rec-bar .emby-rec-toggle-btn:hover {
   background:rgba(255,255,255,.16); border-color:var(--e-accent, #00a4dc); color:#fff;
 }
 html.emby-skin #emby-rec-bar.collapsed .emby-rec-arrow-btn { display:none; }
-html.emby-skin.emby-style-glass #emby-rec-bar {
+html.emby-skin.emby-style-glass #emby-rec-bar,
+html.emby-skin.emby-style-glass .jhs-ltx-rail-header {
   background:rgba(20,24,36,.46) !important;
   backdrop-filter:blur(18px) saturate(1.7) !important; -webkit-backdrop-filter:blur(18px) saturate(1.7) !important;
   border-color:rgba(255,255,255,.18) !important;
 }
-html.emby-skin.emby-style-liquid #emby-rec-bar {
-  background:linear-gradient(135deg, rgba(255,255,255,.15), rgba(255,255,255,.04) 60%, rgba(150,140,255,.1)) !important;
+html.emby-skin.emby-style-liquid #emby-rec-bar,
+html.emby-skin.emby-style-liquid .jhs-ltx-rail-header {
+  background:linear-gradient(135deg, rgba(255,255,255,.15), rgba(255,255,255,.04) 60%, rgba(168,85,247,.1)) !important;
   border-color:rgba(255,255,255,.26) !important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.08), 0 6px 20px rgba(0,0,0,.28) !important;
 }
-html.emby-skin.emby-style-liquid #emby-rec-bar::before {
+html.emby-skin.emby-style-liquid #emby-rec-bar::before,
+html.emby-skin.emby-style-liquid .jhs-ltx-rail-header::before {
   content:''; position:absolute; left:8%; right:8%; top:0; height:2px; border-radius:2px;
   background:linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent); opacity:.75; pointer-events:none;
 }
 @media (max-width:700px) {
   html.emby-skin #emby-rec-bar { width:100%; padding:.5em .75em; }
   html.emby-skin:not(.emby-fav-view) #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden) { padding:.4em .8em 1em !important; }
-  html.emby-skin #recommend-container.emby-rec-rail > .item { width:min(260px, 72vw) !important; }
+  html.emby-skin #recommend-container.emby-rec-rail > .item { width:min(300px, 72vw) !important; }
 }
 
 /* 原版预览（Fancybox 原生播放/看图控件，移动保留 data-fancybox，可看原站预告片/样图，不再自写灯箱） */
@@ -9002,6 +9035,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       '#emby-topbar',
       '#emby-compact-bar',
       '#emby-rec-bar',
+      '.jhs-ltx-rail-header',
+      '.jhs-ltx-rail-more',
+      '.jhs-ltx-ext-btn',
       '.emby-home-tabs .emby-home-tab',
       '.lucky-shuffle-btn',
       'a.button[data-controller="lucky-shuffle"]',
@@ -11012,6 +11048,9 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<span class="material-symbols-outlined rail-icon">auto_awesome</span>' +
             '<span class="jhs-ltx-rail-title">LTX 破解精选</span>' +
             (countDisplay ? '<span class="jhs-ltx-rail-count">' + escapeHtml(countDisplay) + '</span>' : '') +
+            '<a class="jhs-ltx-ext-btn" href="https://ltx.libray.workers.dev/" target="_blank" rel="noopener noreferrer" title="访问外部LTX资源库（第三方收集站点）">' +
+              '<span class="material-symbols-outlined ext-icon">open_in_new</span> 外部LTX资源库' +
+            '</a>' +
           '</div>' +
           '<div class="jhs-ltx-rail-actions">' +
             '<button type="button" class="jhs-ltx-arrow-btn" data-dir="-1" title="向左滚动" aria-label="向左滚动">' +
@@ -11020,7 +11059,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<button type="button" class="jhs-ltx-arrow-btn" data-dir="1" title="向右滚动" aria-label="向右滚动">' +
               '<span class="material-symbols-outlined">chevron_right</span>' +
             '</button>' +
-            '<a class="jhs-ltx-rail-more" href="/tags?c7=390">完整专区 ➔</a>' +
+            '<a class="jhs-ltx-rail-more" href="/tags?c7=390">本站LTX专区 ➔</a>' +
             '<button type="button" class="jhs-ltx-toggle-btn">' +
               '<span class="material-symbols-outlined jhs-ltx-toggle-icon">' + (isCollapsed ? 'expand_more' : 'unfold_less') + '</span>' +
               '<span class="jhs-ltx-toggle-txt">' + (isCollapsed ? '展开专区' : '收起专区') + '</span>' +
@@ -11065,6 +11104,18 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
         }
       } else if (mainList && mainList.parentNode) {
         mainList.parentNode.insertBefore(section, mainList);
+      }
+
+      // 液态玻璃拟态增强（与每周推荐控制条享受同款毛玻璃折射与高光边缘）
+      if (typeof LiquidGlass !== 'undefined' && document.documentElement.classList.contains('emby-style-liquid')) {
+        try {
+          const hdr = section.querySelector('.jhs-ltx-rail-header');
+          if (hdr) LiquidGlass.ensureApplied(hdr);
+          const extBtn = section.querySelector('.jhs-ltx-ext-btn');
+          if (extBtn) LiquidGlass.ensureApplied(extBtn);
+          const moreBtn = section.querySelector('.jhs-ltx-rail-more');
+          if (moreBtn) LiquidGlass.ensureApplied(moreBtn);
+        } catch (e) {}
       }
     }
 
