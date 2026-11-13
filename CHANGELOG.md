@@ -22,7 +22,7 @@
 ## [v7.7.0] - 2026-11-13
 
 ### 新增 (Added)
-* **方案四：LTX 影片专区多合一综合全景架构**：
+* **方案四：LTX 影片专区多合一综合全景架构**（详见 [ADR-0034](./docs/adr/0034-ltx-uncensored-crack-panoramic-hub-and-dual-track-indexing.md)）：
   * **紫晶霓虹 (Cyber Violet) 角标与边缘微光**：以 `linear-gradient(135deg, #a855f7, #ec4899)` 赛博紫晶霓虹渐变重塑 LTX 视觉识别体系，卡片边缘施加柔和紫晶微光（杜绝粗暴红框）。
   * **左下角标签栏前置展示**：按照视觉层级要求，将 `✦ LTX` 徽章置于卡片左下角标签栏 (`.tags.has-addons`) 的第一位，严格前置排在「无码破解」「中文字幕」「今日新种」等标签前面，既醒目又绝不遮挡封面精彩画面。
   * **首页专属「✦ LTX 破解精选」推荐滑轨（每周推荐下方 + 支持折叠）**：
@@ -63,12 +63,12 @@
 ## [v7.6.3] - 2026-11-13
 
 ### 新增 (Added)
-* **Whatslink 截图在线验车**：在影片详情页（无论处于 Emby 皮肤还是原生排版）磁力列表的「複製」「下載」按钮旁，按照官方 Bulma 风格无缝新增「在线验证」按钮。一键异步探测真实截图与文件明细，提供全屏高画质走马灯预览、缩略图切换与键盘方向键快捷导航，有效防范虚假与货不对板资源。
+* **Whatslink 截图在线验车**（详见 [ADR-0033](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)）：在影片详情页（无论处于 Emby 皮肤还是原生排版）磁力列表的「複製」「下載」按钮旁，按照官方 Bulma 风格无缝新增「在线验证」按钮。一键异步探测真实截图与文件明细，提供全屏高画质走马灯预览、缩略图切换与键盘方向键快捷导航，有效防范虚假与货不对板资源。
 * **LTX 影片专区索引引擎接入**：吸收重构 LTX 破解专区（`/tags?c7=390`）的高性能本地索引引擎，深度融入 VIP 绕过限制鉴权体系，采用首屏 30 项指纹增量校验与 7 天本地长效缓存，为 LTX 影片专区展示提供底层高速支撑。
 
 ### 优化 (Optimized)
-* **全局网络调度与并发请求去重 (In-Flight Request Coalescing)**：针对多插件或页面并发请求相同 URL（如女优头像探测、翻译、可用性检查）建立在途 GET 请求单例合并调度与 5 分钟短期备忘机制，排除写操作接口，降低冗余开销并大幅提升吞吐性能。
-* **CSP 规范与图片容错事件捕获委托 (setupImgFallbackDelegation)**：重构清理模板中分散的内联 `onerror="..."` 处理，改用全局捕获阶段单点事件委托统一调度站点 Logo、关于页面画卷、女优头像（官方与 Gfriends 别名桥接）及防盗链图床路径降级，符合现代安全内容策略（CSP）。
+* **全局网络调度与并发请求去重 (In-Flight Request Coalescing)**（详见 [ADR-0033](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)）：针对多插件或页面并发请求相同 URL（如女优头像探测、翻译、可用性检查）建立在途 GET 请求单例合并调度与 5 分钟短期备忘机制，排除写操作接口，降低冗余开销并大幅提升吞吐性能。
+* **CSP 规范与图片容错事件捕获委托 (setupImgFallbackDelegation)**（详见 [ADR-0033](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)）：重构清理模板中分散的内联 `onerror="..."` 处理，改用全局捕获阶段单点事件委托统一调度站点 Logo、关于页面画卷、女优头像（官方与 Gfriends 别名桥接）及防盗链图床路径降级，符合现代安全内容策略（CSP）。
 
 ---
 

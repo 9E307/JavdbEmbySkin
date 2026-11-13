@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（29,231 行，v7.6.2）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（30,682 行，v7.7.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -294,7 +294,27 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 29,231 Lines)
+### 11. 磁力验车、LTX 全景专区与现代网络架构 (Whatslink Verification, LTX Hub & Network Architecture)
+
+**WhatslinkVerifier (Whatslink 磁力真实截图验车引擎)**:
+在详情页磁力列表「複製」「下載」按钮旁按 Bulma 原生规范挂载「在线验证」按钮，基于只读探测与跨域防盗链穿透（`referrerpolicy="no-referrer"`）异步调取 Whatslink 接口，提供全屏走马灯灯箱漫游、缩略图导航与真实文件结构校验。
+_Avoid_: MagnetChecker, TorrentScreenshot, LinkVerifier
+
+**LtxIndexManager & LtxViewManager (LTX 破解专区双轨导流与全景多合一架构)**:
+负责 LTX 破解影片索引数据采集、服务端 VIP 302 重定向拦截、首页折叠推荐横轨展示、260px 封面右半取景（`Right-Side Cover Cropping`）及与错落瀑布流排版引擎自适应重排协调，并提供直达第三方收集站的「外部LTX资源库」流光按钮与「本站LTX专区」双轨入口。
+_Avoid_: LtxSection, CrackHub, LtxList
+
+**Cyber Violet (赛博紫晶霓虹视觉系统)**:
+基于紫晶渐变（`linear-gradient(135deg, #a855f7 0%, #ec4899 100%)`）构建的 LTX 专属视觉语言，包含卡片左下角前置角标、鼠标悬停 1px 细微光轮廓（`border: 1px solid rgba(168, 85, 247, 0.45); box-shadow: 0 0 12px rgba(168, 85, 247, 0.25)`）及流光渐变边框动画（`ghGlowing`）。
+_Avoid_: PurpleBadge, LtxGlow, NeonBorder
+
+**In-Flight Request Coalescing (全域在途 GET 请求单例合并调度与短期备忘)**:
+在底层 `gmHttp.request` 注册 `__gmGetInFlight` 映射表，针对高频并发相同 URL 的安全只读 GET 请求自动合并为单例 Promise 广播响应，并结合 5 分钟安全内存备忘（`__gmGetMemo`），消除网络冗余与连接挤占。
+_Avoid_: RequestDeduplication, GetCache, RequestLock
+
+---
+
+## 架构子系统全景地图 (Architecture Map Across 30,682 Lines - v7.7.0)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -394,15 +414,15 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 后续任何 AI 智能体在向用户汇报或提交代码前，必须在内部反思链（Chain of Thought）中逐项核对并确保符合以下四步交付准则：
 
 1. **[语法与静态安全]**：是否已执行 `node -c .\JavdbEmbySkin.user.js` 并确保 100% 零语法错误与未闭合语法结构？
-2. **[33条铁律红线核查]**：本次改动是否侵犯了后文 33 条业务铁律中的任何一条？必须对照本次修改所触碰的代码模块与子系统，逐条检索核查后文对应的业务铁律与历史陷阱，坚决不触碰任何既有防线。
+2. **[38条铁律红线核查]**：本次改动是否侵犯了后文 38 条业务铁律中的任何一条？必须对照本次修改所触碰的代码模块与子系统，逐条检索核查后文对应的业务铁律与历史陷阱，坚决不触碰任何既有防线。
 3. **[侵入度与重构判定]**：本次修改是否严格做到了“最小必要侵入”？是否存在用推翻重构掩盖排查不足的嫌疑？
 4. **[文档与版本原子化同步]**：若涉及版本递增，是否已将脚本头部 `@version`、脚本内部 `VERSION` 常量、`CONTEXT.md` 顶栏行数与版本号、以及 [`CHANGELOG.md`](./CHANGELOG.md) 严格按 Keep a Changelog 格式同步更新？
 
 ---
 
-## 核心“弯弯绕绕”与历史避坑铁律 (35 Critical Invariants & Gotchas)
+## 核心“弯弯绕绕”与历史避坑铁律 (38 Critical Invariants & Gotchas)
 
-这 35 条铁律是整个项目 29,231 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 38 条铁律是整个项目 30,682 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。
@@ -598,6 +618,26 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 * **陷阱**：看似规范的资源清理（`window.addEventListener('beforeunload', () => fbObserver.disconnect())`）在含 `magnet:?` 协议链接的详情页上等同于一次点击后永久杀死预览图收藏按钮；而在全容器范围做兜底抓图则会导致用户浏览第 0 帧预告片时误将下一张相邻剧照当成当前图片写入画廊库。
 * **参见决策**：[ADR-0008: JAVDB SPA 局部路由生命周期接管与原生浮层同步 (v7.6.2 增补)](./docs/adr/0008-spa-route-lifecycle-and-native-mask-synchronization.md)
 
+### 37. Whatslink 磁力截图在线验车、真实文件明细校验与只读免认证通信规范
+* **铁律**：
+  1. **Bulma 原生设计融合与只读探测**：详情页「在线验证」按钮必须严格遵循 Bulma 原生规范（`button is-small is-info is-light`）挂载于「複製」「下載」按钮行；异步探测 Whatslink 接口（`https://whatslink.info/api/v1/link?url=`）必须仅通过只读 GET 请求发起，严禁携带任何 Cookie、Authorization 标头或私有用户凭据。
+  2. **跨域防盗链穿透与全屏走马灯**：接口返回的截屏大图必须强制附加 `referrerpolicy="no-referrer"` 并提供全屏高画质灯箱走马灯漫游（支持键盘左/右切图、Esc 退出、缩略图快速导航与滚轮防穿透）。
+  3. **在途 GET 请求单例合并调度与短期备忘**：在全站底层网络层（`gmHttp.request`），对安全幂等 GET 请求必须通过静态映射表 `__gmGetInFlight` 实施单例合并调度（In-Flight Coalescing），并辅以 5 分钟短期内存备忘（`__gmGetMemo`），严禁将写操作（POST/PUT/DELETE）或带自定义鉴权头的请求纳入合并。
+  4. **CSP 规范单点捕获阶段图片事件委托**：所有 DOM 渲染模板严禁内联注入 `onerror="..."`，必须经由 `setupImgFallbackDelegation` 在根节点注册单例捕获阶段事件委托（`useCapture: true`）进行全局统一容灾降级。
+* **陷阱**：若未在图片请求上声明 `no-referrer`，Whatslink 引用的第三方图床会因 Referer 策略直接返回 403 阻断预览；若在途合并未严格限定 GET 请求，并发表单提交或打分操作会被错误合并导致数据丢失；若在模板中内联拼接 `onerror`，现代严格 CSP 环境下会被浏览器无情拦截并抛出控制台安全警报。
+* **参见决策**：[ADR-0033: Whatslink 磁力真实截图验车、全域在途 GET 请求单例去重与 CSP 事件捕获委托架构](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)
+
+### 38. LTX 破解专区双轨资源导流、服务端 VIP 302 重定向守卫与全景拟态流式重排准则
+* **铁律**：
+  1. **服务端 302 客户端安全守卫**：官方 `/?vft=6` 路由在非 VIP 访问时会触发服务端 302 重定向。当用户启用 VIP 破解时，必须通过 `LtxViewManager` 拦截官方 LTX 按钮的跳转行为，将其转化为当前页面信息流的瞬时过滤重排开关；关闭 VIP 破解时，必须忠实回退为原生超链接跳转，严禁篡改用户原本意图或误触发 TOP250 面板接管。
+  2. **双轨资源互联规范**：专区必须提供双轨资源入口，将站内标签索引（`/tags?c7=390`）命名为「本站LTX专区」，并为第三方独立资源库（`https://ltx.libray.workers.dev/`）设立「外部LTX资源库」按钮，赋予其与关于弹窗 GitHub Star 按钮同款的 `@keyframes ghGlowing` 霓虹流光边框动画与精准的气泡悬浮提示。
+  3. **首屏层级与折叠持久化**：首页「LTX 破解精选」横轨必须严格挂载在「每周推荐」下方，工具条样式必须经由 `JavdbThemeAdapter` 100% 同步毛玻璃与液态玻璃（Liquid Glass）折射效果，控制条宽度与「每周推荐」全宽严格对齐；每周推荐封面宽度扩充至 `300px`，LTX 精选封面规格统一定为 `260px`；折叠状态必须在本地持久化。
+  4. **横版封面右侧智能取景 (Right-Side Crop)**：针对宽幅（1.49:1）封套卡片，必须采用绝对定位右贴齐算法（`width: 200%; height: 100%; right: 0; object-position: right center;`），严禁居中裁切丢失右半部女优与片名核心画面。
+  5. **赛博紫晶霓虹视觉与微光呼吸边框**：角标统一采用赛博紫晶霓虹渐变（`#a855f7` -> `#ec4899`），位置置于卡片左下角并严格排在「无码破解」「中文字幕」标签前；严禁常驻展示粗重边框，仅在鼠标悬停时动态显现 `1px` 细微光轮廓与柔和外发光；主页与收藏夹筛选状态必须严格解耦。
+  6. **错落瀑布流自适应重排协调**：在错落瀑布流（Masonry）模式下，激活 LTX 筛选必须通过提升 CSS 隐藏优先级压制行内样式，并主动唤醒 `WaterfallEngine` 遍历重新计算 `visibleItems`，消除卡片绝对定位（`translate3d`）遗留的网格空隙与排版断裂。
+* **陷阱**：若未拦截 302 跳转，用户点击 LTX 筛选会被服务端重定向到购买会员页面，并因路由变化被 TOP250 面板错误拦截接管；若封面采用居中裁切，卡片呈现的是没有任何女优面孔与文字信息的背景空白，导致可读性归零；若瀑布流未深度联动重排，筛选后页面会出现大片空白间隙，破坏浏览连续性。
+* **参见决策**：[ADR-0034: LTX 破解影片全景多合一架构、双轨资源导流与赛博紫晶霓虹视觉重排系统](./docs/adr/0034-ltx-uncensored-crack-panoramic-hub-and-dual-track-indexing.md)
+
 ---
 
 ## 架构决策档案索引 (Architectural Decision Records)
@@ -636,5 +676,7 @@ _Avoid_: GlobalLock, ObserverGuard, ConfirmWrapper
 30. [ADR-0030: 公开清单 40/页稳定路由切换、无依赖双语维基女优解析与看过评分分桶同步架构](./docs/adr/0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)
 31. [ADR-0031: 主页「每週推薦」精选横栏隔离改造与 `/lucky`「手氣不錯」全景发现架构](./docs/adr/0031-homepage-weekly-recommend-rail-and-lucky-discovery-architecture.md)
 32. [ADR-0032: 全链路多语言 DOM 统一解析、新版官方 App 推广条结构性拦截与全屏面板图层隔离架构](./docs/adr/0032-multilingual-dom-unification-app-banner-and-panel-layering.md)
+33. [ADR-0033: Whatslink 磁力真实截图验车、全域在途 GET 请求单例去重与 CSP 事件捕获委托架构](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)
+34. [ADR-0034: LTX 破解影片全景多合一架构、双轨资源导流与赛博紫晶霓虹视觉重排系统](./docs/adr/0034-ltx-uncensored-crack-panoramic-hub-and-dual-track-indexing.md)
 
 
