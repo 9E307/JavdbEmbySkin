@@ -671,7 +671,7 @@
     { id: 'otherSite', name: '外部播放站点', desc: '开启后在番号详情页提供多源跳转播放；关闭时默认直接调用 JAVDB 官方播放（会员免跳转）', default: true },
     { id: 'infoSites', name: '番号信息站点', desc: '开启后在番号后面以网站LOGO形式展示 JAVBUS、JAVLib、FANZA動画、javtxt 快捷跳转入口', default: true },
     { id: 'infiniteScroll', name: '无限加载', desc: '浏览列表时滚动到底部自动加载下一页，免去手动点击翻页', default: true },
-    { id: 'reviewListInfinite', name: '绕过JAVDB限制', desc: '为非 VIP 账号扩展完整评论与相关清单浏览；TOP250 与热播榜优先通过 JAVDB 网页会话直读，无需移动端 Token', default: false },
+    { id: 'reviewListInfinite', name: '绕过JAVDB限制', desc: '为非 VIP 账号扩展完整评论与相关清单浏览和LTX破解筛选；TOP250 与热播榜优先通过 JAVDB 网页会话直读，无需移动端 Token', default: false },
     { id: 'actressInfo', name: '女优信息与收藏标记', desc: '查询女优现役/退役状态、年龄、身高、三围等体检数据，并控制女优头像红心收藏标记的显示', default: true },
     { id: 'gfriendsAvatar', name: '演员头像高清替换', desc: '开启后优先从高清头像库匹配演员头像（男女演员均支持），未匹配则平滑回退 JAVDB 官方头像', default: true },
     { id: 'quickStatusPreview', name: '状态快捷标记和预览图', desc: '在作品封面提供「想看/已看评分」快捷标记按钮，以及预览大图嗅探抓取与画廊浮层', default: false },
@@ -11228,7 +11228,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
           if (nameEl && !nameEl.querySelector('.jhs-ltx-magnet-badge')) {
             const badge = document.createElement('span');
             badge.className = 'jhs-ltx-magnet-badge';
-            badge.textContent = 'LTX 流出';
+            badge.textContent = 'LTX 破解';
             nameEl.insertBefore(badge, nameEl.firstChild);
           }
         }
@@ -16287,7 +16287,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<div class="jhs-qs-control"><input type="checkbox" id="qs-plugin-infiniteScroll" class="mini-switch"></div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
-            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">绕过JAVDB限制<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">免VIP/登录畅享完整评论、相关清单原位展开，以及TOP250与热播榜单全量浏览</span></span></div>' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">绕过JAVDB限制<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">免VIP/登录畅享完整评论、LTX破解筛选、相关清单原位展开，以及TOP250与热播榜单全量浏览</span></span></div>' +
             '<div class="jhs-qs-control"><input type="checkbox" id="qs-plugin-reviewListInfinite" class="mini-switch"></div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
@@ -16340,7 +16340,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '</div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
-            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">「手气不错」标签<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在首页导航栏与顶栏显示随机发现全屏入口；关闭后仍可在侧边抽屉打开 /lucky</span></span></div>' +
+            '<div class="jhs-qs-label"><span class="jhs-tooltip-wrap">「手气不错」入口<span class="material-symbols-outlined jhs-help-icon">help</span><span class="jhs-tip-bubble">在首页导航栏与顶栏显示随机发现全屏入口；关闭后仍可在侧边抽屉打开 /lucky</span></span></div>' +
             '<div class="jhs-qs-control"><input type="checkbox" id="qs-lucky-tab" class="mini-switch"></div>' +
           '</div>' +
           '<div class="jhs-qs-row">' +
@@ -16595,7 +16595,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
               '<div style="width:160px;"><select id="full-home-rec-mode" class="jhs-input-text"><option value="rail">单行精选横栏</option><option value="pill">默认收起胶囊</option><option value="hide">彻底隐藏</option></select></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
-              '<div class="jhs-item-info"><div class="jhs-item-name">主页显示「手气不错」标签</div><div class="jhs-item-desc">在首页标签栏与顶栏快捷区提供内嵌随机推荐面板；关闭后仍可由侧边抽屉打开 /lucky</div></div>' +
+              '<div class="jhs-item-info"><div class="jhs-item-name">主页显示「手气不错」入口</div><div class="jhs-item-desc">在首页标签栏与顶栏快捷区提供内嵌随机推荐面板；关闭后仍可由侧边抽屉打开 /lucky</div></div>' +
               '<div><input type="checkbox" id="full-lucky-tab" class="mini-switch"></div>' +
             '</div>' +
             '<div class="jhs-item-row">' +
