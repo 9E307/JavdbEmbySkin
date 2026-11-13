@@ -1,6 +1,6 @@
 # JavdbEmbySkin 完整架构上下文与领域模型 (CONTEXT.md)
 
-JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（30,682 行，v7.7.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
+JavdbEmbySkin 是一个在浏览器油猴环境（Tampermonkey / Violentmonkey）中运行的大型单文件 UserScript（30,690 行，v7.7.0）。它将 JAVDB 原生站点全面重构为现代化的 Emby 视觉风格，并内置了从数据采集、多级持久化、多维流式画廊、元数据纠错自愈、媒体库统计分析、多源播放矩阵，到云端多端同步与高清头像映射在内的完整多媒体数据管理系统。
 
 ---
 
@@ -314,7 +314,7 @@ _Avoid_: RequestDeduplication, GetCache, RequestLock
 
 ---
 
-## 架构子系统全景地图 (Architecture Map Across 30,682 Lines - v7.7.0)
+## 架构子系统全景地图 (Architecture Map Across 30,690 Lines - v7.7.0)
 
 ```
                        ┌──────────────────────────────────────────────┐
@@ -422,7 +422,7 @@ _Avoid_: RequestDeduplication, GetCache, RequestLock
 
 ## 核心“弯弯绕绕”与历史避坑铁律 (38 Critical Invariants & Gotchas)
 
-这 38 条铁律是整个项目 30,682 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
+这 38 条铁律是整个项目 30,690 行代码历经数十次对抗式审计与实战迭代沉淀出的硬核准则，**后续维护者与 AI 绝不可触犯**：
 
 ### 1. 绝不可混淆 `userScore` 与 `rating.score`
 * **铁律**：`m.userScore` 是 1~5 整数（用户主观打星），`m.rating.score` 是 0.0~5.0 浮点数（网站大众分）。

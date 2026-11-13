@@ -2111,7 +2111,7 @@ html.emby-skin .item .box .tags .tag {
   padding:.15em .55em !important; margin-right:.35em !important;
 }
 
-/* ====== LTX 影片全景交互与紫晶霓虹徽章 (方案四) ====== */
+/* ====== LTX 影片全景交互与紫晶霓虹徽章 ====== */
 /* 1. 紫晶霓虹徽章：置于左下角 tags 栏首位，排在无码破解、中文字幕前 */
 html.emby-skin .jhs-ltx-tag,
 .jhs-ltx-tag {
@@ -2207,11 +2207,17 @@ a.button.is-small[href*="vft=6"].is-selected,
 }
 
 /* 6. 首页横向滑轨推荐频道 (置于每周推荐下方，支持展开与收起) */
-.jhs-ltx-rail-section {
+html.emby-skin:not(.emby-fav-view) .jhs-ltx-rail-section {
   margin: 0.6rem 0 1.2rem;
   padding: 0;
   position: relative;
   z-index: 5;
+}
+html.emby-skin.emby-fav-view .jhs-ltx-rail-section,
+html.emby-skin.emby-fav-view #jhs-ltx-rail,
+html:not(.emby-skin) .jhs-ltx-rail-section,
+html:not(.emby-skin) #jhs-ltx-rail {
+  display: none !important;
 }
 .jhs-ltx-rail-header {
   display: flex;
@@ -4509,6 +4515,8 @@ html.emby-skin.emby-fav-view #emby-rec-bar,
 html.emby-skin.emby-fav-view #recommend-container,
 html.emby-skin.emby-fav-view #recommend-container.emby-rec-rail,
 html.emby-skin.emby-fav-view #recommend-container.emby-rec-rail:not(.emby-rec-collapsed):not(.emby-rec-hidden),
+html.emby-skin.emby-fav-view #jhs-ltx-rail,
+html.emby-skin.emby-fav-view .jhs-ltx-rail-section,
 html.emby-skin.emby-fav-view .tabs:not(#emby-favorites-panel *):not(#emby-top250-panel *):not(#emby-lucky-panel *),
 html.emby-skin.emby-fav-view .toolbar:not(#emby-favorites-panel *):not(#emby-top250-panel *):not(#emby-lucky-panel *),
 html.emby-skin.emby-fav-view .movie-list,
@@ -10898,7 +10906,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
   })();
 
   /* =======================================================================
-   * LTX 专区全景视图管理器 (LtxViewManager - 方案四多合一综合架构)
+   * LTX 专区全景视图管理器 (LtxViewManager - 多合一综合全景架构)
    * 1. 卡片紫晶霓虹 (Cyber Violet) 徽章：置于左下角标签栏第一位（排在「无码破解」「中文字幕」前）；
    * 2. 卡片边缘柔和微光发光与磁力行联动标注；
    * 3. 规避并修复 JAVDB 原生 /?vft=6 VIP 重定向至 /plans/ypay 导致的 TOP250 误接管 BUG；
@@ -11020,7 +11028,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
       });
     }
 
-    // 渲染首页专属横向滑轨推荐频道 (方案四集成：置于每周推荐下方，支持展开与收起)
+    // 渲染首页专属横向滑轨推荐频道 (置于每周推荐下方，支持展开与收起)
     async function renderHomeRail() {
       if (!isLtxPluginEnabled() || !isLtxRailEnabled()) return;
       if (location.pathname !== '/' && location.pathname !== '') return;
@@ -30016,7 +30024,7 @@ html.emby-skin.emby-drawer-open #javdb-emby-toggle {
     ['emby-topbar','emby-drawer','emby-drawer-scrim',
      'emby-detail-hero','emby-detail-bg','emby-detail-scrim',
      'emby-detail-root','emby-play-btn','emby-compact-bar','emby-backtop',
-     'emby-search-modal','emby-settings-panel','emby-rec-bar',
+     'emby-search-modal','emby-settings-panel','emby-rec-bar','jhs-ltx-rail',
      'emby-favorites-panel','emby-lucky-panel','emby-gallery-panel','emby-top250-panel',
      'emby-df-preview','emby-df-scrim',
      'efav-gallery-lb','efav-style-morph','efav-filter-mask','efav-collect-mask','efav-backup-mask','emby-note-tip',
@@ -30390,7 +30398,7 @@ html.emby-skin.emby-drawer-open #javdb-emby-toggle {
   // 皮肤自管理子树：这些容器内部的结构变化由各自模块自行处理（收藏夹/画廊分批渲染、
   // 悬停预览气泡、弹窗、顶栏抽屉、卡片高光注入），无需触发 javdb 路由重构——
   // 作为全局 MutationObserver 的增量过滤依据，砍掉 javdb 高频 DOM 变化中的最大噪声源。
-  const SKIN_CHROME_SEL = '#emby-topbar,#emby-drawer,#emby-drawer-scrim,#emby-favorites-panel,#emby-lucky-panel,#emby-rec-bar,' +
+  const SKIN_CHROME_SEL = '#emby-topbar,#emby-drawer,#emby-drawer-scrim,#emby-favorites-panel,#emby-lucky-panel,#emby-rec-bar,#jhs-ltx-rail,' +
     '#emby-gallery-panel,#emby-top250-panel,#emby-df-preview,#emby-df-scrim,#emby-search-modal,#emby-settings-panel,#jhs-settings-mask,' +
     '#emby-quick-settings-popover,#jhs-wd-list-modal,#emby-compact-bar,#emby-detail-root,#emby-detail-bg,' +
     '#emby-detail-scrim,#emby-backtop,#emby-toast,#javdb-emby-toggle,.emby-home-tabs,' +
