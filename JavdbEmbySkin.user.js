@@ -2305,28 +2305,59 @@ a.button.is-small[href*="vft=6"].is-selected,
 }
 .jhs-ltx-ext-btn {
   font-size: 0.78em;
-  font-weight: 600;
-  color: #e9d5ff !important;
-  background: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(168, 85, 247, 0.32);
+  font-weight: 700;
+  color: #fff !important;
+  background: #0d1117;
+  cursor: pointer;
+  position: relative;
+  z-index: 0;
   border-radius: 999px;
-  padding: .22em .72em;
-  transition: all .2s ease;
-  text-decoration: none !important;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  padding: .28em .88em;
   margin-left: 6px;
+  text-decoration: none !important;
+  border: 1px solid rgba(255, 255, 255, .16);
+  transition: transform .18s ease-in-out;
+}
+.jhs-ltx-ext-btn:before {
+  content: "";
+  background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  background-size: 400%;
+  z-index: -1;
+  filter: blur(10px);
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  animation: ghGlowing 20s linear infinite;
+  opacity: .5;
+  transition: opacity .28s ease-in-out;
+  border-radius: inherit;
 }
 .jhs-ltx-ext-btn:hover {
-  background: rgba(168, 85, 247, 0.28);
-  color: #fff !important;
-  border-color: #a855f7;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+  transform: translateY(-2px) scale(1.02);
+}
+.jhs-ltx-ext-btn:hover:before {
+  opacity: 1;
+}
+.jhs-ltx-ext-btn:after {
+  z-index: -1;
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0d1117;
+  border-radius: inherit;
 }
 .jhs-ltx-ext-btn .ext-icon {
   font-size: 14px;
   color: #c084fc;
+  transition: color .2s ease;
+}
+.jhs-ltx-ext-btn:hover .ext-icon {
+  color: #fff;
 }
 .jhs-ltx-rail-section.collapsed .jhs-ltx-arrow-btn {
   display: none !important;
@@ -11048,7 +11079,7 @@ html.emby-skin.emby-style-liquid .cover-modal-base {
             '<span class="material-symbols-outlined rail-icon">auto_awesome</span>' +
             '<span class="jhs-ltx-rail-title">LTX 破解精选</span>' +
             (countDisplay ? '<span class="jhs-ltx-rail-count">' + escapeHtml(countDisplay) + '</span>' : '') +
-            '<a class="jhs-ltx-ext-btn" href="https://ltx.libray.workers.dev/" target="_blank" rel="noopener noreferrer" title="访问外部LTX资源库（第三方收集站点）">' +
+            '<a class="jhs-ltx-ext-btn" href="https://ltx.libray.workers.dev/" target="_blank" rel="noopener noreferrer" title="访问外部LTX资源库（第三方收集站点，数据更全）">' +
               '<span class="material-symbols-outlined ext-icon">open_in_new</span> 外部LTX资源库' +
             '</a>' +
           '</div>' +
