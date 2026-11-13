@@ -22,7 +22,7 @@
 ## [v7.7.1] - 2026-11-13
 
 ### 修复 (Fixed)
-* **彻底修复番号详情页女优头像悬停获取不到生平资料的问题**（详见 [ADR-0035](./docs/adr/0035-actress-biography-mediawiki-api-cors-resilience-and-zero-delay-hover.md)）：
+* **彻底修复番号详情页女优头像悬停获取不到生平资料的问题**（详见 [ADR-0030](./docs/adr/0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)）：
   * **维基官方 MediaWiki Action API 接入**：彻底弃用容易触发 CORS 跨域拦截的常规维基百科网页爬取方式，全线升级为维基官方原生支持跨域 (`origin=*`) 的 MediaWiki Action API (`action=parse`)，响应体积从 300KB+ 降至 70KB，响应耗时从 2 秒降至 200ms；
   * **繁简与多别名自动跟随 (`redirects=1`)**：借助 MediaWiki 服务端重定向引擎，自动完成假名与艺名繁简自动纠偏映射（如 `吉川あいみ` 自动重定向至 `吉川愛美`）；
   * **短效负缓存与网络异常防毒化隔离**：将未建档女优的负缓存有效时间由 24 小时缩短至 10 分钟；捕获底层网络异常，发生网络断流/超时错误时坚决不写入负缓存，避免网络偶发抖动造成长达一整天的功能死锁；

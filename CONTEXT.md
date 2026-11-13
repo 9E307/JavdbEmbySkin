@@ -681,11 +681,10 @@ _Avoid_: RequestDeduplication, GetCache, RequestLock
 27. [ADR-0027: DYNAMIC FOCUS 动态聚焦布局、视口防碰撞大图浮层与环境流光跟随架构](./docs/adr/0027-dynamic-focus-layout-collision-avoidance-and-ambient-preview.md)
 28. [ADR-0028: 封面悬停视频预览双源容灾引擎与防抖播放架构](./docs/adr/0028-hover-preview-video-dual-source-fallback-and-debounced-playback.md)
 29. [ADR-0029: 排行榜路由精确解耦、TOP250 网页登录态优先拉取与运行时高频节流架构](./docs/adr/0029-rankings-route-decoupling-web-session-top250-and-runtime-throttling.md)
-30. [ADR-0030: 公开清单 40/页稳定路由切换、无依赖双语维基女优解析与看过评分分桶同步架构](./docs/adr/0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)
+30. [ADR-0030: 公开清单 40/页稳定路由切换、双语维基 MediaWiki API 跨域解析与看过评分分桶同步架构](./docs/adr/0030-public-list-routing-mediawiki-actress-resolution-and-star-bucket-sync.md)
 31. [ADR-0031: 主页「每週推薦」精选横栏隔离改造与 `/lucky`「手氣不錯」全景发现架构](./docs/adr/0031-homepage-weekly-recommend-rail-and-lucky-discovery-architecture.md)
 32. [ADR-0032: 全链路多语言 DOM 统一解析、新版官方 App 推广条结构性拦截与全屏面板图层隔离架构](./docs/adr/0032-multilingual-dom-unification-app-banner-and-panel-layering.md)
 33. [ADR-0033: Whatslink 磁力真实截图验车、全域在途 GET 请求单例去重与 CSP 事件捕获委托架构](./docs/adr/0033-whatslink-magnet-verification-and-in-flight-network-scheduler.md)
 34. [ADR-0034: LTX 破解影片全景多合一架构、双轨资源导流与赛博紫晶霓虹视觉重排系统](./docs/adr/0034-ltx-uncensored-crack-panoramic-hub-and-dual-track-indexing.md)
-35. [ADR-0035: 维基女优生平 MediaWiki Action API 跨域容灾、负缓存自愈与 0ms 零延迟异步卡片架构](./docs/adr/0035-actress-biography-mediawiki-api-cors-resilience-and-zero-delay-hover.md)
 
 
